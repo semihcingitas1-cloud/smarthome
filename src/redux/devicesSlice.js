@@ -1,9 +1,8 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import axios from 'axios';
 
-const BASE_URL = "http://localhost:4000";
+const BASE_URL = "https://mqttserver-production-cb5d.up.railway.app";
 
-// FIX 1: pairingCode ve pairingLoading initialState'e eklendi
 const initialState = {
   devices: [],
   loading: false,
