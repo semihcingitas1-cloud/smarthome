@@ -4,7 +4,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { addHome, deleteHome, addRoom, deleteRoom, profile } from '../redux/userSlice';
 import Sidebar from '../layout/Sidebar';
 
-import { Home, Plus, Trash2, Layout, ChevronRight, ArrowRight, X, Globe, CheckCircle2, MoreHorizontal, Activity, Monitor } from 'lucide-react';
+import { Home, Plus, Trash2, Layout, ChevronRight, ArrowRight, X, Globe, CheckCircle2, Activity, Monitor } from 'lucide-react';
 
 const SpaceManager = () => {
 
