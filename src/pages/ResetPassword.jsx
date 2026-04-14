@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Lock, Eye, EyeOff, ShieldCheck, CheckCircle2, Home } from 'lucide-react';
+import { Lock, Eye, EyeOff, ShieldCheck, CheckCircle2 } from 'lucide-react';
 
 const ResetPassword = () => {
 
