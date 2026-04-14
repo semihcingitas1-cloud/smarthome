@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import Sidebar from '../layout/Sidebar';
-import { User, Mail, Lock, Bell, Shield, Palette, LogOut, Camera, Smartphone, Key, Save, Eye, EyeOff, ChevronRight, Globe } from 'lucide-react';
+import { User, Mail, Lock, Bell, Shield, Palette, LogOut, Camera, Smartphone, Key, Save, Eye, EyeOff, Globe } from 'lucide-react';
 
 const UserProfile = () => {
 
