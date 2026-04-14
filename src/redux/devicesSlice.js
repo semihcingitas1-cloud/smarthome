@@ -1,7 +1,7 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import axios from 'axios';
 
-const BASE_URL = "https://mqttserver-production-cb5d.up.railway.app";
+const BASE_URL = "http://localhost:4000";
 
 const initialState = {
   devices: [],
@@ -23,7 +23,7 @@ export const startPairingAction = createAsyncThunk(
         pairingData,
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      return data;
+      return data; // { success: true, code: "12345678" }
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || "Eşleşme kodu alınamadı.");
     }
@@ -40,7 +40,7 @@ export const completePairing = createAsyncThunk(
         pairingData,
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      return data;
+      return data; // { success: true, device: {...} }
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || "Cihaz eşleştirilemedi.");
     }
@@ -101,7 +101,7 @@ export const assignDeviceToRoom = createAsyncThunk(
   async ({ deviceId, homeId, roomId }, { rejectWithValue }) => {
     try {
       const token = localStorage.getItem('token');
-      const { data } = await axios.post(
+      await axios.post(
         `${BASE_URL}/api/devices/${deviceId}/assign`,
         { homeId, roomId },
         { headers: { Authorization: `Bearer ${token}` } }
@@ -109,6 +109,25 @@ export const assignDeviceToRoom = createAsyncThunk(
       return { deviceId, homeId, roomId };
     } catch (err) {
       return rejectWithValue(err.response?.data?.message);
+    }
+  }
+);
+
+export const toggleRelay = createAsyncThunk(
+  'device/toggleRelay',
+  async ({ serialNumber, action }, { rejectWithValue }) => {
+    try {
+      const token = localStorage.getItem('token');
+      const { data } = await axios.post(
+        `${BASE_URL}/api/devices/command`,
+        { serialNumber, action },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      // Backend { success: true, action, serialNumber } döndürüyor
+      // Eğer backend serialNumber döndürmüyorsa buradan ekliyoruz
+      return { ...data, serialNumber };
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || "Komut gönderilemedi.");
     }
   }
 );
@@ -126,20 +145,30 @@ export const deviceSlice = createSlice({
       state.pairingLoading = false;
       state.pairingError = null;
     },
+    // MQTT'den gelen gerçek zamanlı güncelleme için
+    updateDeviceData: (state, action) => {
+      const { serialNumber, data } = action.payload;
+      const device = state.devices.find(d => d.serialNumber === serialNumber);
+      if (device) {
+        device.data = { ...device.data, ...data };
+      }
+    },
   },
   extraReducers: (builder) => {
+
     // startPairingAction
     builder.addCase(startPairingAction.pending, (state) => {
-      state.loading = true;
-      state.pairingCode = null; // önceki kodu temizle
+      state.pairingLoading = true;
+      state.pairingCode = null;
+      state.pairingError = null;
     });
     builder.addCase(startPairingAction.fulfilled, (state, action) => {
-      state.loading = false;
+      state.pairingLoading = false;
       state.pairingCode = action.payload.code;
     });
     builder.addCase(startPairingAction.rejected, (state, action) => {
-      state.loading = false;
-      state.error = action.payload;
+      state.pairingLoading = false;
+      state.pairingError = action.payload;
     });
 
     // completePairing
@@ -150,8 +179,7 @@ export const deviceSlice = createSlice({
     builder.addCase(completePairing.fulfilled, (state, action) => {
       state.pairingLoading = false;
       state.pairingError = null;
-      state.pairingCode = null; // eşleşme bitti, kodu temizle
-      // Yeni cihazı listeye ekle (eğer backend döndürüyorsa)
+      state.pairingCode = null;
       if (action.payload?.device) {
         state.devices.push(action.payload.device);
       }
@@ -160,8 +188,11 @@ export const deviceSlice = createSlice({
       state.pairingLoading = false;
       state.pairingError = action.payload;
     });
+
+    // getMyDevices
     builder.addCase(getMyDevices.pending, (state) => {
       state.loading = true;
+      state.error = null;
     });
     builder.addCase(getMyDevices.fulfilled, (state, action) => {
       state.loading = false;
@@ -179,9 +210,13 @@ export const deviceSlice = createSlice({
         state.devices[index] = action.payload;
       }
     });
+
+    // deleteDevice
     builder.addCase(deleteDevice.fulfilled, (state, action) => {
       state.devices = state.devices.filter(device => device._id !== action.payload);
     });
+
+    // assignDeviceToRoom
     builder.addCase(assignDeviceToRoom.fulfilled, (state, action) => {
       const { deviceId, homeId, roomId } = action.payload;
       const device = state.devices.find(d => d._id === deviceId);
@@ -190,8 +225,20 @@ export const deviceSlice = createSlice({
         device.roomId = roomId;
       }
     });
+    builder.addCase(toggleRelay.fulfilled, (state, action) => {
+      const { serialNumber, action: relayAction } = action.payload;
+      console.log("toggleRelay fulfilled:", serialNumber, relayAction);
+      const device = state.devices.find(d => d.serialNumber === serialNumber);
+      if (device) {
+        if (!device.data) device.data = {};
+        device.data.relayState = relayAction;
+      }
+    });
+    builder.addCase(toggleRelay.rejected, (state, action) => {
+      console.error("toggleRelay rejected:", action.payload);
+    });
   },
 });
 
-export const { clearDeviceError, resetPairingStatus } = deviceSlice.actions;
+export const { clearDeviceError, resetPairingStatus, updateDeviceData } = deviceSlice.actions;
 export default deviceSlice.reducer;

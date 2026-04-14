@@ -3,17 +3,15 @@ import { useDispatch, useSelector } from 'react-redux';
 
 import Sidebar from '../layout/Sidebar';
 
-import { getMyDevices, startPairingAction, resetPairingStatus, completePairing, updateDevice, deleteDevice } from '../redux/devicesSlice';
+import { getMyDevices, startPairingAction, resetPairingStatus, completePairing, updateDevice, deleteDevice, toggleRelay } from '../redux/devicesSlice';
 import { profile } from '../redux/userSlice';
 
-import {
-  Plus, Search, Sliders, Wifi, MoreVertical, Power, Thermometer, Droplets,
-  AlertTriangle, CheckCircle2, Activity, SignalHigh, SignalMedium, SignalLow,
-  BatteryFull, BatteryMedium, BatteryLow, Trash2, RefreshCw, X, Save, Zap,
-  ArrowLeft, ArrowRight, Cpu, Plug
-} from 'lucide-react';
+import { Plus, Search, Sliders, Wifi, MoreVertical, Power, Thermometer, Droplets, 
+  AlertTriangle, CheckCircle2, Activity, SignalHigh, SignalMedium, SignalLow, 
+  BatteryFull, BatteryMedium, BatteryLow, Trash2, RefreshCw, X, Save, Zap, ArrowLeft, ArrowRight, Cpu, Plug } from 'lucide-react';
 
 const Devices = () => {
+
   const dispatch = useDispatch();
 
   const [filter, setFilter] = useState('all');
@@ -29,53 +27,64 @@ const Devices = () => {
   const [selectedHome, setSelectedHome] = useState(null);
   const [editName, setEditName] = useState('');
   const [editLocation, setEditLocation] = useState('');
-  // FIX 1: deviceName ayrı bir state olarak tanımlandı (step 2 input için)
   const [deviceName, setDeviceName] = useState('Yeni Cihaz');
 
   const { user } = useSelector(state => state.user);
-  // FIX 2: pairingLoading için ayrı alias kullanıldı, çakışma önlendi
   const { devices, loading, pairingCode, pairingLoading, pairingError } = useSelector(state => state.devices);
 
   useEffect(() => {
+
     dispatch(getMyDevices());
     dispatch(profile());
   }, [dispatch]);
 
   useEffect(() => {
-    if (step === 4 && !loading && selectedType) {
-      dispatch(startPairingAction(selectedType));
-      console.log("Pairing started for type:", selectedType);
+
+    if (step === 4 && selectedType) {
+
+      dispatch(startPairingAction({
+
+        homeId: user?.user?.homes?.[0]?._id,
+        roomId: selectedRoom,
+        name: deviceName,
+        type: selectedType,
+      }));
     }
-  }, [step, selectedType]);
+  }, [step]);
 
   useEffect(() => {
+
     let timer;
     if (step === 4 && pairingCode && timeLeft > 0) {
+
       timer = setInterval(() => {
+
         setTimeLeft((prev) => prev - 1);
       }, 1000);
     } else if (timeLeft === 0) {
+
       dispatch(resetPairingStatus());
     }
     return () => clearInterval(timer);
   }, [step, pairingCode, timeLeft]);
 
-  // FIX 3: Gereksiz/hatalı step === 4 timeout effect'i kaldırıldı (setStep(4) kendini çağırıyordu)
-
   const formatTime = (seconds) => {
+
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
 
   const deviceTypes = [
-    { id: 'gateway', name: 'Gateway', icon: <Wifi />, desc: 'Merkezi Kontrol Ünitesi' },
-    { id: 'sensor', name: 'Sensör', icon: <Droplets />, desc: 'Su veya Gaz Sensörü' },
-    { id: 'climate', name: 'İklim', icon: <Thermometer />, desc: 'Termostat veya Nem' },
-    { id: 'power', name: 'Güç', icon: <Zap />, desc: 'Akıllı Röle / Priz' },
+
+    { id: 'Gateway', name: 'Gateway', icon: <Wifi />, desc: 'Merkezi Kontrol Ünitesi' },
+    { id: 'Sensör', name: 'Sensör', icon: <Droplets />, desc: 'Su veya Gaz Sensörü' },
+    { id: 'İklimlendirme', name: 'İklimlendirme', icon: <Thermometer />, desc: 'Termostat veya Nem' },
+    { id: 'Güç', name: 'Güç', icon: <Zap />, desc: 'Akıllı Röle / Priz' },
   ];
 
   const filteredDevices = useMemo(() => {
+
     if (!devices) return [];
     return devices.filter(device => {
       const matchesFilter = filter === 'all' || device.data?.status === filter;
@@ -87,7 +96,9 @@ const Devices = () => {
   }, [filter, searchQuery, devices]);
 
   const getDeviceIcon = (type) => {
+
     switch (type) {
+
       case 'Gateway': return <Wifi size={24} />;
       case 'Sensör': return <Droplets size={24} />;
       case 'İklimlendirme': return <Thermometer size={24} />;
@@ -97,24 +108,23 @@ const Devices = () => {
   };
 
   const getSignalIcon = (signal) => {
+
     if (signal === 'Güçlü') return <SignalHigh size={16} className="text-green-500" />;
     if (signal === 'Orta') return <SignalMedium size={16} className="text-yellow-500" />;
     return <SignalLow size={16} className="text-red-500" />;
   };
 
   const getBatteryIcon = (battery) => {
+
     if (battery === 'Güçlü') return <BatteryFull size={16} className="text-green-500" />;
     if (battery === 'Orta') return <BatteryMedium size={16} className="text-yellow-500" />;
     if (battery === 'AC') return <Plug size={16} className="text-yellow-500" />;
     return <BatteryLow size={16} className="text-red-500" />;
   };
 
-  // FIX 4: handleCompletePairing — iç değişken adı çakışması düzeltildi,
-  // pairingData artık state değil, fonksiyon içinde oluşturulan lokal obje
   const handleCompletePairing = () => {
-    // pairingCode'u Redux store'dan en güncel haliyle al
-    const currentPairingCode = pairingCode;
 
+    const currentPairingCode = pairingCode;
     console.log("=== Pairing Debug ===");
     console.log("pairingCode:", currentPairingCode);
     console.log("selectedType:", selectedType);
@@ -123,11 +133,13 @@ const Devices = () => {
     console.log("deviceName:", deviceName);
 
     if (!currentPairingCode) {
+
       console.error("Pairing code henüz alınmadı!");
       return;
     }
 
     const payload = {
+
       homeId: user?.user?.homes?.[0]?._id,
       roomId: selectedRoom,
       name: deviceName,
@@ -136,19 +148,21 @@ const Devices = () => {
     };
 
     dispatch(completePairing(payload))
-      .unwrap()
-      .then((result) => {
-        console.log("Cihaz başarıyla eklendi:", result);
-        onClose();
-      })
-      .catch((err) => {
-        console.error("Eşleştirme hatası:", err);
-      });
+    .unwrap()
+    .then((result) => {
+
+      console.log("Cihaz başarıyla eklendi:", result);
+      onClose();
+    })
+    .catch((err) => {
+      console.error("Eşleştirme hatası:", err);
+    });
   };
 
-  // FIX 5: handleUpdate — editName/editLocation doğru şekilde kullanılıyor
   const handleUpdate = async () => {
+
     try {
+
       await dispatch(updateDevice({
         id: selectedDevice._id,
         data: {
@@ -168,8 +182,8 @@ const Devices = () => {
     }
   };
 
-  // FIX 6: onClose — tüm state'ler sıfırlanıyor + resetPairingStatus dispatch ediliyor
   const onClose = () => {
+
     setIsAddModalOpen(false);
     setStep(1);
     setSelectedType(null);
@@ -180,43 +194,65 @@ const Devices = () => {
     dispatch(resetPairingStatus());
   };
 
-  // FIX 7: Ayarlar modalı açıldığında editName ve editLocation initialize ediliyor
   const handleOpenSettings = (device) => {
+
     setSelectedDevice(device);
     setEditName(device.name || '');
     setEditLocation(device.roomId?._id || '');
     setIsModalOpen(true);
   };
 
+  const handleSendCommand = (device, command) => {
+
+    const currentState = device?.data?.relayState;
+    const newAction = currentState === 'on' ? 'off' : 'on';
+    console.log("Mevcut durum:", currentState, "→ Gönderilen:", newAction);
+    dispatch(toggleRelay({ 
+      serialNumber: device.serialNumber, 
+      action: newAction
+    }));
+
+    console.log(`Komut gönderiliyor → ${device.serialNumber} / ${newAction}`);
+    console.log("currentState", currentState);
+  };
+
   return (
+
     <div className="flex bg-slate-950 min-h-screen">
+
       <Sidebar />
 
       <main className="flex-1 lg:ml-0 overflow-x-hidden">
+
         <div className="p-6 space-y-8 animate-in fade-in duration-700 max-w-7xl mx-auto relative">
 
           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6">
+
             <div className="space-y-1">
+
               <h2 className="text-3xl font-extrabold text-white tracking-tight">Cihaz Yönetimi</h2>
-              <p className="text-slate-400">
-                Sistem genelinde <span className="text-blue-400 font-semibold">{devices.length}</span> cihaz tanımlı.
-              </p>
+              <p className="text-slate-400">Sistem genelinde <span className="text-blue-400 font-semibold">{devices.length}</span> cihaz tanımlı.</p>
+
             </div>
 
             <div className="flex flex-wrap gap-3">
+
               <div className="bg-slate-900/50 border border-slate-800 px-4 py-2 rounded-2xl">
+
                 <p className="text-[10px] text-slate-500 uppercase font-bold">Çalışıyor</p>
-                <p className="text-lg font-bold text-green-500">
-                  {devices.filter(d => d?.data?.status === 'online').length}
-                </p>
+                <p className="text-lg font-bold text-green-500">{devices.filter(d => d?.data?.status === 'online').length}</p>
+
               </div>
+
               <div className="bg-slate-900/50 border border-slate-800 px-4 py-2 rounded-2xl">
+
                 <p className="text-[10px] text-slate-500 uppercase font-bold">Kritik</p>
-                <p className="text-lg font-bold text-yellow-500">
-                  {devices.filter(d => d?.data?.status === 'warning').length}
-                </p>
+                <p className="text-lg font-bold text-yellow-500">{devices.filter(d => d?.data?.status === 'warning').length}</p>
+
               </div>
+
             </div>
+
           </div>
 
           <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-slate-900/30 p-4 rounded-3xl border border-slate-800/50">
@@ -346,24 +382,19 @@ const Devices = () => {
                 </div>
 
                 <div className="flex gap-3">
-                  {/* FIX 7: handleOpenSettings kullanıldı */}
-                  <button
-                    onClick={() => handleOpenSettings(device)}
-                    className="flex-1 bg-white/[0.03] hover:bg-white/[0.08] text-white py-3 rounded-2xl text-xs font-bold border border-white/5 transition-all flex items-center justify-center gap-2"
-                  >
+
+                  <button onClick={() => handleOpenSettings(device)} className="flex-1 bg-white/[0.03] hover:bg-white/[0.08] text-white py-3 rounded-2xl text-xs font-bold border border-white/5 transition-all flex items-center justify-center gap-2" >
                     <Sliders size={14} /> Ayarlar
                   </button>
-                  <button
-                    onClick={() => console.log('Toggle power:', device._id)}
-                    disabled={device?.data?.status === 'offline'}
-                    className={`p-3 rounded-2xl transition-all ${
-                      device?.data?.status === 'online'
-                        ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg'
-                        : 'bg-slate-800 text-slate-600 cursor-not-allowed border border-slate-700'
-                    }`}
-                  >
+
+                  {/*<button onClick={() => console.log('Toggle power:', device._id)} disabled={device?.data?.status === 'offline'} className={`p-3 rounded-2xl transition-all ${ device?.data?.status === 'online' ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg' : 'bg-slate-800 text-slate-600 cursor-not-allowed border border-slate-700'}`}>
+                    <Power size={20} />
+                  </button>*/}
+
+                  <button onClick={() => handleSendCommand(device, 'toggle')} className={`p-3 rounded-2xl transition-all ${device?.data?.relayState === 'on' ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg' : 'bg-slate-800 text-slate-600 border border-slate-700'}`}>
                     <Power size={20} />
                   </button>
+
                 </div>
               </div>
             ))}
