@@ -1,7 +1,7 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import axios from 'axios';
 
-const BASE_URL = "https://35.201.105.103:443";
+const BASE_URL = "https://ornekciceksitesi.com";
 
 const initialState = {
   devices: [],
