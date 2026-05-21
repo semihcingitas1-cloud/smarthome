@@ -1,23 +1,21 @@
 import React, { useEffect } from 'react';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 
 import { profile } from './redux/userSlice';
+
+import ProtectedRout from './components/ProtectedRoute';
 
 import Header from './layout/Header';
 import Footer from './layout/Footer';
 
 import Home from './pages/Home';
-import Dashboard from './pages/Dashboard';
 
-import ControlPanel from './pages/ControlPanel';
-import Devices from './pages/Devices';
-import Automation from './pages/Automations';
-import AIVoiceConfig from './pages/AIVoiceConfig';
-import UserProfile from './pages/UserProfile';
-import SpaceManager from './pages/SpaceMenager';
+import Products from './pages/Shopping/Products';
+import ProductDetail from './pages/Shopping/ProductDetail';
 
 import Auth from './pages/Auth';
+import AuthSuccess from './pages/AuthSuccess';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 
@@ -26,13 +24,28 @@ import Contact from './pages/Contact';
 import Guides from './pages/Guides';
 import Scenarios from './pages/Scenarios';
 
+import Dashboard from './pages/User/Dashboard';
+import ControlPanel from './pages/User/ControlPanel';
+import Devices from './pages/User/Devices';
+import Automation from './pages/User/Automations';
+import AIVoiceConfig from './pages/User/AIVoiceConfig';
+import UserProfile from './pages/User/UserProfile';
+import SpaceManager from './pages/User/SpaceMenager';
+
+import AdminProduct from './pages/Admin/AdminProduct';
+import AdminAddProduct from './pages/Admin/AdminAddProduct';
+import AdminSettings from './pages/Admin/AdminSettings';
+
 import NotFound from './pages/NotFound';
 import Maintenance from './pages/Maintenance';
-import RelayControl from './pages/RelayControl';
+import SmartHomePanel from './pages/SmartHomePanel';
 
 function App() {
 
   const dispatch = useDispatch();
+
+
+  const { user, isAuth } = useSelector(state => state.user);
 
   useEffect(() => {
 
@@ -44,6 +57,9 @@ function App() {
     }
   }, [dispatch]);
 
+  const isMaintenance = false;
+  if (isMaintenance && user?.user?.role !== 'admin') {return <Maintenance />;}
+
   return (
 
     <Router>
@@ -53,15 +69,12 @@ function App() {
       <Routes>
 
         <Route exact path='/' element={<Home />} />
-        <Route exact path='/dashboard' element={<Dashboard />} />
-        <Route exact path='/devices' element={<Devices />} />
-        <Route exact path='/automations' element={<Automation />} />
-        <Route exact path='/aivoiceconfig' element={<AIVoiceConfig />} />
-        <Route exact path='/userprofile' element={<UserProfile />} />
-        <Route exact path='/controlpanel' element={<ControlPanel />} />
-        <Route exact path='/spacemanager' element={<SpaceManager />} />
+
+        <Route exact path='/products' element={<Products />} />
+        <Route exact path='/productdetail' element={<ProductDetail />} />
 
         <Route exact path='/auth' element={<Auth />} />
+        <Route path="/auth/success" element={<AuthSuccess />} />
         <Route exact path='/forgot' element={<ForgotPassword />} />
         <Route exact path='/reset/:token' element={<ResetPassword />} />
 
@@ -70,10 +83,30 @@ function App() {
         <Route exact path='/guides' element={<Guides />} />
         <Route exact path='/scenarios' element={<Scenarios />} />
 
+        <Route element={<ProtectedRout isAdmin={false} user={user} />}>
+
+          <Route exact path='/user/dashboard' element={<Dashboard />} />
+          <Route exact path='/user/devices' element={<Devices />} />
+          <Route exact path='/user/automations' element={<Automation />} />
+          <Route exact path='/user/aivoiceconfig' element={<AIVoiceConfig />} />
+          <Route exact path='/user/userprofile' element={<UserProfile />} />
+          <Route exact path='/user/controlpanel' element={<ControlPanel />} />
+          <Route exact path='/user/spacemanager' element={<SpaceManager />} />
+
+        </Route>
+
+        <Route element={<ProtectedRout isAdmin={false} user={user} />}>
+
+          <Route exact path='/admin/product' element={<AdminProduct />} />
+          <Route exact path='/admin/addproduct' element={<AdminAddProduct />} />
+          <Route exact path='/admin/settings' element={<AdminSettings />} />
+
+        </Route>
+
         <Route exact path='/*' element={<NotFound />} />
         <Route exact path='/maintenance' element={<Maintenance />} />
 
-        <Route exact path='/relaycontrol' element={<RelayControl />} />
+        <Route exact path='/smarthomepanel' element={<SmartHomePanel />} />
 
       </Routes>
 
