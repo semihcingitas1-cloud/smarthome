@@ -1,23 +1,25 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import axios from 'axios';
 
-const BASE_URL = "http://localhost:4000";
+const BASE_URL = "https://backend-d72l.onrender.com";
 
 const getAuthConfig = () => {
+
     const token = localStorage.getItem("token");
+
     return {
         headers: { 
-            'Content-Type': 'application/json',
-            'authorization': `Bearer ${token?.trim()}`
+            'Content-Type': 'application/json', 'authorization': `Bearer ${token?.trim()}`
         },
         withCredentials: true
     };
 };
 
 const initialState = {
+
     user: {},
     isAuth: false,
-    loading: false,
+    loading: true,
     error: null
 };
 
@@ -234,39 +236,53 @@ export const userSlice = createSlice({
             state.error = null;
             localStorage.removeItem("token");
         },
+        setLoading: (state, action) => {
+
+            state.loading = action.payload;
+        }
     },
     extraReducers: (builder) => {
 
-        builder.addCase(forgotPassword.pending, (state) => { state.loading = true; state.error = null; });
+        builder.addCase(forgotPassword.pending, (state) => { 
+
+            state.loading = true; 
+            state.error = null; 
+        });
         builder.addCase(resetPassword.pending, (state) => { 
+
             state.loading = true; 
             state.error = null; 
         });
         builder.addCase(register.pending, (state) => {
+
             state.loading = true;
             state.isAuth = false;
             state.error = null;
         });
         builder.addCase(register.fulfilled, (state, action) => {
+
             state.isAuth = true;
             state.loading = false;
             state.user = action.payload;
             state.error = null;
 
             if (action.payload?.token) {
+
                 localStorage.setItem('token', action.payload.token);
             }
         });
 
         builder.addCase(login.pending, (state) => {
-            state.loading = true; state.error = null;
+
+            state.loading = true;
+            state.error = null;
         });
         builder.addCase(login.fulfilled, (state, action) => {
+
             state.isAuth = true;
             state.loading = false;
             state.user = action.payload;
             state.error = null;
-
 
             if (action.payload?.token) {
 
@@ -275,53 +291,67 @@ export const userSlice = createSlice({
         });
 
         builder.addCase(profile.pending, (state) => {
+
             state.loading = true;
             state.error = null;
         });
         builder.addCase(profile.fulfilled, (state, action) => {
+
             state.isAuth = true;
             state.loading = false;
             state.user = action.payload;
             state.error = null;
         });
         builder.addCase(forgotPassword.fulfilled, (state) => {
+
             state.loading = false; state.error = null;
         });
         builder.addCase(resetPassword.fulfilled, (state) => {
+
             state.loading = false; state.error = null;
         });
 
         const managementActions = [addHome, deleteHome, addRoom, deleteRoom];
 
         managementActions.forEach(action => {
+
             builder.addCase(action.pending, (state) => {
+
                 state.loading = true;
                 state.error = null;
             });
             builder.addCase(action.fulfilled, (state, action) => {
+
                 state.loading = false;
                 state.user = action.payload;
                 state.error = null;
             });
             builder.addCase(action.rejected, (state, action) => {
+
                 state.loading = false;
                 state.error = action.payload;
             });
         });
 
         [register.rejected, login.rejected, profile.rejected].forEach(action => {
+
             builder.addCase(action, (state, action) => {
+
                 state.loading = false;
                 state.isAuth = false;
                 state.error = action.payload; 
+
                 if (action.type === profile.rejected.type) {
+
                     state.user = {};
                 }
             });
         });
 
         [forgotPassword.rejected, resetPassword.rejected].forEach(action => {
+
             builder.addCase(action, (state, action) => {
+
                 state.loading = false;
                 state.error = action.payload;
             });
@@ -329,6 +359,5 @@ export const userSlice = createSlice({
     },
 });
 
-export const { logoutUser } = userSlice.actions;
-
+export const { logoutUser, setLoading } = userSlice.actions;
 export default userSlice.reducer;

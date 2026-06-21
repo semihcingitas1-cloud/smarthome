@@ -79,6 +79,18 @@ const SpaceManager = () => {
 
   const handleDeleteHome = async (id) => {
 
+    return (
+
+      <div className=''>
+
+        <div>
+
+
+        </div>
+
+      </div>
+    );
+
     if (window.confirm('Bu evi ve içindeki tüm odaları silmek istediğinize emin misiniz?')) {
 
       await dispatch(deleteHome(id));
@@ -99,6 +111,12 @@ const SpaceManager = () => {
       dispatch(profile());
       showSuccess();
     }
+  };
+
+  const handleEditRoom = async (roomId) => {
+
+    setIsEditRoomModal(true);
+   
   };
 
   const handleDeleteRoom = async (roomId) => {
@@ -362,7 +380,7 @@ const SpaceManager = () => {
                               <Trash2 size={16} />
                             </button>
 
-                            <button className="p-2.5 bg-slate-100 dark:bg-slate-800 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+                            <button onClick={() => handleEditRoom(room._id)} className="p-2.5 bg-slate-100 dark:bg-slate-800 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
                               <Settings size={16} />
                             </button>
 
@@ -454,19 +472,9 @@ const SpaceManager = () => {
 
               </div>
 
-              <div>
-
-                <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2 block">Adres (Opsiyonel)</label>
-                <input value={homeAddress} onChange={(e) => setHomeAddress(e.target.value)} placeholder="Örn: İstanbul, Türkiye" className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-4 text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"/>
-
-              </div>
-
             </div>
 
-            <button onClick={handleAddHome} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-xl font-bold flex items-center justify-center gap-3 shadow-lg shadow-blue-500/25 transition-all">
-              <CheckCircle2 size={22} />
-              Evi Kaydet
-            </button>
+            <button onClick={handleAddHome} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-xl font-bold flex items-center justify-center gap-3 shadow-lg shadow-blue-500/25 transition-all"><CheckCircle2 size={22} />Kaydet</button>
 
           </div>
 
@@ -487,6 +495,67 @@ const SpaceManager = () => {
                 <h3 className="text-3xl font-bold text-slate-900 dark:text-white">Yeni Oda Ekle</h3>
 
                 <button onClick={() => setIsAddRoomModal(false)} className="p-2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white bg-slate-100 dark:bg-slate-800 rounded-xl transition-colors">
+                  <X size={20} />
+                </button>
+
+              </div>
+
+              <div className="space-y-4">
+
+                <div>
+
+                  <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2 block">Oda Adı *</label>
+                  <input value={roomName} onChange={(e) => setRoomName(e.target.value)} placeholder="Örn: Salon" className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-4 text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"/>
+
+                </div>
+
+                <div>
+
+                  <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2 block">Oda Tipi</label>
+
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+
+                    {roomTypes.map((type) => ( <button key={type.value} onClick={() => setRoomType(type.value)} className={`p-4 rounded-xl border-2 transition-all ${roomType === type.value ? `border-${type.color}-500 bg-${type.color}-50 dark:bg-${type.color}-500/10 text-${type.color}-600 dark:text-${type.color}-400` : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 text-slate-600 dark:text-slate-400'}`}>
+
+                      <div className="flex flex-col items-center gap-2">
+
+                        {type.icon}
+                        <span className="text-xs font-semibold">{type.label}</span>
+
+                      </div>
+
+                    </button> ))}
+
+                  </div>
+
+                </div>
+
+              </div>
+
+              <button onClick={handleAddRoom} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-xl font-bold flex items-center justify-center gap-3 shadow-lg shadow-blue-500/25 transition-all">
+                <CheckCircle2 size={22} />
+                Odayı Kaydet
+              </button>
+
+            </div>
+
+          </div>
+
+        </div> )}
+
+        {isEditRoomModal && ( <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
+
+        <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setIsEditRoomModal(false)}/>
+
+          <div className="relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl">
+
+            <div className="p-8 space-y-6">
+
+              <div className="flex justify-between items-center">
+
+                <h3 className="text-3xl font-bold text-slate-900 dark:text-white">deneme</h3>
+
+                <button onClick={() => setIsEditRoomModal(false)} className="p-2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white bg-slate-100 dark:bg-slate-800 rounded-xl transition-colors">
                   <X size={20} />
                 </button>
 

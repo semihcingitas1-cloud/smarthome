@@ -1,10 +1,10 @@
-import React, { use, useState } from 'react';
+import React, { useState } from 'react';
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from 'react-router-dom';
 
 import { logoutUser } from "../../redux/userSlice";
 
-import { User, Mail, Lock, Bell, Shield, Palette, LogOut, Camera, Smartphone, Key, Save, Eye, EyeOff, ChevronRight, Globe, Clock, MapPin, Phone, Calendar, Award, Activity, Settings, Trash2, CheckCircle2, AlertCircle, Edit2, X, Laptop, Tablet, Languages, RefreshCw, Copy, Check } from 'lucide-react';
+import { User, Mail, Lock, Bell, Shield, Palette, LogOut, Camera, Key, Save, Eye, EyeOff, ChevronRight, Globe, Clock, MapPin, Phone, Calendar, Award, Activity, Settings, Trash2, CheckCircle2, AlertCircle, Edit2, X, Languages, RefreshCw, Copy, Check, Heart, Users, Plus, ShieldCheck, UserMinus, List } from 'lucide-react';
 
 const UserProfile = () => {
 
@@ -21,6 +21,7 @@ const UserProfile = () => {
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [addMemberModal, setAddMemberModal] = useState(false);
 
   const [notifications, setNotifications] = useState({
 
@@ -41,29 +42,6 @@ const UserProfile = () => {
     joinDate: user?.user?.joinDate
   });
 
-  const [preferences, setPreferences] = useState({
-
-    theme: 'dark',
-    notifications: true,
-    soundEffects: true,
-    autoSave: true,
-    dataSync: true
-  });
-
-  const devices = [
-    {
-      id: 1,
-      name: 'MacBook Air',
-      type: 'laptop',
-      os: 'macOS Sonoma',
-      browser: 'Chrome 120',
-      location: 'İstanbul, TR',
-      lastActive: 'Şu an aktif',
-      icon: <Laptop />,
-      isActive: true
-    }
-  ];
-
   const stats = [
 
     { label: 'Toplam Cihaz', value: '12', icon: <Activity />, color: 'blue' },
@@ -75,18 +53,10 @@ const UserProfile = () => {
   const tabs = [
 
     { id: 'profile', label: 'Profil Bilgileri', icon: <User /> },
+    { id: 'orders', label: 'Siparişler', icon: <List /> },
     { id: 'security', label: 'Güvenlik', icon: <Shield /> },
-    { id: 'preferences', label: 'Tercihler', icon: <Settings /> },
-    { id: 'devices', label: 'Cihazlar', icon: <Smartphone /> },
-    { id: 'activity', label: 'Aktivite', icon: <Activity /> }
-  ];
-
-  const activityLog = [
-
-    { action: 'Giriş Yapıldı', device: 'MacBook Air', time: '2 dakika önce', icon: <LogOut />, color: 'green' },
-    { action: 'Şifre Değiştirildi', device: 'iPhone 15 Pro', time: '3 saat önce', icon: <Key />, color: 'blue' },
-    { action: 'Profil Güncellendi', device: 'iPad Pro', time: '1 gün önce', icon: <Edit2 />, color: 'purple' },
-    { action: '2FA Etkinleştirildi', device: 'MacBook Air', time: '3 gün önce', icon: <Shield />, color: 'orange' }
+    { id: 'family', label: 'Aile', icon: <Heart /> },
+    { id: 'preferences', label: 'Tercihler', icon: <Settings /> }
   ];
 
   const logout = () => {
@@ -162,6 +132,85 @@ const UserProfile = () => {
             </button>
 
           </div>
+
+        </div>
+
+      </div> )}
+
+      {addMemberModal && ( <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 max-w-md w-full relative animate-in fade-in zoom-in-95 duration-200">
+
+          <button onClick={() => setAddMemberModal(false)} className="absolute top-6 right-6 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/80 transition-colors">
+            <X size={18} />
+          </button>
+
+          <div className="mb-6">
+
+            <h3 className="text-xl font-bold text-slate-900 dark:text-white">Yeni Üye Davet Et</h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Ailenize yeni bir üye eklemek için e-posta adresini girin.</p>
+
+          </div>
+
+          <form onSubmit={(e) => e.preventDefault()} className="space-y-5">
+
+            <div className="space-y-2">
+
+              <label className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">E-Posta Adresi</label>
+
+              <div className="relative">
+
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"><Mail size={20} /></div>
+                <input type="email" required placeholder="ornek@eposta.com" className="w-full pl-11 pr-4 py-3 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-2xl text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"/>
+
+              </div>
+
+            </div>
+
+            <div className="space-y-2">
+
+              <label className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">Aile Rolü</label>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+
+                <div className="flex items-center gap-3 p-3.5 rounded-2xl border border-indigo-500 bg-indigo-50/40 dark:bg-indigo-950/20 cursor-pointer">
+
+                  <div className="p-2 rounded-xl bg-indigo-500 text-white"><User size={20} /></div>
+
+                  <div>
+
+                    <span className="text-sm font-semibold text-slate-900 dark:text-white block">Standart Üye</span>
+                    <span className="text-xs text-slate-400 dark:text-slate-500">Yetişkin hesabı</span>
+
+                  </div>
+
+                </div>
+
+                <div className="flex items-center gap-3 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800/40 cursor-pointer transition-colors">
+
+                  <div className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700/60"><Shield size={20} /></div>
+
+                  <div>
+
+                    <span className="text-sm font-semibold text-slate-800 dark:text-slate-200 block">Çocuk</span>
+                    <span className="text-xs text-slate-400 dark:text-slate-500">Kısıtlı erişim</span>
+
+                  </div>
+
+                </div>
+
+              </div>
+
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100 dark:border-slate-800/60 mt-2">
+
+              <button type="button" onClick={() => setAddMemberModal(false)} className="px-4 py-2.5 rounded-xl text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">İptal</button>
+              <button type="submit" className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-xl shadow-md transition-colors">Davet Gönder</button>
+
+            </div>
+
+          </form>
 
         </div>
 
@@ -276,7 +325,7 @@ const UserProfile = () => {
 
                       <Calendar size={16} className="text-slate-400" />
                       <span className="text-slate-600 dark:text-slate-400">Üyelik:</span>
-                      <span className="font-semibold text-slate-900 dark:text-white ml-auto">{userInfo.joinDate}</span>
+                      <span className="font-semibold text-slate-900 dark:text-white ml-auto">{new Date(user?.user?.createdAt).toLocaleDateString()}</span>
 
                     </div>
 
@@ -393,6 +442,8 @@ const UserProfile = () => {
                   </div>
 
                 </> )}
+
+                {activeTab === 'orders' && ( <div className="space-y-8">siparişler</div> )}
 
                 {activeTab === 'security' && ( <div className="space-y-8">
 
@@ -563,81 +614,101 @@ const UserProfile = () => {
 
                 </div> )}
 
-                {activeTab === 'devices' && ( <div className="space-y-6">
+                {activeTab === 'family' && ( <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 space-y-8">
 
-                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-6">
 
-                    <div className="flex items-center justify-between mb-6">
+                    <div>
 
-                      <h3 className="text-xl font-bold text-slate-900 dark:text-white">Bağlı Cihazlar</h3>
-                      <span className="text-sm text-slate-500 dark:text-slate-500">{devices.length} cihaz</span>
-
-                    </div>
-
-                      <div className="space-y-4">
-
-                        {devices.map((device) => ( <div key={device.id} className="flex items-start gap-4 p-5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl hover:shadow-lg transition-all" >
-
-                        <div className={`p-3 rounded-xl ${device.isActive ? 'bg-green-500/10 text-green-600 dark:text-green-400' : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400'}`}>
-                          {device.icon}
-                        </div>
-
-                        <div className="flex-1">
-
-                          <div className="flex items-start justify-between gap-2 mb-2">
-
-                            <div>
-
-                              <h4 className="font-bold text-slate-900 dark:text-white">{device.name}</h4>
-                              <p className="text-xs text-slate-500 dark:text-slate-500">{device.os} • {device.browser}</p>
-
-                            </div>
-
-                            {device.isActive && ( <span className="bg-green-500/10 text-green-600 dark:text-green-400 px-2 py-1 rounded-lg text-xs font-bold">Aktif</span> )}
-
-                          </div>
-
-                          <div className="flex items-center gap-4 text-xs text-slate-500 dark:text-slate-500">
-
-                            <span className="flex items-center gap-1"><MapPin size={12} />{device.location}</span>
-                            <span className="flex items-center gap-1"><Clock size={12} />{device.lastActive}</span>
-
-                          </div>
-
-                        </div>
-
-                        {!device.isActive && ( <button className="p-2 hover:bg-red-50 dark:hover:bg-red-500/10 text-red-600 dark:text-red-400 rounded-lg transition-colors">
-                          <X size={18} />
-                        </button> )}
-
-                      </div> ))}
+                      <h3 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2"><Users className="w-5 h-5 text-indigo-500" />Aile Yönetimi</h3>
+                      <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Aile üyelerini davet edin, izinlerini ve son aktivitelerini takip edin.</p>
 
                     </div>
+
+                    <button onClick={() => setAddMemberModal(true)} className="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl text-sm font-medium transition-colors shadow-sm self-start sm:self-center">
+                      <Plus className="w-4 h-4" />
+                      Üye Ekle
+                    </button>
 
                   </div>
 
-                </div> )}
+                  <div>
 
-                {activeTab === 'activity' && ( <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8">
+                    <h4 className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-4">Aile Üyeleri (3/5)</h4>
 
-                  <h3 className="text-xl font-bold mb-6 text-slate-900 dark:text-white">Son Aktiviteler</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 
-                  <div className="space-y-4">
+                      <div className="flex items-center justify-between p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
 
-                    {activityLog.map((activity, i) => ( <div key={i} className="flex items-start gap-4 p-5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl">
+                        <div className="flex items-center gap-3">
 
-                      <div className={`p-3 rounded-xl bg-${activity.color}-500/10 text-${activity.color}-600 dark:text-${activity.color}-400`}>{activity.icon}</div>
+                          <div className="relative">
 
-                      <div className="flex-1">
+                            <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80" alt="Profile" className="w-11 h-11 rounded-full object-cover ring-2 ring-indigo-500/20"/>
+                            <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white dark:border-slate-900 rounded-full"></span>
 
-                        <h4 className="font-bold text-slate-900 dark:text-white mb-1">{activity.action}</h4>
-                        <p className="text-xs text-slate-600 dark:text-slate-400">{activity.device}</p>
+                          </div>
+
+                          <div>
+
+                            <h5 className="text-sm font-semibold text-slate-800 dark:text-slate-200">Elif Yılmaz</h5>
+                            <span className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 dark:text-indigo-400 mt-0.5"><ShieldCheck className="w-3 h-3" /> Aile Lideri</span>
+
+                          </div>
+
+                        </div>
 
                       </div>
 
-                      <span className="text-xs text-slate-500 dark:text-slate-500">{activity.time}</span>
+                      <div className="flex items-center justify-between p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
 
-                    </div> ))}
+                        <div className="flex items-center gap-3">
+
+                          <div className="relative">
+
+                            <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=100&q=80" alt="Profile" className="w-11 h-11 rounded-full object-cover ring-2 ring-slate-200 dark:ring-slate-700"/>
+                            <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white dark:border-slate-900 rounded-full"></span>
+
+                          </div>
+
+                          <div>
+
+                            <h5 className="text-sm font-semibold text-slate-800 dark:text-slate-200">Ahmet Yılmaz</h5>
+                            <span className="text-xs text-slate-500 dark:text-slate-400 block mt-0.5">Üye</span>
+
+                          </div>
+
+                        </div>
+
+                        <button className="text-slate-400 hover:text-red-500 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" title="Üyeyi Kaldır"><UserMinus className="w-4 h-4" /></button>
+
+                      </div>
+
+                      <div className="flex items-center justify-between p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
+
+                        <div className="flex items-center gap-3">
+
+                          <div className="relative">
+
+                            <img src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=100&q=80" alt="Profile" className="w-11 h-11 rounded-full object-cover ring-2 ring-slate-200 dark:ring-slate-700"/>
+                            <span className="absolute bottom-0 right-0 w-3 h-3 bg-slate-300 dark:bg-slate-600 border-2 border-white dark:border-slate-900 rounded-full"></span>
+
+                          </div>
+
+                          <div>
+
+                            <h5 className="text-sm font-semibold text-slate-800 dark:text-slate-200">Ceren Yılmaz</h5>
+                            <span className="text-xs text-slate-500 dark:text-slate-400 block mt-0.5">Çocuk</span>
+
+                          </div>
+
+                        </div>
+
+                        <button className="text-slate-400 hover:text-red-500 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" title="Üyeyi Kaldır"><UserMinus className="w-4 h-4" /></button>
+
+                      </div>
+
+                    </div>
 
                   </div>
 

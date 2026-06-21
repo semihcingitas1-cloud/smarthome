@@ -21,17 +21,12 @@ const Header = () => {
   const [isNotificationMenuOpen, setIsNotificationMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [isDarkMode, setIsDarkMode] = useState(true);
+  const [isDarkMode, setIsDarkMode] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-
-  const [systemStatus, setSystemStatus] = useState({
-    cpu: 45,
-    memory: 67,
-    devices: 12,
-    activeDevices: 10
-  });
+  const [systemStatus, setSystemStatus] = useState({ cpu: 45, memory: 67, devices: 12, activeDevices: 10 });
 
   const { user, isAuth } = useSelector((state) => state.user);
+  const { carts } = useSelector(state => state.cart);
 
   const [notifications, setNotifications] = useState([
     {
@@ -156,22 +151,22 @@ const Header = () => {
       {
         label: "Ana Sayfa",
         path: "/",
-        icon: <Home size={16} />,
+        icon: <Home size={14} />,
       },
       {
         label: "Dashboard",
-        path: "/user/dashboard",
-        icon: <LayoutDashboard size={16} />,
+        path: user?.user?.role == 'admin' ? "/admin/dashboard" : user?.user?.role == 'editor' ? "/editor/dashboard" : "/user/dashboard",
+        icon: <LayoutDashboard size={14} />,
         authRequired: true,
       },
       {
         label: "Alışveriş",
         path: "/products",
-        icon: <ShoppingCart size={16} />,
+        icon: <ShoppingCart size={14} />,
         authRequired: false,
       },
     ],
-    []
+    [user]
   );
 
   const quickActions = useMemo(() => [
@@ -298,76 +293,61 @@ const Header = () => {
           </div>
 
           {isAuth && ( <nav className="hidden lg:flex absolute left-1/2 transform -translate-x-1/2">
-              <div className="flex items-center gap-1 bg-gray-100 dark:bg-slate-800/40 px-2 py-1.5 rounded-full border border-gray-200 dark:border-slate-700/50 shadow-lg shadow-black/5 dark:shadow-black/10">
-                {navItems.filter((item) => !item.authRequired || isAuth).map((item, index) => (
-                  <button 
-                    key={index} 
-                    onClick={() => navigate(item.path)} 
-                    className={`group relative flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
-                      isActivePath(item.path) 
-                        ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/30" 
-                        : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-slate-700/50"
-                    }`}
-                  >
-                    {item.icon}
-                    <span>{item.label}</span>
-                    {isActivePath(item.path) && (
-                      <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-white rounded-full" />
-                    )}
-                  </button>
-                ))}
-              </div>
-            </nav>
-          )}
 
-          {/* Right Actions */}
+            <div className="flex items-center gap-1 bg-gray-100 dark:bg-slate-800/40 px-2 py-1.5 rounded-full border border-gray-200 dark:border-slate-700/50 shadow-lg shadow-black/5 dark:shadow-black/10">
+
+              {navItems.filter((item) => !item.authRequired || isAuth).map((item, index) => ( <button key={index} onClick={() => navigate(item.path)} className={`group relative flex items-center gap-2 px-4 py-2 rounded-full text-xs font-medium transition-all duration-200 ${isActivePath(item.path) ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/30" : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-slate-700/50"}`}>
+
+                {item.icon}
+                <span>{item.label}</span>
+
+              </button> ))}
+
+            </div>
+
+          </nav> )}
+
           <div className="flex items-center gap-2">
 
-            {/* Search */}
-            {isAuth && (
-              <div ref={searchRef} className="relative">
-                <button 
-                  onClick={() => setIsSearchOpen(!isSearchOpen)} 
-                  className="hidden md:flex p-2 text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800/50 rounded-lg transition-colors"
-                >
-                  <Search size={18} />
-                </button>
+            {isAuth && ( <div ref={searchRef} className="relative">
 
-                {isSearchOpen && (
-                  <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-slate-800/95 backdrop-blur-xl border border-gray-200 dark:border-slate-700/50 rounded-2xl shadow-2xl overflow-hidden">
-                    <form onSubmit={handleSearch} className="p-4">
-                      <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-400" size={18} />
-                        <input 
-                          type="text" 
-                          placeholder="Cihaz, oda veya otomasyon ara..." 
-                          value={searchQuery} 
-                          onChange={(e) => setSearchQuery(e.target.value)} 
-                          className="w-full bg-gray-50 dark:bg-slate-900/50 border border-gray-300 dark:border-slate-700 rounded-xl pl-10 pr-4 py-2.5 text-sm text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-slate-400 focus:outline-none focus:border-blue-500 transition-colors" 
-                          autoFocus 
-                        />
-                      </div>
-                    </form>
+              <button onClick={() => setIsSearchOpen(!isSearchOpen)} className="hidden md:flex p-2 text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800/50 rounded-lg transition-colors">
+                <Search size={18} />
+              </button>
 
-                    <div className="px-4 pb-4">
-                      <p className="text-xs text-gray-500 dark:text-slate-500 uppercase font-semibold mb-3">Hızlı Erişim</p>
-                      <div className="space-y-1">
-                        {quickActions.map((action, i) => (
-                          <button 
-                            key={i} 
-                            onClick={action.action} 
-                            className="w-full flex items-center gap-3 px-3 py-2 text-sm text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700/50 rounded-lg transition-colors"
-                          >
-                            {action.icon}
-                            {action.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
+              {isSearchOpen && ( <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-slate-800/95 backdrop-blur-xl border border-gray-200 dark:border-slate-700/50 rounded-2xl shadow-2xl overflow-hidden">
+
+                <form onSubmit={handleSearch} className="p-4">
+
+                  <div className="relative">
+
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-400" size={18} />
+                    <input type="text" placeholder="Cihaz, oda veya otomasyon ara..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-gray-50 dark:bg-slate-900/50 border border-gray-300 dark:border-slate-700 rounded-xl pl-10 pr-4 py-2.5 text-sm text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-slate-400 focus:outline-none focus:border-blue-500 transition-colors" autoFocus />
+
                   </div>
-                )}
-              </div>
-            )}
+
+                </form>
+
+                <div className="px-4 pb-4">
+
+                  <p className="text-xs text-gray-500 dark:text-slate-500 uppercase font-semibold mb-3">Hızlı Erişim</p>
+
+                  <div className="space-y-1">
+
+                    {quickActions.map((action, i) => ( <button key={i} onClick={action.action} className="w-full flex items-center gap-3 px-3 py-2 text-sm text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700/50 rounded-lg transition-colors">
+
+                      {action.icon}
+                      {action.label}
+
+                    </button> ))}
+
+                  </div>
+
+                </div>
+
+              </div> )}
+
+            </div> )}
 
             <button onClick={() => setIsDarkMode(!isDarkMode)} className="hidden md:flex p-2 text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800/50 rounded-lg transition-colors">
               {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
@@ -422,43 +402,51 @@ const Header = () => {
 
                           <span className="text-xs text-gray-500 dark:text-slate-500">{notification.time}</span>
 
-                            <div className="flex gap-1">
+                          <div className="flex gap-1">
 
                             {!notification.read && ( <button onClick={() => markAsRead(notification.id)} className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors">
                               Okundu
                             </button> )}
 
-                                    <button 
-                                      onClick={() => clearNotification(notification.id)} 
-                                      className="text-xs text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors ml-2"
-                                    >
-                                      Sil
-                                    </button>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
+                            <button onClick={() => clearNotification(notification.id)} className="text-xs text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors ml-2">
+                              Sil
+                            </button>
+
                           </div>
-                        ))
-                      ) : (
-                        <div className="px-4 py-12 text-center">
-                          <Bell size={48} className="mx-auto mb-4 text-gray-300 dark:text-slate-700" />
-                          <p className="text-sm text-gray-500 dark:text-slate-400">Bildirim bulunmuyor</p>
+
                         </div>
-                      )}
+
+                      </div>
+
                     </div>
 
-                    {notifications.length > 0 && (
-                      <div className="px-4 py-3 border-t border-gray-200 dark:border-slate-700/50">
-                        <button className="w-full text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-center">
-                          Tüm bildirimleri görüntüle
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
+                  </div> )) ) : ( <div className="px-4 py-12 text-center">
+
+                    <Bell size={48} className="mx-auto mb-4 text-gray-300 dark:text-slate-700" />
+                    <p className="text-sm text-gray-500 dark:text-slate-400">Bildirim bulunmuyor</p>
+
+                  </div> )}
+
+                </div>
+
+                {notifications.length > 0 && ( <div className="px-4 py-3 border-t border-gray-200 dark:border-slate-700/50">
+
+                  <button className="w-full text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-center">
+                    Tüm bildirimleri görüntüle
+                  </button>
+
+                </div> )}
+
+              </div> )}
+
+            </div> )}
+
+            <button onClick={() => navigate('/cart')} className="relative p-2 text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800/50 rounded-lg transition-colors">
+
+              <ShoppingCart size={16}/>
+              {carts?.length > 0 && ( <span className="absolute top-0.5 right-0.5 min-w-[18px] h-[18px] bg-gradient-to-r from-red-500 to-rose-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow-lg shadow-red-500/50">{carts?.length}</span> )}
+
+            </button>
 
             {isAuth ? ( <div ref={userMenuRef} className="hidden lg:block relative">
 

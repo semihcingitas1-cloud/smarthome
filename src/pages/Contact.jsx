@@ -1,39 +1,32 @@
 import React, { useState } from 'react';
-import { Mail, MessageSquare, MapPin, Send, Github, Twitter, Linkedin, Terminal, HelpCircle, Phone, Clock, CheckCircle2, AlertCircle, Loader2, Instagram, Facebook, Youtube, Globe, Calendar, Building2, Users, Zap, Shield, HeadphonesIcon, MessageCircleMore, ArrowRight, Sparkles, Star, TrendingUp, Award, Target, Briefcase, FileText } from 'lucide-react';
+
+import { Mail, MessageSquare, MapPin, Send, Github, Twitter, Linkedin, Terminal, HelpCircle, Phone, Clock, CheckCircle2, AlertCircle, Loader2, Instagram, Facebook, Youtube, Globe, Calendar, Building2, Users, Zap, HeadphonesIcon, MessageCircleMore, ArrowRight, Sparkles, Star, Target, Briefcase, FileText } from 'lucide-react';
 
 const Contact = () => {
 
-  const [formState, setFormState] = useState({
 
-    name: '',
-    email: '',
-    phone: '',
-    company: '',
-    subject: 'Teknik Destek',
-    message: '',
-    acceptTerms: false
-  });
-  
+  const [formState, setFormState] = useState({ name: '', email: '', phone: '', company: '', subject: 'Teknik Destek', message: '', acceptTerms: false });  
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState(null);
 
   const contactInfo = [
+
     {
       icon: Mail,
       title: 'E-posta',
-      value: 'destek@akilliev.io',
+      value: 'semihcingitas1@gmail.com',
       subtext: '7/24 Destek',
       color: 'from-blue-500 to-cyan-500',
-      link: 'mailto:destek@akilliev.io'
+      link: 'mailto:semihcingitas1@gmail.com'
     },
     {
       icon: Phone,
       title: 'Telefon',
-      value: '+90 850 123 45 67',
+      value: '+90 551 133 54 10',
       subtext: '09:00 - 18:00',
       color: 'from-green-500 to-emerald-500',
-      link: 'tel:+908501234567'
+      link: 'tel:+905511335410'
     },
     {
       icon: MessageSquare,
@@ -41,26 +34,26 @@ const Contact = () => {
       value: 'Chat Başlat',
       subtext: 'Anında Yanıt',
       color: 'from-purple-500 to-pink-500',
-      link: '#'
+      link: '/'
     },
     {
       icon: MapPin,
       title: 'Adres',
-      value: 'Teknopark İstanbul',
-      subtext: 'Pendik, İstanbul',
+      value: 'Teknopark Konya',
+      subtext: 'Meram, Konya',
       color: 'from-orange-500 to-red-500',
-      link: '#'
+      link: '/'
     }
   ];
 
   const socialLinks = [
 
-    { icon: Github, label: 'GitHub', link: '/', color: 'hover:text-purple-400' },
-    { icon: Twitter, label: 'Twitter', link: '/', color: 'hover:text-blue-400' },
-    { icon: Linkedin, label: 'LinkedIn', link: '/', color: 'hover:text-blue-500' },
-    { icon: Instagram, label: 'Instagram', link: '/', color: 'hover:text-pink-400' },
-    { icon: Facebook, label: 'Facebook', link: '/', color: 'hover:text-blue-600' },
-    { icon: Youtube, label: 'YouTube', link: '/', color: 'hover:text-red-500' }
+    { icon: Github, label: 'GitHub', link: '/', color: 'hover:text-purple-400 hover:border-purple-400' },
+    { icon: Twitter, label: 'Twitter', link: '/', color: 'hover:text-blue-400 hover:border-blue-400' },
+    { icon: Linkedin, label: 'LinkedIn', link: '/', color: 'hover:text-blue-500 hover:border-blue-500' },
+    { icon: Instagram, label: 'Instagram', link: '/', color: 'hover:text-pink-400 hover:border-pink-400' },
+    { icon: Facebook, label: 'Facebook', link: '/', color: 'hover:text-blue-600 hover:border-blue-600' },
+    { icon: Youtube, label: 'YouTube', link: '/', color: 'hover:text-red-500 hover:border-red-500' }
   ];
 
   const subjects = [
@@ -296,8 +289,8 @@ const Contact = () => {
 
                 <div className="grid grid-cols-3 gap-3">
 
-                  {socialLinks.map((social, i) => ( <a key={i} href={social.link} title={social.label} className={`w-full aspect-square bg-slate-800 border border-slate-700 rounded-xl flex items-center justify-center hover:border-blue-500/50 transition-all group ${social.color}`}>
-                    <social.icon size={20} className="group-hover:scale-110 transition-transform" />
+                  {socialLinks.map((social, i) => ( <a key={i} href={social.link} title={social.label} className={`w-full aspect-square bg-slate-800 border border-slate-700 rounded-xl flex items-center justify-center transition-all group ${social.color}`}>
+                    <social.icon size={30} className="group-hover:scale-110 transition-transform" />
                   </a> ))}
 
                 </div>
@@ -425,8 +418,8 @@ const Contact = () => {
 
                     <span className="text-sm text-slate-400 group-hover:text-slate-300 transition-colors">
 
-                      <a href="#" className="text-blue-400 hover:underline">Gizlilik Politikası</a>'nı ve{' '}
-                      <a href="#" className="text-blue-400 hover:underline">Kullanım Koşulları</a>'nı okudum, kabul ediyorum.
+                      <a href="/" className="text-blue-400 hover:underline">Gizlilik Politikası</a>'nı ve{' '}
+                      <a href="/" className="text-blue-400 hover:underline">Kullanım Koşulları</a>'nı okudum, kabul ediyorum.
 
                     </span>
 
@@ -534,15 +527,7 @@ const Contact = () => {
           <div className="bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden">
 
             <div className="aspect-video bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center">
-
-              <div className="text-center">
-
-                <MapPin size={48} className="mx-auto mb-4 text-blue-400" />
-                <h3 className="text-xl font-bold mb-2">Ofis Konumumuz</h3>
-                <p className="text-slate-400">Teknopark İstanbul, Pendik, İstanbul</p>
-
-              </div>
-
+              <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d1609214.4829516741!2d32.87132505!3d38.02384855!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x14d085a54152234b%3A0xf81f4fcd25c42c31!2sKonya!5e0!3m2!1sen!2str!4v1779722326455!5m2!1sen!2str" loading="lazy" referrerpolicy="no-referrer-when-downgrade" className="relative w-full h-full" />
             </div>
 
           </div>

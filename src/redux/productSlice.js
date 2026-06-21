@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axios from "axios";
 
-const BASE_URL = "http://localhost:4000";
+const BASE_URL = "https://backend-d72l.onrender.com";
 
 const getToken = () => localStorage.getItem("token");
 
@@ -27,7 +27,6 @@ export const getProducts = createAsyncThunk(
     try {
 
       const { data } = await axios.get(`${BASE_URL}/products`);
-      console.log("API Response:", data);
       return data;
     } catch (error) {
 
@@ -48,20 +47,23 @@ export const getProductDetail = createAsyncThunk(
   }
 );
 
-// Public - Ürün detayı (Slug ile)
 export const getProductBySlug = createAsyncThunk(
+
   "products/getProductBySlug",
+
   async (slug, { rejectWithValue }) => {
+
     try {
+
       const { data } = await axios.get(`${BASE_URL}/product/slug/${slug}`);
       return data;
     } catch (error) {
+
       return rejectWithValue(error.response?.data?.message || "Ürün bulunamadı");
     }
   }
 );
 
-// Admin - Yeni ürün oluştur
 export const createProduct = createAsyncThunk(
   "products/createProduct",
   async (productData, { rejectWithValue }) => {
@@ -83,11 +85,63 @@ export const createProduct = createAsyncThunk(
   }
 );
 
-// Admin - Ürün güncelle
-export const updateProduct = createAsyncThunk(
-  "products/updateProduct",
-  async ({ id, productData }, { rejectWithValue }) => {
+export const createProductWithImages = createAsyncThunk(
+  "products/createProductWithImages",
+
+  async (productData, { rejectWithValue }) => {
+
     try {
+
+      const base64Images = await Promise.all(
+
+        productData.images.map((imageObj) => {
+
+          return new Promise((resolve, reject) => {
+
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(imageObj.file);
+          });
+        })
+      );
+
+      const { data } = await axios.post(
+        `${BASE_URL}/admin/product/new`,
+        {
+          ...productData,
+          images: base64Images,
+          features: productData.features,
+          specifications: productData.specifications,
+          tags: productData.tags,
+          colors: productData.colors,
+          models: productData.models,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${getToken()}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      return data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || "Ürün oluşturulamadı"
+      );
+    }
+  }
+);
+
+export const updateProduct = createAsyncThunk(
+
+  "products/updateProduct",
+
+  async ({ id, productData }, { rejectWithValue }) => {
+
+    try {
+
       const { data } = await axios.put(
         `${BASE_URL}/admin/product/${id}`,
         productData,
@@ -105,7 +159,6 @@ export const updateProduct = createAsyncThunk(
   }
 );
 
-// Admin - Ürün sil
 export const deleteProduct = createAsyncThunk(
   "products/deleteProduct",
   async (id, { rejectWithValue }) => {
@@ -221,8 +274,9 @@ export const markReviewHelpful = createAsyncThunk(
 const productSlice = createSlice({
   name: "products",
   initialState: {
+    newProductId: null,
     products: [],
-    filteredProducts: [], // Frontend filtreleme için
+    filteredProducts: [],
     adminProducts: [],
     product: null,
     stats: null,
@@ -328,6 +382,25 @@ const productSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       });
+
+    builder.addCase(createProductWithImages.pending, (state) => {
+      state.loading = true;
+      state.error = null;
+      state.success = false;
+    });
+    builder.addCase(createProductWithImages.fulfilled, (state, action) => {
+
+      state.loading = false;
+      state.success = true;
+      state.message = action.payload.message;
+      state.newProductId = action.payload.product._id;
+      state.adminProducts.unshift(action.payload.product);
+    });
+    builder.addCase(createProductWithImages.rejected, (state, action) => {
+
+      state.loading = false;
+      state.error = action.payload;
+    });
 
     // Update Product
     builder

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BookOpen, Terminal, Cpu, Wifi, Zap, ChevronRight, Copy, CheckCircle2, Code, Lightbulb, Search, Download, Video, MessageCircle, FileText, Settings, Shield, AlertCircle, PlayCircle, ExternalLink, Github, Book, Rocket, Wrench, Database, Cloud, Lock, Radio, Bluetooth, Smartphone, Monitor, Activity, Sparkles, Star, Clock, Users, TrendingUp, ChevronDown, Filter, Tag, Bookmark, Share2, ThumbsUp, Eye, ArrowRight } from 'lucide-react';
+import { BookOpen, Terminal, Cpu, Wifi, ChevronRight, Copy, CheckCircle2, Code, Lightbulb, Search, Download, Video, MessageCircle, Shield, AlertCircle, PlayCircle, ExternalLink, Github, Book, Rocket, Database, Cloud, Lock, Bluetooth, Activity, Sparkles, Star, Clock, Users, ChevronDown, Filter, ThumbsUp, Eye, ArrowRight } from 'lucide-react';
 
 const GuideCard = ({ icon: Icon, title, duration, level, views, likes, children, featured = false }) => (
 
@@ -20,16 +20,8 @@ const GuideCard = ({ icon: Icon, title, duration, level, views, likes, children,
 
       <div className="flex gap-2">
 
-        <span className="text-[10px] uppercase tracking-widest font-bold bg-slate-800 px-2 py-1 rounded-md text-slate-400 flex items-center gap-1">
-
-          <Clock size={10} />
-          {duration}
-
-        </span>
-
-        <span className={`text-[10px] uppercase tracking-widest font-bold px-2 py-1 rounded-md ${level === 'Başlangıç' ? 'bg-green-500/20 text-green-400' : level === 'Orta' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-red-500/20 text-red-400'}`}>
-          {level}
-        </span>
+        <span className="text-[10px] uppercase tracking-widest font-bold bg-slate-800 px-2 py-1 rounded-md text-slate-400 flex items-center gap-1"><Clock size={10} />{duration}</span>
+        <span className={`text-[10px] uppercase tracking-widest font-bold px-2 py-1 rounded-md ${level === 'Başlangıç' ? 'bg-green-500/20 text-green-400' : level === 'Orta' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-red-500/20 text-red-400'}`}>{level}</span>
 
       </div>
 
@@ -386,7 +378,7 @@ const Guides = () => {
 
       </section>
 
-      <section className="py-8 px-6 border-b sticky top-0 backdrop-blur-md z-30 border-slate-200 dark:border-slate-900 bg-white/95 dark:bg-slate-950/95">
+      <section className="py-8 px-6 border-b sticky top-10 backdrop-blur-md z-30 border-slate-200 dark:border-slate-900 bg-white/95 dark:bg-slate-950/95">
 
         <div className="max-w-7xl mx-auto">
 

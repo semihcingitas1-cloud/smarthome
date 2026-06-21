@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Home, AlertTriangle, ChevronLeft, WifiOff, Cpu, RefreshCcw, Search, ArrowRight, Zap, Terminal, Code, Server, Activity, Globe, FileQuestion, Compass, BookOpen, HelpCircle, Mail, TrendingUp, Sparkles } from 'lucide-react';
+import { Home, AlertTriangle, ChevronLeft, WifiOff, Cpu, RefreshCcw, Search, ArrowRight, Zap, Terminal, Server, Activity, Globe, Compass, BookOpen, HelpCircle, Mail, Sparkles } from 'lucide-react';
 
 const NotFound = () => {
 
@@ -14,13 +14,11 @@ const NotFound = () => {
     let interval;
 
     if (Math.random() > 0.7) {
-      interval = setInterval(() => {
-        const randomText = Array(3)
-          .fill(null)
-          .map(() => glitchChars[Math.floor(Math.random() * glitchChars.length)])
-          .join('');
-        setGlitchText(randomText);
 
+      interval = setInterval(() => {
+
+        const randomText = Array(3).fill(null).map(() => glitchChars[Math.floor(Math.random() * glitchChars.length)]).join('');
+        setGlitchText(randomText);
         setTimeout(() => setGlitchText('404'), 100);
       }, 3000);
     }
@@ -76,12 +74,12 @@ const NotFound = () => {
 
   return (
 
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6 overflow-hidden relative">
+    <div className="min-h-screen bg-slate-100 dark:bg-slate-950 flex items-center justify-center p-6 overflow-hidden relative">
 
       <div className="absolute top-1/4 -left-20 w-80 h-80 bg-blue-600/10 rounded-full blur-[120px] animate-pulse" />
       <div className="absolute bottom-1/4 -right-20 w-80 h-80 bg-red-600/10 rounded-full blur-[120px] animate-pulse delay-700" />
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-purple-600/5 rounded-full blur-[150px]" />
-      <div className="absolute inset-0 z-0 opacity-[0.03] pointer-events-none" style={{backgroundImage: 'linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)', backgroundSize: '40px 40px', }}/>
+      <div className="absolute inset-0 z-0 opacity-[0.03] dark:opacity-[0.03] pointer-events-none" style={{backgroundImage: 'linear-gradient(#000 1px, transparent 1px), linear-gradient(90deg, #000 1px, transparent 1px)', backgroundSize: '40px 40px'}}/>
 
       <div className="max-w-6xl w-full relative z-10">
 
@@ -91,11 +89,11 @@ const NotFound = () => {
 
             <div className="absolute inset-0 bg-red-500/20 rounded-full blur-3xl animate-ping opacity-20" />
 
-            <div className="relative bg-slate-900 border border-slate-800 p-12 rounded-[3rem] shadow-2xl">
+            <div className="relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-12 rounded-[3rem] shadow-2xl">
 
               <div className="relative">
 
-                <Cpu size={100} className="text-slate-700 mx-auto" />
+                <Cpu size={100} className="text-slate-300 dark:text-slate-700 mx-auto" />
                 <WifiOff size={40} className="text-red-500 absolute -top-4 -right-4 animate-bounce" />
 
                 <div className="absolute inset-0 flex items-center justify-center">
@@ -119,14 +117,14 @@ const NotFound = () => {
 
             </div>
 
-            <h1 className="text-5xl md:text-7xl font-black text-white tracking-tighter">
+            <h1 className="text-5xl md:text-7xl font-black text-slate-900 dark:text-white tracking-tighter">
               BAĞLANTI{' '}
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-orange-500">
                 KOPTU!
               </span>
             </h1>
 
-            <p className="text-slate-400 text-lg max-w-2xl mx-auto font-medium leading-relaxed">Aradığınız sayfa sistem ağında bulunamadı. Belki taşındı, belki silindi, ya da ESP32'lerden biri olması gerektiği gibi çalışmıyor.</p>
+            <p className="text-slate-500 dark:text-slate-400 text-lg max-w-2xl mx-auto font-medium leading-relaxed">Aradığınız sayfa sistem ağında bulunamadı. Belki taşındı, belki silindi, ya da ESP32'lerden biri olması gerektiği gibi çalışmıyor.</p>
 
           </div>
 
@@ -135,9 +133,9 @@ const NotFound = () => {
             <form onSubmit={handleSearch} className="relative">
 
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-              <input type="text" placeholder="Aradığınızı burada arayın..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-slate-900 border border-slate-800 rounded-2xl pl-12 pr-32 py-4 text-white focus:outline-none focus:border-blue-500 transition-colors"/>
+              <input type="text" placeholder="Aradığınızı burada arayın..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-2xl pl-12 pr-32 py-4 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-blue-500 transition-colors"/>
 
-              <button type="submit" className="absolute right-2 top-1/2 -translate-y-1/2 bg-blue-600 hover:bg-blue-700 px-6 py-2 rounded-xl font-semibold text-sm transition-colors flex items-center gap-2">
+              <button type="submit" className="absolute right-2 top-1/2 -translate-y-1/2 bg-blue-600 hover:bg-blue-700 px-6 py-2 rounded-xl font-semibold text-sm text-white transition-colors flex items-center gap-2">
                 Ara
                 <ArrowRight size={16} />
               </button>
@@ -148,7 +146,7 @@ const NotFound = () => {
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
 
-            <button onClick={() => window.history.back()} className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-4 bg-slate-900 hover:bg-slate-800 text-slate-300 font-bold rounded-2xl border border-slate-800 transition-all active:scale-95 group">
+            <button onClick={() => window.history.back()} className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-4 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold rounded-2xl border border-slate-200 dark:border-slate-800 transition-all active:scale-95 group">
               <ChevronLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
               Geri Dön
             </button>
@@ -159,7 +157,7 @@ const NotFound = () => {
               <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
             </button>
 
-            <button onClick={() => window.location.reload()} className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-4 bg-slate-900 hover:bg-slate-800 text-slate-300 font-bold rounded-2xl border border-slate-800 transition-all active:scale-95 group">
+            <button onClick={() => window.location.reload()} className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-4 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold rounded-2xl border border-slate-200 dark:border-slate-800 transition-all active:scale-95 group">
               <RefreshCcw size={20} className="group-hover:rotate-180 transition-transform duration-500" />
               Yenile
             </button>
@@ -170,8 +168,8 @@ const NotFound = () => {
 
             <label className="flex items-center gap-3 cursor-pointer group">
 
-              <input type="checkbox" checked={autoRedirect} onChange={(e) => {setAutoRedirect(e.target.checked); setCountdown(10);}} className="w-5 h-5 rounded border-slate-700 bg-slate-900 text-blue-600 focus:ring-2 focus:ring-blue-500 cursor-pointer"/>
-              <span className="text-sm text-slate-400 group-hover:text-slate-300 transition-colors">{autoRedirect ? `Ana sayfaya ${countdown} saniye içinde yönlendiriliyorsunuz...` : 'Otomatik yönlendirme'}</span>
+              <input type="checkbox" checked={autoRedirect} onChange={(e) => {setAutoRedirect(e.target.checked); setCountdown(10);}} className="w-5 h-5 rounded border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-blue-600 focus:ring-2 focus:ring-blue-500 cursor-pointer"/>
+              <span className="text-sm text-slate-500 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-300 transition-colors">{autoRedirect ? `Ana sayfaya ${countdown} saniye içinde yönlendiriliyorsunuz...` : 'Otomatik yönlendirme'}</span>
 
             </label>
 
@@ -179,22 +177,24 @@ const NotFound = () => {
 
           <div className="pt-8">
 
-            <div className="inline-flex items-center gap-4 px-6 py-3 bg-slate-900/60 border border-slate-800/50 rounded-2xl backdrop-blur-sm">
+            <div className="inline-flex items-center gap-4 px-6 py-3 bg-white/60 dark:bg-slate-900/60 border border-slate-200/50 dark:border-slate-800/50 rounded-2xl backdrop-blur-sm">
 
-              {errorCodes.map((error, i) => ( <div key={i} className="flex items-center gap-2">
+              {errorCodes.map((error, i) => (
+                <div key={i} className="flex items-center gap-2">
 
-                <span className={`flex h-2 w-2 rounded-full ${error.color.replace('text-', 'bg-')} animate-pulse`} />
+                  <span className={`flex h-2 w-2 rounded-full ${error.color.replace('text-', 'bg-')} animate-pulse`} />
 
-                <code className="text-xs font-mono">
+                  <code className="text-xs font-mono">
 
-                  <span className="text-slate-500">{error.code}:</span>{' '}
-                  <span className={error.color}>{error.status}</span>
+                    <span className="text-slate-400 dark:text-slate-500">{error.code}:</span>{' '}
+                    <span className={error.color}>{error.status}</span>
 
-                </code>
+                  </code>
 
-                {i < errorCodes.length - 1 && <span className="text-slate-700">|</span>}
+                  {i < errorCodes.length - 1 && <span className="text-slate-300 dark:text-slate-700">|</span>}
 
-              </div> ))}
+                </div>
+              ))}
 
             </div>
 
@@ -207,18 +207,22 @@ const NotFound = () => {
           <div className="text-center mb-8">
 
             <h2 className="text-2xl font-bold mb-2 flex items-center justify-center gap-2 text-blue-500"><Compass className="text-blue-400" size={24} />Hızlı Yönlendirme</h2>
-            <p className="text-slate-400 text-sm">Popüler sayfalara kolayca ulaşın</p>
+            <p className="text-slate-500 dark:text-slate-400 text-sm">Popüler sayfalara kolayca ulaşın</p>
 
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto">
 
-            {quickLinks.map((link, i) => ( <a key={i} href={link.path} className="group bg-slate-900 border border-slate-800 hover:border-blue-500/50 rounded-2xl p-6 transition-all hover:scale-105 text-center">
+            {quickLinks.map((link, i) => (
+              <a key={i} href={link.path} className="group bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-blue-500/50 rounded-2xl p-6 transition-all hover:scale-105 text-center">
 
-              <div className={`w-14 h-14 mx-auto mb-3 bg-gradient-to-br ${link.color} rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform`}><link.icon size={24} className="text-white" /></div>
-              <p className="font-semibold text-sm group-hover:text-blue-400 transition-colors">{link.label}</p>
+                <div className={`w-14 h-14 mx-auto mb-3 bg-gradient-to-br ${link.color} rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform`}>
+                  <link.icon size={24} className="text-white" />
+                </div>
+                <p className="font-semibold text-sm text-slate-700 dark:text-slate-200 group-hover:text-blue-400 transition-colors">{link.label}</p>
 
-            </a> ))}
+              </a>
+            ))}
 
           </div>
 
@@ -228,28 +232,32 @@ const NotFound = () => {
 
           <div className="text-center mb-8">
 
-            <h2 className="text-2xl font-bold mb-2 flex items-center justify-center gap-2 text-purple-500"><Sparkles className="text-purple-400" size={24} />Bunlara Göz Atın</h2>
-            <p className="text-slate-400 text-sm">İlginizi çekebilecek sayfalar</p>
+            <h2 className="text-2xl font-bold mb-2 flex items-center justify-center gap-2 text-purple-500">
+              <Sparkles className="text-purple-400" size={24} />Bunlara Göz Atın
+            </h2>
+            <p className="text-slate-500 dark:text-slate-400 text-sm">İlginizi çekebilecek sayfalar</p>
 
           </div>
 
           <div className="grid md:grid-cols-2 gap-4 max-w-4xl mx-auto">
 
-            {suggestedPages.map((page, i) => ( <a key={i} href={page.path} className="group bg-slate-900 border border-slate-800 hover:border-blue-500/50 rounded-2xl p-6 transition-all hover:scale-[1.02] flex items-start gap-4">
+            {suggestedPages.map((page, i) => (
+              <a key={i} href={page.path} className="group bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-blue-500/50 rounded-2xl p-6 transition-all hover:scale-[1.02] flex items-start gap-4">
 
-              <div className="w-12 h-12 bg-blue-500/10 rounded-xl flex items-center justify-center shrink-0 group-hover:bg-blue-500/20 transition-colors">
-                <page.icon size={24} className="text-blue-400" />
-              </div>
+                <div className="w-12 h-12 bg-blue-500/10 rounded-xl flex items-center justify-center shrink-0 group-hover:bg-blue-500/20 transition-colors">
+                  <page.icon size={24} className="text-blue-400" />
+                </div>
 
-              <div className="flex-1">
+                <div className="flex-1">
 
-                <h3 className="font-bold mb-1 group-hover:text-blue-400 transition-colors">{page.title}</h3>
-                <p className="text-sm text-slate-400">{page.description}</p>
+                  <h3 className="font-bold mb-1 text-slate-800 dark:text-white group-hover:text-blue-400 transition-colors">{page.title}</h3>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">{page.description}</p>
 
-              </div>
+                </div>
 
-              <ArrowRight size={20} className="text-slate-600 group-hover:text-blue-400 group-hover:translate-x-1 transition-all shrink-0" />
-            </a> ))}
+                <ArrowRight size={20} className="text-slate-300 dark:text-slate-600 group-hover:text-blue-400 group-hover:translate-x-1 transition-all shrink-0" />
+              </a>
+            ))}
 
           </div>
 
@@ -260,52 +268,31 @@ const NotFound = () => {
           <div className="inline-flex items-center gap-3 bg-gradient-to-r from-blue-600/10 to-purple-600/10 border border-blue-500/20 rounded-2xl px-6 py-4">
 
             <Mail className="text-blue-400" size={20} />
-            <span className="text-slate-300">Yardıma mı ihtiyacınız var?{' '}<a href="/contact" className="text-blue-400 font-semibold hover:underline">Bize ulaşın</a></span>
+            <span className="text-slate-600 dark:text-slate-300">
+              Yardıma mı ihtiyacınız var?{' '}
+              <a href="/contact" className="text-blue-400 font-semibold hover:underline">Bize ulaşın</a>
+            </span>
 
           </div>
-
-        </div>
-
-        <div className="mt-8 text-center">
-
-          <details className="inline-block">
-
-            <summary className="text-xs text-slate-600 hover:text-slate-500 cursor-pointer select-none">🥚 Gizli mesaj</summary>
-            <p className="text-xs text-slate-500 mt-2 font-mono">
-              // TODO: Bu sayfayı bulduğun için tebrikler! 🎉
-              <br />
-              // Belki bu bir bug değil, bir feature'dır? 🤔
-            </p>
-
-          </details>
 
         </div>
 
       </div>
 
       <style jsx>{`
+
         @keyframes glitch {
-          0% {
-            transform: translate(0);
-          }
-          20% {
-            transform: translate(-2px, 2px);
-          }
-          40% {
-            transform: translate(-2px, -2px);
-          }
-          60% {
-            transform: translate(2px, 2px);
-          }
-          80% {
-            transform: translate(2px, -2px);
-          }
-          100% {
-            transform: translate(0);
-          }
+
+          0% { transform: translate(0); }
+          20% { transform: translate(-2px, 2px); }
+          40% { transform: translate(-2px, -2px); }
+          60% { transform: translate(2px, 2px); }
+          80% { transform: translate(2px, -2px); }
+          100% { transform: translate(0); }
         }
 
         .glitch-text {
+
           animation: glitch 0.3s infinite;
         }
       `}</style>

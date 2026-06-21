@@ -13,6 +13,7 @@ const Sidebar = () => {
   const dispatch = useDispatch();
 
   const menuItems = [
+
     { name: 'Dashboard', path: '/user/dashboard', icon: <LayoutDashboard size={25} /> },
     { name: 'Kontrol', path: '/user/controlpanel', icon: <Tablet size={25} /> },
     { name: 'Cihazlar', path: '/user/devices', icon: <Cpu size={25} /> },

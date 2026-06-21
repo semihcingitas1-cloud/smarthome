@@ -1,7 +1,7 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import axios from 'axios';
 
-const BASE_URL = "http://localhost:4000";
+const BASE_URL = "https://backend-d72l.onrender.com";
 
 const initialState = {
   devices: [],
@@ -25,7 +25,7 @@ export const startPairingAction = createAsyncThunk(
 
       const { data } = await axios.post(
 
-        `${BASE_URL}/api/devices/generate-pairing-code`,
+        `${BASE_URL}/devices/generate-pairing-code`,
         pairingData,
         { headers: { Authorization: `Bearer ${token}` } }
       );
