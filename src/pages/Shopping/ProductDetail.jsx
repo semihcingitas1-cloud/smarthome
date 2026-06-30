@@ -377,8 +377,8 @@ const ProductDetail = () => {
               <div className="flex items-baseline gap-4 mb-2">
 
                 <span className="text-4xl md:text-5xl font-bold text-blue-600 dark:text-blue-400">{getCurrentPrice()}</span>
-                {discountPercentage && ( <span className="line-through text-gray-500 dark:text-slate-500 text-xl">{product?.oldPrice}</span> )}
-                {discountPercentage && ( <span className="bg-red-500/20 text-red-600 dark:text-red-400 px-3 py-1 rounded-full text-sm font-bold">%{discountPercentage} İNDİRİM</span> )}
+                {discountPercentage > 0 && ( <span className="line-through text-gray-500 dark:text-slate-500 text-xl">{product?.oldPrice}</span> )}
+                {discountPercentage > 0 && ( <span className="bg-red-500/20 text-red-600 dark:text-red-400 px-3 py-1 rounded-full text-sm font-bold">%{discountPercentage} İNDİRİM</span> )}
 
               </div>
 
