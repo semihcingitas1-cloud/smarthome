@@ -29,11 +29,6 @@ const SpaceManager = () => {
 
   const { user, loading } = useSelector((state) => state.user);
 
-  useEffect(() => {
-
-    dispatch(profile());
-  }, [dispatch]);
-
   const homes = user?.user?.homes || [];
   const activeHome = homes?.[selectedHomeIndex] || null;
 
