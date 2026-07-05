@@ -32,7 +32,6 @@ const Devices = () => {
   useEffect(() => {
 
     dispatch(getMyDevices());
-    dispatch(profile());
   }, [dispatch]);
 
   useEffect(() => {
