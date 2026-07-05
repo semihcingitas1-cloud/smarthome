@@ -32,11 +32,6 @@ const Dashboard = () => {
 
   useEffect(() => {
 
-    dispatch(profile());
-  }, [dispatch]);
-
-  useEffect(() => {
-
     if (homes.length > 0 && !selectedHome) {
 
       setSelectedHome(homes[0]);
