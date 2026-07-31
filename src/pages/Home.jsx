@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
-import { ShieldCheck, Zap, Smartphone, Cpu, ArrowRight, CheckCircle, Layers, MousePointerClick, Code2, Wifi, Lock, Thermometer, Lightbulb, Camera, Bell,TrendingUp, Users, Award, Star, Play, X } from 'lucide-react';
+import { ShieldCheck, Zap, Smartphone, Cpu, ArrowRight, ArrowDown, CheckCircle, Layers, MousePointerClick, Code2, Wifi, Lock, Thermometer, Lightbulb, Camera, Bell,TrendingUp, Users, Award, Star, Play, X } from 'lucide-react';
 
 const Home = () => {
 
@@ -222,7 +222,7 @@ const Home = () => {
                 <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
               </Link>
 
-              <a href={`${process.env.PUBLIC_URL}/smarthome.apk`} download="smarthome.apk" className="group w-full sm:w-auto bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-8 py-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all duration-300 shadow-lg shadow-blue-900/40 hover:shadow-blue-900/70 hover:scale-[1.02] active:scale-95">
+              <a href='https://github.com/semihcingitas1-cloud/smarthome/commits/smarthome' download="smarthome.apk" className="group w-full sm:w-auto bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-8 py-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all duration-300 shadow-lg shadow-blue-900/40 hover:shadow-blue-900/70 hover:scale-[1.02] active:scale-95">
                 <span>Uygulamayı İndir (APK)</span>
                 <ArrowDown size={20} className="group-hover:translate-y-1 transition-transform duration-300" />
               </a>
