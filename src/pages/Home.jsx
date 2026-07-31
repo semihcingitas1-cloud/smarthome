@@ -223,7 +223,7 @@ const Home = () => {
               </Link>
 
 <a 
-  href="https://github.com/semihcingitas1-cloud/smarthome/releases/download/v1.0.0/smarthome.apk" 
+  href="https://drive.google.com/file/d/16eHaN1TxhOCEJeSLZHO4-6P6kSCcvzQh/view?usp=share_link" 
   download="smarthome.apk" 
   target="_blank"
   rel="noopener noreferrer"
