@@ -222,6 +222,11 @@ const Home = () => {
                 <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
               </Link>
 
+              <a href={`${process.env.PUBLIC_URL}/smarthome.apk`} download="smarthome.apk" className="group w-full sm:w-auto bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-8 py-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all duration-300 shadow-lg shadow-blue-900/40 hover:shadow-blue-900/70 hover:scale-[1.02] active:scale-95">
+                <span>Uygulamayı İndir (APK)</span>
+                <ArrowDown size={20} className="group-hover:translate-y-1 transition-transform duration-300" />
+              </a>
+
               <button onClick={() => setIsVideoModalOpen(true)} className="group w-full sm:w-auto bg-slate-100 dark:bg-slate-800/50 hover:bg-slate-200 dark:hover:bg-slate-700/50 text-slate-800 dark:text-white px-8 py-4 rounded-2xl font-bold transition-all border border-slate-300 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-600 flex items-center justify-center gap-2">
                 <Play size={18} className="group-hover:scale-110 transition-transform" />
                 Demoyu İzle
