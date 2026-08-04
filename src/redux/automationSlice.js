@@ -1,7 +1,7 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import axios from 'axios';
 
-const BASE_URL = "https://backend-d72l.onrender.com";
+const BASE_URL = "152.70.44.174:4000";
 
 const initialState = {
 
