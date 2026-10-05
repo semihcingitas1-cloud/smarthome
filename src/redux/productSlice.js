@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axios from "axios";
 
-const BASE_URL = "152.70.44.174:4000";
+const BASE_URL = "https://ornekciceksitesi.com";
 
 const getToken = () => localStorage.getItem("token");
 
