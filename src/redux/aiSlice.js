@@ -1,7 +1,7 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import axios from 'axios';
 
-const BASE_URL = "https://backend-d72l.onrender.com";
+const BASE_URL = "https://ornekciceksitesi.com";
 
 const getAuthConfig = () => {
     const token = localStorage.getItem("token");
