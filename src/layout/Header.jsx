@@ -165,8 +165,7 @@ const Header = () => {
         icon: <ShoppingCart size={14} />,
         authRequired: false,
       },
-    ],
-    [user]
+    ], [user]
   );
 
   const quickActions = useMemo(() => [
@@ -272,21 +271,28 @@ const Header = () => {
 
         <div className="flex items-center justify-between h-16">
 
-          <div onClick={() => navigate("/")} className="flex items-center space-x-2.5 cursor-pointer group flex-shrink-0">
+          <div onClick={() => navigate("/")} className="flex items-center gap-2.5 cursor-pointer group flex-shrink-0">
 
-            <div className="relative">
+            <svg viewBox="-2 -1 64 60" className="h-9 w-9 transition-transform duration-300 group-hover:scale-110" fill="none" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
 
-              <div className="absolute inset-0 bg-blue-500 rounded-xl blur-lg opacity-40 group-hover:opacity-60 transition-opacity" />
-              <div className="relative bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-600 p-2 rounded-xl group-hover:rotate-6 group-hover:scale-110 transition-all duration-300 shadow-lg shadow-blue-500/30">
-                <Home size={25} className="text-white" />
-              </div>
+              <path d="M2 26 L30 3 L58 26" className="stroke-typus" strokeWidth="4.5" />
+              <path d="M10 20 V54 H50 V20" className="stroke-typus" strokeWidth="4.5" />
+              <path d="M23.6 39.6 A9 9 0 0 1 36.4 39.6" className="stroke-typus-light" strokeWidth="3.5" />
+              <path d="M18 34 A17 17 0 0 1 42 34" className="stroke-typus-light" strokeWidth="3.5" />
+              <circle cx="30" cy="46" r="3.2" className="fill-typus stroke-none" />
 
-            </div>
+            </svg>
 
             <div>
 
-              <h1 className="text-2xl font-black tracking-tight text-gray-900 dark:text-white">SMART<span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-blue-500 to-indigo-500">HUB</span></h1>
-              {isAuth && (<p className="text-[9px] text-gray-500 dark:text-slate-500 uppercase tracking-wider leading-none font-semibold">Control Panel</p>)}
+              <h1 className="flex items-baseline leading-none select-none">
+
+                <span className="text-[#5DB3EA] dark:text-[#85CBF0] text-[22px] tracking-[-0.06em]" style={{ fontFamily: "'Lexend Giga', sans-serif", fontWeight: 200 }}>Typus</span>
+                <span className="text-[#0F2A47] dark:text-white text-[27px] tracking-[-0.04em]" style={{ fontFamily: "'Outfit', sans-serif", fontWeight: 800 }} >Home</span>
+
+              </h1>
+
+              {isAuth && ( <p className="mt-1.5 text-[9px] text-gray-500 dark:text-slate-500 uppercase tracking-wider leading-none font-semibold">Control Panel</p> )}
 
             </div>
 
