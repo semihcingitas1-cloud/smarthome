@@ -12,11 +12,18 @@ module.exports = {
       colors: {
 
         instagram: {
+
           blue: '#4c5fd7',
           purple: '#7232bd',
           pink: '#f91d76',
           yellow: '#f99b4a',
           orange: '#ff4b3e',
+        },
+        typus: {
+
+          DEFAULT: "#4296E4",
+          dark: "#3584D0",
+          light: "#85CBF0",
         },
       },
       backgroundImage: {
