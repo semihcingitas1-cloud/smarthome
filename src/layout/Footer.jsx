@@ -1,8 +1,14 @@
 import React from 'react';
+import { useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 
 import { Facebook, Twitter, Instagram, Linkedin, Mail, Phone, Home } from 'lucide-react';
 
 const Footer = () => {
+
+  const navigate = useNavigate();
+
+  const { user, isAuth } = useSelector((state) => state.user);
 
   const currentYear = new Date().getFullYear();
 
@@ -16,10 +22,30 @@ const Footer = () => {
 
           <div>
 
-            <div className="flex items-center space-x-2 mb-4">
+            <div onClick={() => navigate("/")} className="flex items-center mb-4 gap-2.5 cursor-pointer group flex-shrink-0">
 
-              <div className="bg-blue-600 p-2 rounded-xl shadow-lg shadow-blue-600/30"><Home size={20} className="text-white" /></div>
-              <span className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">SMART<span className="text-blue-500">HUB</span></span>
+              <svg viewBox="-2 -1 64 60" className="h-9 w-9 transition-transform duration-300 group-hover:scale-110" fill="none" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+
+                <path d="M2 26 L30 3 L58 26" className="stroke-[#4296E4]" strokeWidth="4.5" />
+                <path d="M10 20 V54 H50 V20" className="stroke-[#4296E4]" strokeWidth="4.5" />
+                <path d="M23.6 39.6 A9 9 0 0 1 36.4 39.6" className="stroke-[#85CBF0]" strokeWidth="3.5" />
+                <path d="M18 34 A17 17 0 0 1 42 34" className="stroke-[#85CBF0]" strokeWidth="3.5" />
+                <circle cx="30" cy="46" r="3.2" className="fill-[#4296E4] stroke-none" />
+
+              </svg>
+
+              <div>
+
+                <h1 className="flex items-baseline leading-none select-none">
+
+                  <span className="text-[#5DB3EA] dark:text-[#85CBF0] text-[22px] tracking-[-0.06em]" style={{ fontFamily: "'Lexend Giga', sans-serif", fontWeight: 200 }}>Typus</span>
+                  <span className="text-[#0F2A47] dark:text-white text-[27px] tracking-[-0.04em]" style={{ fontFamily: "'Outfit', sans-serif", fontWeight: 800 }} >Home</span>
+
+                </h1>
+
+                {isAuth && ( <p className="mt-1.5 text-[9px] text-gray-500 dark:text-slate-500 uppercase tracking-wider leading-none font-semibold">Control Panel</p> )}
+
+              </div>
 
             </div>
 
@@ -90,7 +116,7 @@ const Footer = () => {
               <div className="flex items-center space-x-3">
 
                 <Mail size={16} className="text-blue-500" />
-                <span className="text-gray-600 dark:text-slate-400">destek@smarthub.com</span>
+                <span className="text-gray-600 dark:text-slate-400">destek@typushome.com</span>
 
               </div>
 
@@ -122,8 +148,8 @@ const Footer = () => {
 
         <div className="border-t border-gray-300 dark:border-slate-800 pt-6 flex flex-col md:flex-row justify-between items-center text-xs text-gray-500 dark:text-slate-500">
 
-          <p>&copy; {currentYear} SmartHub Otomasyon Sistemleri. Tüm hakları saklıdır.</p>
-          <div className="flex space-x-6 mt-4 md:mt-0 uppercase italic font-medium text-gray-600 dark:text-slate-400"><span>Smarthub Software Solutions</span></div>
+          <p>&copy; {currentYear} Typus Home Otomasyon Sistemleri. Tüm hakları saklıdır.</p>
+          <div className="flex space-x-6 mt-4 md:mt-0 uppercase italic font-medium text-gray-600 dark:text-slate-400"><span>Typus Home Software Solutions</span></div>
 
         </div>
 
