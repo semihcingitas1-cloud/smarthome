@@ -54,7 +54,7 @@ export const publishFirmware = createAsyncThunk(
 
       const { data } = await axios.post(
 
-        `${BASE_URL}/api/firmware`,
+        `${BASE_URL}/firmware`,
         { deviceType, version, url, releaseNotes },
         { headers: { Authorization: `Bearer ${token}` } }
       );
