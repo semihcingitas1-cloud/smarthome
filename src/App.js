@@ -55,6 +55,7 @@ import AdminMessage from './pages/Admin/AdminMessage';
 import AdminUsers from './pages/Admin/AdminUsers';
 import AdminBilling from './pages/Admin/AdminBilling';
 import AdminDevices from './pages/Admin/AdminDevices';
+import AdminFirmware from './pages/Admin/AdminFirmware';
 import AdminLogs from './pages/Admin/AdminLogs';
 import AdminSettings from './pages/Admin/AdminSettings';
 
@@ -152,6 +153,7 @@ function App() {
           <Route exact path='/admin/users' element={<AdminUsers />} />
           <Route exact path='/admin/billing' element={<AdminBilling />} />
           <Route exact path='/admin/devices' element={<AdminDevices />} />
+          <Route exact path='/admin/firmware' element={<AdminFirmware />} />
           <Route exact path='/admin/logs' element={<AdminLogs />} />
           <Route exact path='/admin/settings' element={<AdminSettings />} />
 
