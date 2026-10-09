@@ -26,7 +26,7 @@ export const getLatestFirmware = createAsyncThunk(
 
       const { data } = await axios.get(
 
-        `${BASE_URL}/api/firmware/latest`,
+        `${BASE_URL}/firmware/latest`,
         {
           params: { type },
           headers: { Authorization: `Bearer ${token}` },
