@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from "react-redux";
 
-import { getLatestFirmware, publishFirmware, resetPublishStatus } from "../../redux/firmwareSlice";
+import { getLatestFirmware, publishFirmware, resetPublishStatus } from "../../redux/admin/firmwareSlice";
 
 import AdminSidebar from '../../layout/AdminSidebar';
 
