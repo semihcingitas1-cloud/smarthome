@@ -43,8 +43,6 @@ const Footer = () => {
 
                 </h1>
 
-                {isAuth && ( <p className="mt-1.5 text-[9px] text-gray-500 dark:text-slate-500 uppercase tracking-wider leading-none font-semibold">Control Panel</p> )}
-
               </div>
 
             </div>
