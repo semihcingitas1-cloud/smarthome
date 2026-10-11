@@ -282,10 +282,10 @@ const Header = () => {
 
     const colors = {
 
-      orange: 'from-orange-500 to-amber-500',
-      green: 'from-green-500 to-emerald-500',
-      blue: 'from-blue-500 to-cyan-500',
-      red: 'from-red-500 to-rose-500'
+      orange: 'bg-orange-500',
+      green: 'bg-green-500',
+      blue: 'bg-typus',
+      red: 'bg-red-500'
     };
     return colors[color] || colors.blue;
   };
@@ -298,18 +298,18 @@ const Header = () => {
     setIsMobileMenuOpen(false);
   };
 
-  const iconButtonClass = "p-2 text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800/50 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500";
+  const iconButtonClass = "p-2 text-gray-600 dark:text-slate-400 hover:text-typus-dark dark:hover:text-typus-light hover:bg-typus/10 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-typus";
 
   return (
 
-    <header className={`w-full bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl text-gray-900 dark:text-slate-100 border-b border-gray-200 dark:border-slate-800/50 sticky top-0 z-50 transition-all duration-300 ${scrolled ? "shadow-2xl shadow-black/10 dark:shadow-black/40" : "shadow-lg shadow-black/5 dark:shadow-black/20"}`}>
+    <header className={`w-full bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 border-b sticky top-0 z-50 transition-colors duration-200 ${scrolled ? "border-typus/40" : "border-gray-200 dark:border-slate-800"}`}>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
 
         {/* lg+: 3 kolon (logo | ortalı nav | aksiyonlar) → nav artık absolute değil, logo/aksiyonlarla çakışmaz */}
         <div className="flex items-center justify-between h-16 lg:grid lg:grid-cols-[1fr_auto_1fr]">
 
-          <Link to="/" className="flex items-center gap-2.5 group flex-shrink-0 lg:justify-self-start focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded-lg" aria-label="TypusHome ana sayfa">
+          <Link to="/" className="flex items-center gap-2.5 group flex-shrink-0 lg:justify-self-start focus:outline-none focus-visible:ring-2 focus-visible:ring-typus rounded-lg" aria-label="TypusHome ana sayfa">
 
             <svg viewBox="-2 -1 64 60" className="h-9 w-9 transition-transform duration-300 group-hover:scale-110" fill="none" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
 
@@ -339,9 +339,9 @@ const Header = () => {
           {/* Masaüstü nav: artık misafirler için de görünür (authRequired filtresi yeterli) */}
           <nav className="hidden lg:flex lg:justify-self-center" aria-label="Ana menü">
 
-            <div className="flex items-center gap-1 bg-gray-100 dark:bg-slate-800/40 px-2 py-1.5 rounded-full border border-gray-200 dark:border-slate-700/50 shadow-lg shadow-black/5 dark:shadow-black/10">
+            <div className="flex items-center gap-1 bg-gray-100 dark:bg-slate-800 p-1 rounded-full">
 
-              {visibleNavItems.map((item) => ( <button key={item.path} onClick={() => navigate(item.path)} aria-current={isActivePath(item.path) ? "page" : undefined} className={`group relative flex items-center gap-2 px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${isActivePath(item.path) ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/30" : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-slate-700/50"}`}>
+              {visibleNavItems.map((item) => ( <button key={item.path} onClick={() => navigate(item.path)} aria-current={isActivePath(item.path) ? "page" : undefined} className={`group relative flex items-center gap-2 px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-typus ${isActivePath(item.path) ? "bg-typus text-white" : "text-gray-600 dark:text-slate-400 hover:text-typus-dark dark:hover:text-typus-light hover:bg-white dark:hover:bg-slate-700"}`}>
 
                 {item.icon}
                 <span>{item.label}</span>
@@ -360,14 +360,14 @@ const Header = () => {
                 <Search size={18} />
               </button>
 
-              {isSearchOpen && ( <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-slate-800/95 backdrop-blur-xl border border-gray-200 dark:border-slate-700/50 rounded-2xl shadow-2xl overflow-hidden">
+              {isSearchOpen && ( <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl shadow-sm overflow-hidden">
 
                 <form onSubmit={handleSearch} className="p-4">
 
                   <div className="relative">
 
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-400" size={18} />
-                    <input type="text" placeholder="Cihaz, oda veya otomasyon ara..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-gray-50 dark:bg-slate-900/50 border border-gray-300 dark:border-slate-700 rounded-xl pl-10 pr-4 py-2.5 text-sm text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-slate-400 focus:outline-none focus:border-blue-500 transition-colors" autoFocus />
+                    <input type="text" placeholder="Cihaz, oda veya otomasyon ara..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-gray-50 dark:bg-slate-900/50 border border-gray-300 dark:border-slate-700 rounded-xl pl-10 pr-4 py-2.5 text-sm text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-slate-400 focus:outline-none focus:border-typus transition-colors" autoFocus />
 
                   </div>
 
@@ -379,7 +379,7 @@ const Header = () => {
 
                   <div className="space-y-1">
 
-                    {quickActions.map((action, i) => ( <button key={i} onClick={action.action} className="w-full flex items-center gap-3 px-3 py-2 text-sm text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700/50 rounded-lg transition-colors">
+                    {quickActions.map((action, i) => ( <button key={i} onClick={action.action} className="w-full flex items-center gap-3 px-3 py-2 text-sm text-gray-700 dark:text-slate-300 hover:bg-typus/10 dark:hover:bg-slate-700 rounded-lg transition-colors">
 
                       {action.icon}
                       {action.label}
@@ -402,22 +402,22 @@ const Header = () => {
 
               <button onClick={() => setIsNotificationMenuOpen(!isNotificationMenuOpen)} aria-label="Bildirimler" aria-expanded={isNotificationMenuOpen} className={`relative ${iconButtonClass}`}>
                 <Bell size={18} />
-                {unreadCount > 0 && ( <span className="absolute top-0.5 right-0.5 min-w-[18px] h-[18px] bg-gradient-to-r from-red-500 to-rose-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow-lg shadow-red-500/50 animate-pulse">{unreadCount}</span> )}
+                {unreadCount > 0 && ( <span className="absolute top-0.5 right-0.5 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">{unreadCount}</span> )}
               </button>
 
               {/* Mobilde ekrana sabitlenir (taşma yok), sm+ üstte butona hizalanır */}
-              {isNotificationMenuOpen && ( <div className="fixed inset-x-4 top-[4.5rem] sm:absolute sm:inset-x-auto sm:top-auto sm:right-0 sm:mt-2 sm:w-96 bg-white dark:bg-slate-800/95 backdrop-blur-xl border border-gray-200 dark:border-slate-700/50 rounded-2xl shadow-2xl overflow-hidden">
+              {isNotificationMenuOpen && ( <div className="fixed inset-x-4 top-[4.5rem] sm:absolute sm:inset-x-auto sm:top-auto sm:right-0 sm:mt-2 sm:w-96 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl shadow-sm overflow-hidden">
 
                 <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-slate-700/50">
 
                   <div className="flex items-center gap-2">
 
                     <h3 className="font-semibold text-sm text-gray-900 dark:text-white">Bildirimler</h3>
-                    {unreadCount > 0 && ( <span className="px-2 py-0.5 bg-blue-500/20 text-blue-600 dark:text-blue-400 text-xs font-semibold rounded-full">{unreadCount} yeni</span> )}
+                    {unreadCount > 0 && ( <span className="px-2 py-0.5 bg-typus/15 text-typus-dark dark:text-typus-light text-xs font-semibold rounded-full">{unreadCount} yeni</span> )}
 
                   </div>
 
-                  {unreadCount > 0 && ( <button onClick={markAllAsRead} className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors">
+                  {unreadCount > 0 && ( <button onClick={markAllAsRead} className="text-xs text-typus-dark dark:text-typus-light hover:underline">
                     Tümünü okundu işaretle
                   </button> )}
 
@@ -425,11 +425,11 @@ const Header = () => {
 
                 <div className="max-h-96 overflow-y-auto">
 
-                  {notifications.length > 0 ? ( notifications.map((notification) => ( <div key={notification.id} className={`px-4 py-3 border-b border-gray-200 dark:border-slate-700/30 hover:bg-gray-50 dark:hover:bg-slate-700/30 transition-colors ${!notification.read ? 'bg-blue-50 dark:bg-blue-500/5' : ''}`}>
+                  {notifications.length > 0 ? ( notifications.map((notification) => ( <div key={notification.id} className={`px-4 py-3 border-b border-gray-200 dark:border-slate-700/30 hover:bg-gray-50 dark:hover:bg-slate-700/30 transition-colors ${!notification.read ? 'bg-typus/5 dark:bg-typus/10' : ''}`}>
 
                     <div className="flex items-start gap-3">
 
-                      <div className={`w-10 h-10 bg-gradient-to-br ${getNotificationColor(notification.color)} rounded-xl flex items-center justify-center flex-shrink-0 shadow-md`}>
+                      <div className={`w-10 h-10 ${getNotificationColor(notification.color)} rounded-lg flex items-center justify-center flex-shrink-0`}>
                         <notification.icon size={18} className="text-white" />
                       </div>
 
@@ -438,7 +438,7 @@ const Header = () => {
                         <div className="flex items-start justify-between gap-2">
 
                           <h4 className="font-semibold text-sm text-gray-900 dark:text-white">{notification.title}</h4>
-                          {!notification.read && ( <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0 mt-1" /> )}
+                          {!notification.read && ( <div className="w-2 h-2 bg-typus rounded-full flex-shrink-0 mt-1" /> )}
 
                         </div>
 
@@ -450,7 +450,7 @@ const Header = () => {
 
                           <div className="flex gap-1">
 
-                            {!notification.read && ( <button onClick={() => markAsRead(notification.id)} className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors">
+                            {!notification.read && ( <button onClick={() => markAsRead(notification.id)} className="text-xs text-typus-dark dark:text-typus-light hover:underline">
                               Okundu
                             </button> )}
 
@@ -477,7 +477,7 @@ const Header = () => {
 
                 {notifications.length > 0 && ( <div className="px-4 py-3 border-t border-gray-200 dark:border-slate-700/50">
 
-                  <button className="w-full text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-center">
+                  <button className="w-full text-sm text-typus-dark dark:text-typus-light hover:underline text-center">
                     Tüm bildirimleri görüntüle
                   </button>
 
@@ -490,13 +490,13 @@ const Header = () => {
             <button onClick={() => navigate('/cart')} aria-label="Sepet" className={`relative ${iconButtonClass}`}>
 
               <ShoppingCart size={18} />
-              {carts?.length > 0 && ( <span className="absolute top-0.5 right-0.5 min-w-[18px] h-[18px] bg-gradient-to-r from-red-500 to-rose-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow-lg shadow-red-500/50">{carts?.length}</span> )}
+              {carts?.length > 0 && ( <span className="absolute top-0.5 right-0.5 min-w-[18px] h-[18px] bg-typus text-white text-[10px] font-bold rounded-full flex items-center justify-center">{carts?.length}</span> )}
 
             </button>
 
             {isAuth ? ( <div ref={userMenuRef} className="hidden lg:block relative">
 
-              <button onClick={() => setIsUserMenuOpen(!isUserMenuOpen)} aria-expanded={isUserMenuOpen} className="flex items-center gap-2.5 px-2 py-1 rounded-xl hover:bg-gray-100 dark:hover:bg-slate-800/50 transition-colors">
+              <button onClick={() => setIsUserMenuOpen(!isUserMenuOpen)} aria-expanded={isUserMenuOpen} className="flex items-center gap-2.5 px-2 py-1 rounded-xl hover:bg-typus/10 dark:hover:bg-slate-800 transition-colors">
 
                 <div className="text-right hidden xl:block">
 
@@ -507,7 +507,7 @@ const Header = () => {
 
                 <div className="relative">
 
-                  <div className="w-9 h-9 bg-gradient-to-tr from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center shadow-md"><User size={18} className="text-white" /></div>
+                  <div className="w-9 h-9 bg-typus rounded-lg flex items-center justify-center"><User size={18} className="text-white" /></div>
                   <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-white dark:border-slate-900 rounded-full" />
 
                 </div>
@@ -516,13 +516,13 @@ const Header = () => {
 
               </button>
 
-              {isUserMenuOpen && ( <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-slate-800/95 backdrop-blur-xl border border-gray-200 dark:border-slate-700/50 rounded-2xl shadow-2xl overflow-hidden">
+              {isUserMenuOpen && ( <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl shadow-sm overflow-hidden">
 
-                <div className="px-4 py-4 border-b border-gray-200 dark:border-slate-700/50 bg-gradient-to-br from-blue-500/10 to-purple-500/10">
+                <div className="px-4 py-4 border-b border-gray-200 dark:border-slate-700/50 bg-typus/10">
 
                   <div className="flex items-center gap-3">
 
-                    <div className="w-12 h-12 bg-gradient-to-tr from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg"><User size={24} className="text-white" /></div>
+                    <div className="w-12 h-12 bg-typus rounded-lg flex items-center justify-center"><User size={24} className="text-white" /></div>
 
                     <div className="flex-1 min-w-0">
 
@@ -555,7 +555,7 @@ const Header = () => {
 
                 <div className="py-2">
 
-                  {userMenuItems.map((item, index) => ( <button key={index} onClick={() => handleUserMenuClick(item)} className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${item.danger ? "text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10" : "text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700/50"}`}>
+                  {userMenuItems.map((item, index) => ( <button key={index} onClick={() => handleUserMenuClick(item)} className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${item.danger ? "text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10" : "text-gray-700 dark:text-slate-300 hover:bg-typus/10 dark:hover:bg-slate-700"}`}>
 
                     {item.icon}
                     <span className="flex-1 text-left">{item.label}</span>
@@ -566,7 +566,7 @@ const Header = () => {
 
               </div> )}
 
-            </div> ) : ( <button onClick={() => navigate("/auth")} className="group flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 rounded-xl font-semibold text-sm text-white shadow-lg shadow-blue-500/30 transition-all">
+            </div> ) : ( <button onClick={() => navigate("/auth")} className="group flex items-center gap-2 px-5 py-2.5 bg-typus hover:bg-typus-dark rounded-lg font-semibold text-sm text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-typus focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900">
 
               <LogIn size={16} />
               <span className="hidden sm:inline">Giriş Yap</span>
@@ -591,7 +591,7 @@ const Header = () => {
               <div className="relative">
 
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-400" size={18} />
-                <input type="text" placeholder="Ara..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-gray-100 dark:bg-slate-800/40 border border-gray-200 dark:border-slate-700/50 rounded-xl pl-10 pr-4 py-2.5 text-sm text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-slate-400 focus:outline-none focus:border-blue-500"/>
+                <input type="text" placeholder="Ara..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-gray-100 dark:bg-slate-800/40 border border-gray-200 dark:border-slate-700/50 rounded-xl pl-10 pr-4 py-2.5 text-sm text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-slate-400 focus:outline-none focus:border-typus"/>
 
               </div>
 
@@ -601,7 +601,7 @@ const Header = () => {
 
           <nav className="space-y-1 mb-4" aria-label="Mobil menü">
 
-            {visibleNavItems.map((item) => ( <button key={item.path} onClick={() => navigate(item.path)} aria-current={isActivePath(item.path) ? "page" : undefined} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${isActivePath(item.path) ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg" : "text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800/50"}`}>
+            {visibleNavItems.map((item) => ( <button key={item.path} onClick={() => navigate(item.path)} aria-current={isActivePath(item.path) ? "page" : undefined} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${isActivePath(item.path) ? "bg-typus text-white" : "text-gray-700 dark:text-slate-300 hover:bg-typus/10 dark:hover:bg-slate-800"}`}>
 
               {item.icon}
               <span className="flex-1 text-left">{item.label}</span>
@@ -609,7 +609,7 @@ const Header = () => {
             </button> ))}
 
             {/* Koyu tema butonu mobilde üst barda gizli (md:flex) olduğu için burada da var */}
-            <button onClick={() => setIsDarkMode(!isDarkMode)} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800/50 transition-all md:hidden">
+            <button onClick={() => setIsDarkMode(!isDarkMode)} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-700 dark:text-slate-300 hover:bg-typus/10 dark:hover:bg-slate-800 transition-all md:hidden">
 
               {isDarkMode ? <Sun size={14} /> : <Moon size={14} />}
               <span className="flex-1 text-left">{isDarkMode ? "Açık tema" : "Koyu tema"}</span>
@@ -622,7 +622,7 @@ const Header = () => {
 
             <div className="flex items-center gap-3 px-4 py-3 mb-2 bg-gray-100 dark:bg-slate-800/40 rounded-xl">
 
-              <div className="w-10 h-10 bg-gradient-to-tr from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center shadow-md"><User size={20} className="text-white" /></div>
+              <div className="w-10 h-10 bg-typus rounded-lg flex items-center justify-center"><User size={20} className="text-white" /></div>
 
               <div className="flex-1 min-w-0">
 
@@ -633,7 +633,7 @@ const Header = () => {
 
             </div>
 
-            {userMenuItems.map((item, index) => ( <button key={index} onClick={() => handleUserMenuClick(item)} className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm transition-colors ${item.danger ? "text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10" : "text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800/50"}`}>
+            {userMenuItems.map((item, index) => ( <button key={index} onClick={() => handleUserMenuClick(item)} className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm transition-colors ${item.danger ? "text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10" : "text-gray-700 dark:text-slate-300 hover:bg-typus/10 dark:hover:bg-slate-800"}`}>
 
               {item.icon}
               {item.label}
@@ -655,14 +655,14 @@ const Header = () => {
 
               <div className="bg-gray-100 dark:bg-slate-800/40 rounded-lg px-3 py-2 text-center">
 
-                <Zap size={16} className="mx-auto mb-1 text-blue-500 dark:text-blue-400" />
+                <Zap size={16} className="mx-auto mb-1 text-typus dark:text-typus-light" />
                 <p className="text-xs text-gray-600 dark:text-slate-400">{systemStatus.activeDevices} Aktif</p>
 
               </div>
 
               <div className="bg-gray-100 dark:bg-slate-800/40 rounded-lg px-3 py-2 text-center">
 
-                <Cpu size={16} className="mx-auto mb-1 text-purple-500 dark:text-purple-400" />
+                <Cpu size={16} className="mx-auto mb-1 text-typus-dark dark:text-typus-light" />
                 <p className="text-xs text-gray-600 dark:text-slate-400">{Math.round(systemStatus.cpu)}%</p>
 
               </div>
