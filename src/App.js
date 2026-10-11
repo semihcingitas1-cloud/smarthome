@@ -21,6 +21,7 @@ import Cart from './pages/Shopping/Cart';
 import Favorite from './pages/Shopping/Favorite';
 
 import Auth from './pages/Auth/Auth';
+import VerifyEmail from './pages/Auth/Verifyemail';
 import AuthSuccess from './pages/Auth/AuthSuccess';
 import ForgotPassword from './pages/Auth/ForgotPassword';
 import ResetPassword from './pages/Auth/ResetPassword';
@@ -108,6 +109,7 @@ function App() {
         <Route exact path='/favorite' element={<Favorite />} />
 
         <Route exact path='/auth' element={<Auth />} />
+        <Route path="/verify-email/:token" element={<VerifyEmail />} />
         <Route exact path="/auth/success" element={<AuthSuccess />} />
         <Route exact path='/forgot' element={<ForgotPassword />} />
         <Route exact path='/reset/:token' element={<ResetPassword />} />
