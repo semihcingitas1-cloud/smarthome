@@ -2,9 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from "react-router";
 import { useDispatch, useSelector } from 'react-redux';
 
-import { login, register } from '../../redux/userSlice';
+import { login } from '../../redux/userSlice';
+import { registerRequest, resendVerificationRequest } from '../../api/emailVerification';
 
-import { Mail, Lock, User, Phone, LogIn, UserPlus, ShieldCheck, Home, Eye, EyeOff, AlertCircle, CheckCircle2, Loader2, Sparkles, Shield, Zap, Github, Chrome, Facebook, ArrowRight, Info } from 'lucide-react';
+import { Mail, Lock, User, Phone, LogIn, UserPlus, ShieldCheck, Home, Eye, EyeOff, AlertCircle, CheckCircle2, Loader2, Sparkles, Shield, Zap, Github, Chrome, Facebook, ArrowRight, Info, MailCheck, RefreshCw } from 'lucide-react';
+
+const emptyForm = { name: '', email: '', phone: '', password: '', confirmPassword: '', acceptTerms: false };
+
+const RESEND_COOLDOWN_SECONDS = 60;
 
 const Auth = () => {
 
@@ -14,12 +19,27 @@ const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [formData, setFormData] = useState({ name: '', email: '', phone: '', password: '', confirmPassword: '', acceptTerms: false });
+  const [formData, setFormData] = useState(emptyForm);
   const [validationErrors, setValidationErrors] = useState({});
   const [passwordStrength, setPasswordStrength] = useState(0);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
 
+  // Kayıt artık slice üzerinden değil doğrudan API ile yapılıyor (kayıt sonrası otomatik giriş yok)
+  const [registerLoading, setRegisterLoading] = useState(false);
+  const [registerError, setRegisterError] = useState('');
+  const [pendingVerification, setPendingVerification] = useState(null); // { email, emailSent }
+
+  const [resendStatus, setResendStatus] = useState('idle'); // idle | loading | sent | error
+  const [resendMessage, setResendMessage] = useState('');
+  const [resendCooldown, setResendCooldown] = useState(0);
+
   const { loading, error, isAuth, user } = useSelector((state) => state.user);
+
+  // Giriş sırasında backend 403 + EMAIL_NOT_VERIFIED dönerse
+  const isUnverifiedLogin = isLogin && error?.code === 'EMAIL_NOT_VERIFIED';
+  const unverifiedEmail = error?.email || formData.email;
+
+  const isSubmitting = loading || registerLoading;
 
   useEffect(() => {
 
@@ -54,6 +74,14 @@ const Auth = () => {
       setPasswordStrength(0);
     }
   }, [formData.password]);
+
+  useEffect(() => {
+
+    if (resendCooldown <= 0) return;
+
+    const timer = setTimeout(() => setResendCooldown((c) => c - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [resendCooldown]);
 
   const handleChange = (e) => {
 
@@ -110,16 +138,17 @@ const Auth = () => {
     if (!formData.password) {
 
       errors.password = 'Şifre gereklidir';
-    } else if (formData.password.length < 6) {
+    } else if (!isLogin && formData.password.length < 8) {
 
-      errors.password = 'Şifre en az 6 karakter olmalıdır';
+      // Backend kayıtta en az 8 karakter istiyor; girişte uzunluk kontrolü yok (eski kullanıcılar kısa şifreli olabilir)
+      errors.password = 'Şifre en az 8 karakter olmalıdır';
     }
 
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
 
     e.preventDefault();
 
@@ -131,9 +160,48 @@ const Auth = () => {
     if (isLogin) {
 
       dispatch(login({ email: formData.email, password: formData.password }));
-    } else {
+      return;
+    }
 
-      dispatch(register(formData));
+    setRegisterLoading(true);
+    setRegisterError('');
+
+    try {
+
+      const { name, email, phone, password } = formData;
+      const data = await registerRequest({ name, email, phone, password });
+
+      setPendingVerification({ email: data.email || email, emailSent: data.emailSent !== false });
+      setResendStatus('idle');
+      setResendMessage('');
+      setResendCooldown(data.emailSent !== false ? RESEND_COOLDOWN_SECONDS : 0);
+      setFormData(emptyForm);
+    } catch (err) {
+
+      setRegisterError(err.message);
+    } finally {
+
+      setRegisterLoading(false);
+    }
+  };
+
+  const handleResend = async (email) => {
+
+    if (!email || resendStatus === 'loading' || resendCooldown > 0) return;
+
+    setResendStatus('loading');
+    setResendMessage('');
+
+    try {
+
+      const data = await resendVerificationRequest(email);
+      setResendStatus('sent');
+      setResendMessage(data.message);
+      setResendCooldown(RESEND_COOLDOWN_SECONDS);
+    } catch (err) {
+
+      setResendStatus('error');
+      setResendMessage(err.message);
     }
   };
 
@@ -169,10 +237,31 @@ const Auth = () => {
   const switchMode = () => {
 
     setIsLogin(!isLogin);
-    setFormData({ name: '', email: '', phone: '', password: '', confirmPassword: '', acceptTerms: false });
+    setFormData(emptyForm);
     setValidationErrors({});
     setPasswordStrength(0);
+    setPendingVerification(null);
+    setRegisterError('');
+    setResendStatus('idle');
+    setResendMessage('');
   };
+
+  // Hem kayıt sonrası ekranda hem giriş formundaki uyarıda kullanılan "yeniden gönder" butonu
+  const renderResend = (email) => (
+
+    <div className="space-y-2">
+
+      <button type="button" onClick={() => handleResend(email)} disabled={resendStatus === 'loading' || resendCooldown > 0} className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-typus hover:bg-typus-dark text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+
+        {resendStatus === 'loading' ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
+        {resendCooldown > 0 ? `Yeniden gönder (${resendCooldown} sn)` : 'E-postayı yeniden gönder'}
+
+      </button>
+
+      {resendMessage && ( <p role="status" aria-live="polite" className={`text-xs px-1 ${resendStatus === 'error' ? 'text-red-500' : 'text-green-600 dark:text-green-400'}`}>{resendMessage}</p> )}
+
+    </div>
+  );
 
   return (
 
@@ -195,7 +284,7 @@ const Auth = () => {
 
       </div> )}
 
-      {error && ( <div className="fixed top-8 right-8 bg-red-500 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 z-50 animate-slide-in">
+      {error && !isUnverifiedLogin && ( <div className="fixed top-8 right-8 bg-red-500 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 z-50 animate-slide-in">
 
         <AlertCircle size={24} />
 
@@ -286,13 +375,29 @@ const Auth = () => {
               
               <div className="relative z-10">
 
-                <div className="inline-flex items-center justify-center p-4 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl mb-4 shadow-lg shadow-blue-900/50"><Home size={32} className="text-white" /></div>
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight mb-2">{isLogin ? 'Tekrar Hoş Geldiniz' : 'Hesap Oluşturun'}</h2>                
-                <p className="text-gray-600 dark:text-slate-400 text-sm">{isLogin ? 'Akıllı evinizi yönetmek için giriş yapın.' : 'Hemen başlamak için kayıt olun.'}</p>
+                <div className="inline-flex items-center justify-center p-4 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl mb-4 shadow-lg shadow-blue-900/50">{pendingVerification ? <MailCheck size={32} className="text-white" /> : <Home size={32} className="text-white" />}</div>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight mb-2">{pendingVerification ? 'E-postanızı Doğrulayın' : isLogin ? 'Tekrar Hoş Geldiniz' : 'Hesap Oluşturun'}</h2>                
+                <p className="text-gray-600 dark:text-slate-400 text-sm">{pendingVerification ? 'Hesabınızı etkinleştirmek için son bir adım kaldı.' : isLogin ? 'Akıllı evinizi yönetmek için giriş yapın.' : 'Hemen başlamak için kayıt olun.'}</p>
 
               </div>
 
             </div>
+
+            {pendingVerification ? ( <div className="p-8 pt-4 space-y-5 text-center">
+
+              {pendingVerification.emailSent ? ( <p className="text-sm text-gray-600 dark:text-slate-400 leading-relaxed">
+                <span className="font-semibold text-gray-900 dark:text-white break-all">{pendingVerification.email}</span> adresine bir doğrulama bağlantısı gönderdik. Bağlantı 24 saat geçerlidir. E-posta gelmediyse spam klasörünü kontrol edin.
+              </p> ) : ( <p className="text-sm text-amber-700 dark:text-amber-400 leading-relaxed">
+                Hesabınız oluşturuldu ancak doğrulama e-postası gönderilemedi. Aşağıdaki butonla tekrar deneyin.
+              </p> )}
+
+              {renderResend(pendingVerification.email)}
+
+              <button type="button" onClick={switchMode} className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors">
+                Giriş ekranına dön
+              </button>
+
+            </div> ) : (
 
             <form onSubmit={handleSubmit} className="p-8 pt-4 space-y-5">
 
@@ -419,9 +524,30 @@ const Auth = () => {
 
               </div> )}
 
-              <button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-blue-900/40 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed mt-6 group">
+              {registerError && ( <p role="alert" className="text-red-500 text-sm flex items-start gap-2 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-xl px-4 py-3"><AlertCircle size={16} className="flex-shrink-0 mt-0.5" />{registerError}</p> )}
 
-                {loading ? ( <>
+              {isUnverifiedLogin && ( <div role="alert" className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-xl p-4 space-y-3">
+
+                <div className="flex items-start gap-3">
+
+                  <MailCheck size={20} className="text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+
+                  <div className="text-sm text-gray-700 dark:text-slate-300">
+
+                    <p className="font-semibold text-amber-700 dark:text-amber-400 mb-1">E-posta adresiniz doğrulanmamış</p>
+                    <p className="text-xs"><span className="font-medium break-all">{unverifiedEmail}</span> adresine gönderilen bağlantıya tıklayarak hesabınızı etkinleştirin.</p>
+
+                  </div>
+
+                </div>
+
+                {renderResend(unverifiedEmail)}
+
+              </div> )}
+
+              <button type="submit" disabled={isSubmitting} className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-blue-900/40 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed mt-6 group">
+
+                {isSubmitting ? ( <>
 
                   <Loader2 size={20} className="animate-spin" />
                   İşlem yapılıyor...
@@ -470,7 +596,7 @@ const Auth = () => {
 
               </div> )}
 
-            </form>
+            </form> )}
 
             <div className="p-6 bg-gray-50 dark:bg-slate-800/30 border-t border-gray-200 dark:border-slate-800 text-center space-y-4">
 
