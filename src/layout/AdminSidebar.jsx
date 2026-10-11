@@ -4,7 +4,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 import { logoutUser } from '../redux/userSlice'; 
 
-import { LayoutDashboard, Users, Server, Activity, Settings, LogOut, ShieldCheck, CreditCard, ShoppingBag, QrCode } from "lucide-react";
+import { LayoutDashboard, Users, Server, Activity, Settings, LogOut, ShieldCheck, CreditCard, ShoppingBag, QrCode, FolderUpload } from "lucide-react";
 
 const AdminSidebar = () => {
 
@@ -20,6 +20,7 @@ const AdminSidebar = () => {
     { name: 'Sistem & Cihazlar', path: '/admin/devices', icon: <Server size={25} /> },
     { name: 'Finans / Lisans', path: '/admin/billing', icon: <CreditCard size={25} /> },
     { name: 'Sistem Logları', path: '/admin/logs', icon: <Activity size={25} /> },
+    { name: 'Firmware', path: '/admin/firmware', icon: <FolderUpload size={25} /> },
     { name: 'Genel Ayarlar', path: '/admin/settings', icon: <Settings size={25} /> },
   ];
 
