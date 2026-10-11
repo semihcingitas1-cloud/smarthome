@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 
 import { logoutUser } from "../redux/userSlice";
 
@@ -27,6 +27,8 @@ const Header = () => {
 
   const { user, isAuth } = useSelector((state) => state.user);
   const { carts } = useSelector(state => state.cart);
+
+  const role = user?.user?.role;
 
   const [notifications, setNotifications] = useState([
     {
@@ -95,7 +97,7 @@ const Header = () => {
       }
     };
 
-    window.addEventListener("scroll", handleScroll);
+    window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
@@ -127,11 +129,31 @@ const Header = () => {
       }
     };
 
+    const handleEscape = (e) => {
+
+      if (e.key === "Escape") {
+
+        setIsMobileMenuOpen(false);
+        setIsUserMenuOpen(false);
+        setIsNotificationMenuOpen(false);
+        setIsSearchOpen(false);
+      }
+    };
+
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEscape);
+    };
   }, []);
 
+  // Sistem durumu yalnızca görüntülendiği menüler açıkken güncellenir (gereksiz re-render olmasın)
   useEffect(() => {
+
+    if (!isMobileMenuOpen && !isUserMenuOpen) return;
 
     const interval = setInterval(() => {
 
@@ -144,7 +166,7 @@ const Header = () => {
     }, 3000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [isMobileMenuOpen, isUserMenuOpen]);
 
   const navItems = useMemo(
     () => [
@@ -152,10 +174,11 @@ const Header = () => {
         label: "Ana Sayfa",
         path: "/",
         icon: <Home size={14} />,
+        authRequired: false,
       },
       {
         label: "Dashboard",
-        path: user?.user?.role == 'admin' ? "/admin/dashboard" : user?.user?.role == 'editor' ? "/editor/dashboard" : "/user/dashboard",
+        path: role === 'admin' ? "/admin/dashboard" : role === 'editor' ? "/editor/dashboard" : "/user/dashboard",
         icon: <LayoutDashboard size={14} />,
         authRequired: true,
       },
@@ -165,7 +188,12 @@ const Header = () => {
         icon: <ShoppingCart size={14} />,
         authRequired: false,
       },
-    ], [user]
+    ], [role]
+  );
+
+  const visibleNavItems = useMemo(
+    () => navItems.filter((item) => !item.authRequired || isAuth),
+    [navItems, isAuth]
   );
 
   const quickActions = useMemo(() => [
@@ -207,7 +235,12 @@ const Header = () => {
     []
   );
 
-  const isActivePath = (path) => location.pathname === path;
+  // Ana sayfa yalnızca birebir eşleşir; diğerleri alt rotalarda da (/products/123 gibi) aktif kalır
+  const isActivePath = (path) => {
+
+    if (path === "/") return location.pathname === "/";
+    return location.pathname === path || location.pathname.startsWith(path + "/");
+  };
 
   const logout = () => {
 
@@ -227,6 +260,7 @@ const Header = () => {
     }
 
     setIsUserMenuOpen(false);
+    setIsMobileMenuOpen(false);
   };
 
   const markAsRead = (id) => {
@@ -261,7 +295,10 @@ const Header = () => {
     e.preventDefault();
     console.log("Search:", searchQuery);
     setIsSearchOpen(false);
+    setIsMobileMenuOpen(false);
   };
+
+  const iconButtonClass = "p-2 text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800/50 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500";
 
   return (
 
@@ -269,9 +306,10 @@ const Header = () => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
 
-        <div className="flex items-center justify-between h-16">
+        {/* lg+: 3 kolon (logo | ortalı nav | aksiyonlar) → nav artık absolute değil, logo/aksiyonlarla çakışmaz */}
+        <div className="flex items-center justify-between h-16 lg:grid lg:grid-cols-[1fr_auto_1fr]">
 
-          <div onClick={() => navigate("/")} className="flex items-center gap-2.5 cursor-pointer group flex-shrink-0">
+          <Link to="/" className="flex items-center gap-2.5 group flex-shrink-0 lg:justify-self-start focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded-lg" aria-label="TypusHome ana sayfa">
 
             <svg viewBox="-2 -1 64 60" className="h-9 w-9 transition-transform duration-300 group-hover:scale-110" fill="none" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
 
@@ -288,7 +326,7 @@ const Header = () => {
               <h1 className="flex items-baseline leading-none select-none">
 
                 <span className="text-[#5DB3EA] dark:text-[#85CBF0] text-[22px] tracking-[-0.06em]" style={{ fontFamily: "'Lexend Giga', sans-serif", fontWeight: 200 }}>Typus</span>
-                <span className="text-[#0F2A47] dark:text-white text-[27px] tracking-[-0.04em]" style={{ fontFamily: "'Outfit', sans-serif", fontWeight: 800 }} >Home</span>
+                <span className="text-[#0F2A47] dark:text-white text-[27px] tracking-[-0.04em]" style={{ fontFamily: "'Outfit', sans-serif", fontWeight: 800 }}>Home</span>
 
               </h1>
 
@@ -296,13 +334,14 @@ const Header = () => {
 
             </div>
 
-          </div>
+          </Link>
 
-          {isAuth && ( <nav className="hidden lg:flex absolute left-1/2 transform -translate-x-1/2">
+          {/* Masaüstü nav: artık misafirler için de görünür (authRequired filtresi yeterli) */}
+          <nav className="hidden lg:flex lg:justify-self-center" aria-label="Ana menü">
 
             <div className="flex items-center gap-1 bg-gray-100 dark:bg-slate-800/40 px-2 py-1.5 rounded-full border border-gray-200 dark:border-slate-700/50 shadow-lg shadow-black/5 dark:shadow-black/10">
 
-              {navItems.filter((item) => !item.authRequired || isAuth).map((item, index) => ( <button key={index} onClick={() => navigate(item.path)} className={`group relative flex items-center gap-2 px-4 py-2 rounded-full text-xs font-medium transition-all duration-200 ${isActivePath(item.path) ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/30" : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-slate-700/50"}`}>
+              {visibleNavItems.map((item) => ( <button key={item.path} onClick={() => navigate(item.path)} aria-current={isActivePath(item.path) ? "page" : undefined} className={`group relative flex items-center gap-2 px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${isActivePath(item.path) ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/30" : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-slate-700/50"}`}>
 
                 {item.icon}
                 <span>{item.label}</span>
@@ -311,13 +350,13 @@ const Header = () => {
 
             </div>
 
-          </nav> )}
+          </nav>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 lg:justify-self-end">
 
             {isAuth && ( <div ref={searchRef} className="relative">
 
-              <button onClick={() => setIsSearchOpen(!isSearchOpen)} className="hidden md:flex p-2 text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800/50 rounded-lg transition-colors">
+              <button onClick={() => setIsSearchOpen(!isSearchOpen)} aria-label="Ara" aria-expanded={isSearchOpen} className={`hidden md:flex ${iconButtonClass}`}>
                 <Search size={18} />
               </button>
 
@@ -355,18 +394,19 @@ const Header = () => {
 
             </div> )}
 
-            <button onClick={() => setIsDarkMode(!isDarkMode)} className="hidden md:flex p-2 text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800/50 rounded-lg transition-colors">
+            <button onClick={() => setIsDarkMode(!isDarkMode)} aria-label={isDarkMode ? "Açık temaya geç" : "Koyu temaya geç"} className={`hidden md:flex ${iconButtonClass}`}>
               {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
             </button>
 
-            {isAuth && ( <div ref={notificationMenuRef} className="relative">
+            {isAuth && ( <div ref={notificationMenuRef} className="sm:relative">
 
-              <button onClick={() => setIsNotificationMenuOpen(!isNotificationMenuOpen)} className="relative p-2 text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800/50 rounded-lg transition-colors">
+              <button onClick={() => setIsNotificationMenuOpen(!isNotificationMenuOpen)} aria-label="Bildirimler" aria-expanded={isNotificationMenuOpen} className={`relative ${iconButtonClass}`}>
                 <Bell size={18} />
                 {unreadCount > 0 && ( <span className="absolute top-0.5 right-0.5 min-w-[18px] h-[18px] bg-gradient-to-r from-red-500 to-rose-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow-lg shadow-red-500/50 animate-pulse">{unreadCount}</span> )}
               </button>
 
-              {isNotificationMenuOpen && ( <div className="absolute right-0 mt-2 w-96 bg-white dark:bg-slate-800/95 backdrop-blur-xl border border-gray-200 dark:border-slate-700/50 rounded-2xl shadow-2xl overflow-hidden">
+              {/* Mobilde ekrana sabitlenir (taşma yok), sm+ üstte butona hizalanır */}
+              {isNotificationMenuOpen && ( <div className="fixed inset-x-4 top-[4.5rem] sm:absolute sm:inset-x-auto sm:top-auto sm:right-0 sm:mt-2 sm:w-96 bg-white dark:bg-slate-800/95 backdrop-blur-xl border border-gray-200 dark:border-slate-700/50 rounded-2xl shadow-2xl overflow-hidden">
 
                 <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-slate-700/50">
 
@@ -447,21 +487,21 @@ const Header = () => {
 
             </div> )}
 
-            <button onClick={() => navigate('/cart')} className="relative p-2 text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800/50 rounded-lg transition-colors">
+            <button onClick={() => navigate('/cart')} aria-label="Sepet" className={`relative ${iconButtonClass}`}>
 
-              <ShoppingCart size={16}/>
+              <ShoppingCart size={18} />
               {carts?.length > 0 && ( <span className="absolute top-0.5 right-0.5 min-w-[18px] h-[18px] bg-gradient-to-r from-red-500 to-rose-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow-lg shadow-red-500/50">{carts?.length}</span> )}
 
             </button>
 
             {isAuth ? ( <div ref={userMenuRef} className="hidden lg:block relative">
 
-              <button onClick={() => setIsUserMenuOpen(!isUserMenuOpen)} className="flex items-center gap-2.5 px-2 py-1 rounded-xl hover:bg-gray-100 dark:hover:bg-slate-800/50 transition-colors">
+              <button onClick={() => setIsUserMenuOpen(!isUserMenuOpen)} aria-expanded={isUserMenuOpen} className="flex items-center gap-2.5 px-2 py-1 rounded-xl hover:bg-gray-100 dark:hover:bg-slate-800/50 transition-colors">
 
                 <div className="text-right hidden xl:block">
 
                   <p className="text-xs font-semibold text-gray-900 dark:text-white">{user?.user?.name || "Kullanıcı"}</p>
-                  <p className="text-[10px] text-gray-500 dark:text-slate-500">{user?.user?.role || "Üye"}</p>
+                  <p className="text-[10px] text-gray-500 dark:text-slate-500">{role || "Üye"}</p>
 
                 </div>
 
@@ -533,7 +573,7 @@ const Header = () => {
 
             </button> )}
 
-            <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="lg:hidden p-2 text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800/50 rounded-lg transition-colors">
+            <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} aria-label={isMobileMenuOpen ? "Menüyü kapat" : "Menüyü aç"} aria-expanded={isMobileMenuOpen} aria-controls="mobile-menu" className={`lg:hidden ${iconButtonClass}`}>
               {isMobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
             </button>
 
@@ -541,7 +581,8 @@ const Header = () => {
 
         </div>
 
-        <div className={`lg:hidden overflow-hidden transition-all duration-300 ${isMobileMenuOpen ? "max-h-[600px] opacity-100 py-4" : "max-h-0 opacity-0"}`}>
+        {/* Mobil menü: ekran yüksekliğini aşarsa kaydırılır, kapalıyken odaklanılamaz (invisible) */}
+        <div id="mobile-menu" aria-hidden={!isMobileMenuOpen} className={`lg:hidden transition-all duration-300 ${isMobileMenuOpen ? "max-h-[calc(100vh-4rem)] overflow-y-auto opacity-100 py-4" : "max-h-0 overflow-hidden opacity-0 invisible"}`}>
 
           {isAuth && ( <div className="mb-4">
 
@@ -558,14 +599,22 @@ const Header = () => {
 
           </div> )}
 
-          <nav className="space-y-1 mb-4">
+          <nav className="space-y-1 mb-4" aria-label="Mobil menü">
 
-            {navItems.filter((item) => !item.authRequired || isAuth).map((item, index) => ( <button key={index} onClick={() => navigate(item.path)} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${isActivePath(item.path) ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg" : "text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800/50"}`}>
+            {visibleNavItems.map((item) => ( <button key={item.path} onClick={() => navigate(item.path)} aria-current={isActivePath(item.path) ? "page" : undefined} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${isActivePath(item.path) ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg" : "text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800/50"}`}>
 
               {item.icon}
               <span className="flex-1 text-left">{item.label}</span>
 
             </button> ))}
+
+            {/* Koyu tema butonu mobilde üst barda gizli (md:flex) olduğu için burada da var */}
+            <button onClick={() => setIsDarkMode(!isDarkMode)} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800/50 transition-all md:hidden">
+
+              {isDarkMode ? <Sun size={14} /> : <Moon size={14} />}
+              <span className="flex-1 text-left">{isDarkMode ? "Açık tema" : "Koyu tema"}</span>
+
+            </button>
 
           </nav>
 
