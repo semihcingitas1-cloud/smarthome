@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from "react-router";
 import { useDispatch, useSelector } from 'react-redux';
 
-import { login } from '../../redux/userSlice';
+import { login, clearError } from '../../redux/userSlice';
 import { registerRequest, resendVerificationRequest } from '../../api/emailVerification';
 
 import { Mail, Lock, User, Phone, LogIn, UserPlus, ShieldCheck, Home, Eye, EyeOff, AlertCircle, CheckCircle2, Loader2, Sparkles, Shield, Zap, Github, Chrome, Facebook, ArrowRight, Info, MailCheck, RefreshCw } from 'lucide-react';
@@ -236,6 +236,7 @@ const Auth = () => {
 
   const switchMode = () => {
 
+    dispatch(clearError());
     setIsLogin(!isLogin);
     setFormData(emptyForm);
     setValidationErrors({});
