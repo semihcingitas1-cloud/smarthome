@@ -149,27 +149,18 @@ const Footer = () => {
 
         </div>
 
-        <div className="border-t border-gray-200 dark:border-slate-800 pt-6 flex flex-col md:flex-row justify-between items-center gap-6 text-xs text-gray-500 dark:text-slate-500">
+        <div className="border-t border-gray-200 dark:border-slate-800 pt-6 flex flex-col md:grid md:grid-cols-[1fr_auto_1fr] items-center gap-4 text-xs text-gray-500 dark:text-slate-500">
 
-          <div className="text-center md:text-left space-y-2">
-
-            <p>&copy; {currentYear} Typus Home Otomasyon Sistemleri. Tüm hakları saklıdır.</p>
-            <p className="uppercase italic font-medium text-gray-600 dark:text-slate-400">Typus Home Software Solutions</p>
-
-          </div>
+          <p className="text-center md:text-left">&copy; {currentYear} Typus Home Otomasyon Sistemleri. Tüm hakları saklıdır.</p>
 
           {/* ETBİS rozeti: şimdilik yer tutucu. Gerçek görseli gelince <QrCode ... /> yerine
               <img src={etbisQr} alt="ETBİS QR kodu" className="h-full w-full object-contain" /> koyun,
               href'i de ETBİS doğrulama linkiyle değiştirin. */}
-          <a href="#" target="_blank" rel="noopener noreferrer" aria-label="ETBİS doğrulama" className="flex items-center gap-3 group focus:outline-none focus-visible:ring-2 focus-visible:ring-typus rounded-lg">
-
-            <div className="h-20 w-20 flex items-center justify-center bg-white border border-gray-200 dark:border-slate-700 rounded-lg p-2">
-              <QrCode size={64} className="text-gray-400" aria-hidden="true" />
-            </div>
-
-            <span className="text-gray-600 dark:text-slate-400 group-hover:text-typus-dark dark:group-hover:text-typus-light transition-colors">ETBİS<br />Kayıtlıdır</span>
-
+          <a href="#" target="_blank" rel="noopener noreferrer" aria-label="ETBİS doğrulama" className="h-20 w-20 flex items-center justify-center bg-white border border-gray-200 dark:border-slate-700 rounded-lg p-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-typus">
+            <QrCode size={64} className="text-gray-400" aria-hidden="true" />
           </a>
+
+          <p className="uppercase italic font-medium text-gray-600 dark:text-slate-400 text-center md:text-right md:justify-self-end">Typus Home Software Solutions</p>
 
         </div>
 
