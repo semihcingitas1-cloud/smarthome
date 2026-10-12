@@ -1,36 +1,38 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axios from "axios";
 
+// Vite: VITE_API_URL | CRA kullanıyorsan: process.env.REACT_APP_API_URL
 const BASE_URL = "https://ornekciceksitesi.com";
 
 const getToken = () => localStorage.getItem("token");
+
+const authHeaders = () => ({ Authorization: `Bearer ${getToken()}` });
+
+const errMsg = (error, fallback) =>
+  error.response?.data?.message || error.message || fallback;
 
 export const getAdminProducts = createAsyncThunk(
   "products/getAdminProducts",
   async (_, { rejectWithValue }) => {
     try {
       const { data } = await axios.get(`${BASE_URL}/admin/products`, {
-        headers: { Authorization: `Bearer ${getToken()}` },
+        headers: authHeaders(),
       });
       return data;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || "Bir hata oluştu");
+      return rejectWithValue(errMsg(error, "Bir hata oluştu"));
     }
   }
 );
 
 export const getProducts = createAsyncThunk(
-
   "products/getProducts",
   async (_, { rejectWithValue }) => {
-
     try {
-
       const { data } = await axios.get(`${BASE_URL}/products`);
       return data;
     } catch (error) {
-
-      return rejectWithValue(error.response?.data?.message || "Bir hata oluştu");
+      return rejectWithValue(errMsg(error, "Bir hata oluştu"));
     }
   }
 );
@@ -42,68 +44,37 @@ export const getProductDetail = createAsyncThunk(
       const { data } = await axios.get(`${BASE_URL}/product/${id}`);
       return data;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || "Ürün bulunamadı");
+      return rejectWithValue(errMsg(error, "Ürün bulunamadı"));
     }
   }
 );
 
 export const getProductBySlug = createAsyncThunk(
-
   "products/getProductBySlug",
-
   async (slug, { rejectWithValue }) => {
-
     try {
-
       const { data } = await axios.get(`${BASE_URL}/product/slug/${slug}`);
       return data;
     } catch (error) {
-
-      return rejectWithValue(error.response?.data?.message || "Ürün bulunamadı");
-    }
-  }
-);
-
-export const createProduct = createAsyncThunk(
-  "products/createProduct",
-  async (productData, { rejectWithValue }) => {
-    try {
-      const { data } = await axios.post(
-        `${BASE_URL}/admin/product/new`,
-        productData,
-        {
-          headers: {
-            Authorization: `Bearer ${getToken()}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-      return data;
-    } catch (error) {
-      return rejectWithValue(error.response?.data?.message || "Ürün oluşturulamadı");
+      return rejectWithValue(errMsg(error, "Ürün bulunamadı"));
     }
   }
 );
 
 export const createProductWithImages = createAsyncThunk(
   "products/createProductWithImages",
-
   async (productData, { rejectWithValue }) => {
-
     try {
-
       const base64Images = await Promise.all(
-
-        productData.images.map((imageObj) => {
-
-          return new Promise((resolve, reject) => {
-
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result);
-            reader.onerror = reject;
-            reader.readAsDataURL(imageObj.file);
-          });
-        })
+        productData.images.map(
+          (imageObj) =>
+            new Promise((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = () => resolve(reader.result);
+              reader.onerror = reject;
+              reader.readAsDataURL(imageObj.file);
+            })
+        )
       );
 
       const { data } = await axios.post(
@@ -111,15 +82,10 @@ export const createProductWithImages = createAsyncThunk(
         {
           ...productData,
           images: base64Images,
-          features: productData.features,
-          specifications: productData.specifications,
-          tags: productData.tags,
-          colors: productData.colors,
-          models: productData.models,
         },
         {
           headers: {
-            Authorization: `Bearer ${getToken()}`,
+            ...authHeaders(),
             "Content-Type": "application/json",
           },
         }
@@ -127,34 +93,28 @@ export const createProductWithImages = createAsyncThunk(
 
       return data;
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || "Ürün oluşturulamadı"
-      );
+      return rejectWithValue(errMsg(error, "Ürün oluşturulamadı"));
     }
   }
 );
 
 export const updateProduct = createAsyncThunk(
-
   "products/updateProduct",
-
   async ({ id, productData }, { rejectWithValue }) => {
-
     try {
-
       const { data } = await axios.put(
         `${BASE_URL}/admin/product/${id}`,
         productData,
         {
           headers: {
-            Authorization: `Bearer ${getToken()}`,
+            ...authHeaders(),
             "Content-Type": "application/json",
           },
         }
       );
       return data;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || "Ürün güncellenemedi");
+      return rejectWithValue(errMsg(error, "Ürün güncellenemedi"));
     }
   }
 );
@@ -163,15 +123,12 @@ export const deleteProduct = createAsyncThunk(
   "products/deleteProduct",
   async (id, { rejectWithValue }) => {
     try {
-      const { data } = await axios.delete(
-        `${BASE_URL}/admin/product/${id}`,
-        {
-          headers: { Authorization: `Bearer ${getToken()}` },
-        }
-      );
+      const { data } = await axios.delete(`${BASE_URL}/admin/product/${id}`, {
+        headers: authHeaders(),
+      });
       return { id, ...data };
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || "Ürün silinemedi");
+      return rejectWithValue(errMsg(error, "Ürün silinemedi"));
     }
   }
 );
@@ -186,14 +143,14 @@ export const updateStock = createAsyncThunk(
         { quantity, modelName },
         {
           headers: {
-            Authorization: `Bearer ${getToken()}`,
+            ...authHeaders(),
             "Content-Type": "application/json",
           },
         }
       );
       return data;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || "Stok güncellenemedi");
+      return rejectWithValue(errMsg(error, "Stok güncellenemedi"));
     }
   }
 );
@@ -204,11 +161,11 @@ export const getProductStats = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const { data } = await axios.get(`${BASE_URL}/admin/products/stats`, {
-        headers: { Authorization: `Bearer ${getToken()}` },
+        headers: authHeaders(),
       });
       return data;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || "İstatistikler alınamadı");
+      return rejectWithValue(errMsg(error, "İstatistikler alınamadı"));
     }
   }
 );
@@ -223,14 +180,14 @@ export const createReview = createAsyncThunk(
         reviewData,
         {
           headers: {
-            Authorization: `Bearer ${getToken()}`,
+            ...authHeaders(),
             "Content-Type": "application/json",
           },
         }
       );
       return data;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || "Yorum eklenemedi");
+      return rejectWithValue(errMsg(error, "Yorum eklenemedi"));
     }
   }
 );
@@ -242,12 +199,12 @@ export const deleteReview = createAsyncThunk(
       const { data } = await axios.delete(
         `${BASE_URL}/product/review?productId=${productId}&id=${id}`,
         {
-          headers: { Authorization: `Bearer ${getToken()}` },
+          headers: authHeaders(),
         }
       );
       return data;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || "Yorum silinemedi");
+      return rejectWithValue(errMsg(error, "Yorum silinemedi"));
     }
   }
 );
@@ -261,12 +218,12 @@ export const markReviewHelpful = createAsyncThunk(
         `${BASE_URL}/product/${productId}/review/${reviewId}/helpful`,
         {},
         {
-          headers: { Authorization: `Bearer ${getToken()}` },
+          headers: authHeaders(),
         }
       );
       return data;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || "İşlem başarısız");
+      return rejectWithValue(errMsg(error, "İşlem başarısız"));
     }
   }
 );
@@ -285,6 +242,9 @@ const productSlice = createSlice({
     success: false,
     message: null,
     productCount: 0,
+    // Ürün oluşturma için ayrı durum (diğer thunk'lardan etkilenmez)
+    createStatus: "idle", // idle | loading | succeeded | failed
+    createError: null,
   },
   reducers: {
     clearErrors: (state) => {
@@ -293,6 +253,10 @@ const productSlice = createSlice({
     resetStatus: (state) => {
       state.success = false;
       state.message = null;
+      state.error = null;
+      state.newProductId = null;
+      state.createStatus = "idle";
+      state.createError = null;
     },
     // Frontend filtreleme için
     setFilteredProducts: (state, action) => {
@@ -366,41 +330,22 @@ const productSlice = createSlice({
         state.error = action.payload;
       });
 
-    // Create Product
+    // Create Product (görsellerle)
     builder
-      .addCase(createProduct.pending, (state) => {
-        state.loading = true;
-        state.error = null;
+      .addCase(createProductWithImages.pending, (state) => {
+        state.createStatus = "loading";
+        state.createError = null;
       })
-      .addCase(createProduct.fulfilled, (state, action) => {
-        state.loading = false;
-        state.success = true;
+      .addCase(createProductWithImages.fulfilled, (state, action) => {
+        state.createStatus = "succeeded";
         state.message = action.payload.message;
+        state.newProductId = action.payload.product._id;
         state.adminProducts.unshift(action.payload.product);
       })
-      .addCase(createProduct.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
+      .addCase(createProductWithImages.rejected, (state, action) => {
+        state.createStatus = "failed";
+        state.createError = action.payload;
       });
-
-    builder.addCase(createProductWithImages.pending, (state) => {
-      state.loading = true;
-      state.error = null;
-      state.success = false;
-    });
-    builder.addCase(createProductWithImages.fulfilled, (state, action) => {
-
-      state.loading = false;
-      state.success = true;
-      state.message = action.payload.message;
-      state.newProductId = action.payload.product._id;
-      state.adminProducts.unshift(action.payload.product);
-    });
-    builder.addCase(createProductWithImages.rejected, (state, action) => {
-
-      state.loading = false;
-      state.error = action.payload;
-    });
 
     // Update Product
     builder
