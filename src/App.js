@@ -7,6 +7,7 @@ import { ROUTE_ROLES } from "./utils/roles";
 import { profile, setLoading } from './redux/userSlice';
 
 import ProtectedRoute from "./components/ProtectedRoute";
+import CookieConsent from "./components/CookieConsent";
 
 import Header from './layout/Header';
 import Footer from './layout/Footer';
@@ -85,6 +86,8 @@ function App() {
       dispatch(setLoading(false));
     }
   }, [dispatch]);
+
+  <CookieConsent />
 
   const isMaintenance = false;
   if (isMaintenance && user?.user?.role !== 'admin') {return <Maintenance />;}
