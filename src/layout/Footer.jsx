@@ -12,7 +12,7 @@ const socialLinks = [
 
 const quickLinks = [
   { name: 'Ana Sayfa', link: '/' },
-  { name: 'Cihaz Yönetimi', link: '/devices' },
+  { name: 'Cihaz Yönetimi', link: '/user/devices' },
   { name: 'İstatistikler', link: '/statistics' },
   { name: 'Senaryolar', link: '/scenarios' },
 ];
