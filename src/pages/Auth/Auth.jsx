@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from "react-router";
 import { useDispatch, useSelector } from 'react-redux';
 
-import { login, clearError } from '../../redux/userSlice';
-import { verifyEmailRequest } from "../../api/Emailverification";
+import { login, register, resendVerification, clearError } from '../../redux/userSlice';
 
 import { Mail, Lock, User, Phone, LogIn, UserPlus, ShieldCheck, Home, Eye, EyeOff, AlertCircle, CheckCircle2, Loader2, Sparkles, Shield, Zap, Github, Chrome, Facebook, ArrowRight, Info, MailCheck, RefreshCw } from 'lucide-react';
 
@@ -24,9 +23,7 @@ const Auth = () => {
   const [passwordStrength, setPasswordStrength] = useState(0);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
 
-  // Kayıt artık slice üzerinden değil doğrudan API ile yapılıyor (kayıt sonrası otomatik giriş yok)
-  const [registerLoading, setRegisterLoading] = useState(false);
-  const [registerError, setRegisterError] = useState('');
+  // Kayıt sonrası otomatik giriş yok; doğrulama bekleyen e-posta bilgisi burada tutulur
   const [pendingVerification, setPendingVerification] = useState(null); // { email, emailSent }
 
   const [resendStatus, setResendStatus] = useState('idle'); // idle | loading | sent | error
@@ -39,7 +36,7 @@ const Auth = () => {
   const isUnverifiedLogin = isLogin && error?.code === 'EMAIL_NOT_VERIFIED';
   const unverifiedEmail = error?.email || formData.email;
 
-  const isSubmitting = loading || registerLoading;
+  const isSubmitting = loading;
 
   useEffect(() => {
 
@@ -163,13 +160,10 @@ const Auth = () => {
       return;
     }
 
-    setRegisterLoading(true);
-    setRegisterError('');
-
     try {
 
       const { name, email, phone, password } = formData;
-      const data = await registerRequest({ name, email, phone, password });
+      const data = await dispatch(register({ name, email, phone, password })).unwrap();
 
       setPendingVerification({ email: data.email || email, emailSent: data.emailSent !== false });
       setResendStatus('idle');
@@ -178,10 +172,7 @@ const Auth = () => {
       setFormData(emptyForm);
     } catch (err) {
 
-      setRegisterError(err.message);
-    } finally {
-
-      setRegisterLoading(false);
+      // Hata redux state.error'a yazılır ve yukarıdaki toast'ta gösterilir
     }
   };
 
@@ -194,14 +185,14 @@ const Auth = () => {
 
     try {
 
-      const data = await resendVerificationRequest(email);
+      const data = await dispatch(resendVerification(email)).unwrap();
       setResendStatus('sent');
       setResendMessage(data.message);
       setResendCooldown(RESEND_COOLDOWN_SECONDS);
     } catch (err) {
 
       setResendStatus('error');
-      setResendMessage(err.message);
+      setResendMessage(err?.message || 'Bir sorun oluştu, lütfen tekrar deneyin.');
     }
   };
 
@@ -242,7 +233,6 @@ const Auth = () => {
     setValidationErrors({});
     setPasswordStrength(0);
     setPendingVerification(null);
-    setRegisterError('');
     setResendStatus('idle');
     setResendMessage('');
   };
@@ -524,8 +514,6 @@ const Auth = () => {
                 {validationErrors.acceptTerms && ( <p className="text-red-400 text-xs flex items-center gap-1 px-1"><AlertCircle size={12} />{validationErrors.acceptTerms}</p> )}
 
               </div> )}
-
-              {registerError && ( <p role="alert" className="text-red-500 text-sm flex items-start gap-2 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-xl px-4 py-3"><AlertCircle size={16} className="flex-shrink-0 mt-0.5" />{registerError}</p> )}
 
               {isUnverifiedLogin && ( <div role="alert" className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-xl p-4 space-y-3">
 
