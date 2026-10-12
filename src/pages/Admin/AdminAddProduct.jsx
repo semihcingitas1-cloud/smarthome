@@ -9,7 +9,6 @@ import { Package, Upload, X, Plus, Save, Eye, Sparkles, Tag, DollarSign, Layers,
 const MAX_IMAGES = 8;
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5 MB
 
-// Hangi alan hangi sekmede? (hata ikonu ve otomatik sekme geçişi için)
 const FIELD_TAB = {
   name: 'basic',
   sku: 'basic',
@@ -28,7 +27,6 @@ const AdminAddProduct = () => {
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
-
     name: '',
     sku: '',
     category: '',
@@ -69,14 +67,12 @@ const AdminAddProduct = () => {
   const { createStatus, createError, newProductId } = useSelector((state) => state.products);
   const isSaving = createStatus === 'loading';
 
-  // Sayfa kapanırken önizleme URL'lerini temizlemek için güncel görselleri ref'te tut
   const imagesRef = useRef([]);
   useEffect(() => {
     imagesRef.current = formData.images;
   }, [formData.images]);
 
   useEffect(() => {
-
     dispatch(resetStatus());
     window.scrollTo(0, 0);
 
@@ -87,24 +83,19 @@ const AdminAddProduct = () => {
   }, [dispatch]);
 
   useEffect(() => {
-
     if (createStatus === 'succeeded' && newProductId) {
-
       dispatch(resetStatus());
       navigate('/admin/product');
     }
   }, [createStatus, newProductId, dispatch, navigate]);
 
   useEffect(() => {
-
     if (createStatus === 'failed') {
-
       showToast(typeof createError === 'string' ? createError : 'Ürün kaydedilemedi.');
     }
   }, [createStatus, createError]);
 
   const showToast = (message) => {
-
     setToastMessage(message);
     setSaveStatus('error');
     setTimeout(() => setSaveStatus(null), 4000);
@@ -130,7 +121,6 @@ const AdminAddProduct = () => {
   ];
 
   const badges = [
-
     { value: 'Yeni', label: 'Yeni', color: 'from-green-500 to-emerald-500' },
     { value: 'Çok Satan', label: 'Çok Satan', color: 'from-orange-500 to-red-500' },
     { value: 'Premium', label: 'Premium', color: 'from-blue-500 to-purple-500' },
@@ -138,7 +128,6 @@ const AdminAddProduct = () => {
   ];
 
   const tabs = [
-
     { id: 'basic', label: 'Temel Bilgiler', icon: Package },
     { id: 'pricing', label: 'Fiyat & Stok', icon: DollarSign },
     { id: 'details', label: 'Detaylar', icon: FileText },
@@ -151,18 +140,14 @@ const AdminAddProduct = () => {
     Object.keys(errors).some((field) => errors[field] && FIELD_TAB[field] === tabId);
 
   const handleChange = (field, value) => {
-
     setFormData(prev => ({ ...prev, [field]: value }));
 
     if (errors[field]) {
-
       setErrors(prev => ({ ...prev, [field]: '' }));
     }
   };
 
-  // ───────────── Görseller ─────────────
   const addFiles = (fileList) => {
-
     const room = Math.max(MAX_IMAGES - formData.images.length, 0);
     const all = Array.from(fileList);
 
@@ -182,31 +167,25 @@ const AdminAddProduct = () => {
   };
 
   const handleImageUpload = (e) => {
-
     addFiles(e.target.files);
-    e.target.value = ''; // aynı dosya tekrar seçilebilsin
+    e.target.value = '';
   };
 
   const handleDrop = (e) => {
-
     e.preventDefault();
     addFiles(e.dataTransfer.files);
   };
 
   const removeImage = (index) => {
-
     URL.revokeObjectURL(formData.images[index]?.preview);
     setFormData(prev => ({ ...prev, images: prev.images.filter((_, i) => i !== index) }));
   };
 
-  // ───────────── Özellikler ─────────────
   const addFeature = () => {
-
     setFormData(prev => ({ ...prev, features: [...prev.features, ''] }));
   };
 
   const updateFeature = (index, value) => {
-
     setFormData(prev => ({
       ...prev,
       features: prev.features.map((f, i) => (i === index ? value : f))
@@ -214,13 +193,10 @@ const AdminAddProduct = () => {
   };
 
   const removeFeature = (index) => {
-
     setFormData(prev => ({ ...prev, features: prev.features.filter((_, i) => i !== index) }));
   };
 
-  // ───────────── Teknik özellikler ─────────────
   const addSpecification = () => {
-
     setFormData(prev => ({
       ...prev,
       specifications: [...prev.specifications, { key: '', value: '' }]
@@ -228,7 +204,6 @@ const AdminAddProduct = () => {
   };
 
   const updateSpecification = (index, field, value) => {
-
     setFormData(prev => ({
       ...prev,
       specifications: prev.specifications.map((s, i) => (i === index ? { ...s, [field]: value } : s))
@@ -236,50 +211,39 @@ const AdminAddProduct = () => {
   };
 
   const removeSpecification = (index) => {
-
     setFormData(prev => ({
       ...prev,
       specifications: prev.specifications.filter((_, i) => i !== index)
     }));
   };
 
-  // ───────────── Etiketler ─────────────
   const addTag = () => {
-
     const tag = tagInput.trim();
 
     if (tag && !formData.tags.includes(tag)) {
-
       setFormData(prev => ({ ...prev, tags: [...prev.tags, tag] }));
       setTagInput('');
     }
   };
 
   const removeTag = (tag) => {
-
     setFormData(prev => ({ ...prev, tags: prev.tags.filter(t => t !== tag) }));
   };
 
-  // ───────────── Renkler ─────────────
   const addColor = () => {
-
     const name = colorInput.name.trim();
 
     if (name && HEX_RE.test(colorInput.hex)) {
-
       setFormData(prev => ({ ...prev, colors: [...prev.colors, { name, hex: colorInput.hex }] }));
       setColorInput({ name: '', hex: '#000000' });
     }
   };
 
   const removeColor = (index) => {
-
     setFormData(prev => ({ ...prev, colors: prev.colors.filter((_, i) => i !== index) }));
   };
 
-  // ───────────── Modeller ─────────────
   const addModel = () => {
-
     setFormData(prev => ({
       ...prev,
       models: [...prev.models, { name: '', price: '', stock: '', features: [''] }]
@@ -287,7 +251,6 @@ const AdminAddProduct = () => {
   };
 
   const updateModel = (index, field, value) => {
-
     setFormData(prev => ({
       ...prev,
       models: prev.models.map((m, i) => (i === index ? { ...m, [field]: value } : m))
@@ -295,15 +258,11 @@ const AdminAddProduct = () => {
   };
 
   const removeModel = (index) => {
-
     setFormData(prev => ({ ...prev, models: prev.models.filter((_, i) => i !== index) }));
   };
 
-  // ───────────── SKU ─────────────
   const generateSKU = (data) => {
-
     if (!data || !data.name) {
-
       handleChange('sku', '');
       return;
     }
@@ -312,19 +271,15 @@ const AdminAddProduct = () => {
     let cleaned = data.name.replace(/[ÇŞĞÜİÖçşğüıö]/g, match => turkishChars[match]);
     cleaned = cleaned.toUpperCase().trim().replace(/\s+/g, '-').replace(/[^A-Z0-9-]/g, '');
 
-    // Aynı isimli ürünlerde çakışmasın diye kısa rastgele ek
     const suffix = Date.now().toString(36).slice(-4).toUpperCase();
     handleChange('sku', `SKU-${cleaned}-${suffix}`);
   };
 
   const duplicateProduct = () => {
-
     console.log('Ürün kopyalanıyor...');
   };
 
-  // ───────────── Doğrulama ─────────────
   const validateForm = () => {
-
     const newErrors = {};
     const price = Number(formData.price);
     const stock = Number(formData.stock);
@@ -337,7 +292,7 @@ const AdminAddProduct = () => {
       newErrors.price = 'Geçerli bir fiyat giriniz (0\'dan büyük)';
     }
 
-    if (formData.oldPrice !== '' && !(Number(formData.oldPrice) > price)) {
+    if (formData.oldPrice !== '' && price > 0 && !(Number(formData.oldPrice) > price)) {
       newErrors.oldPrice = 'Eski fiyat satış fiyatından yüksek olmalı';
     }
 
@@ -359,17 +314,14 @@ const AdminAddProduct = () => {
   };
 
   const handleSave = (isDraft = false) => {
-
     if (isSaving) return;
 
     if (!isDraft && !validateForm()) {
-
       showToast('Lütfen işaretli alanları kontrol edin.');
       return;
     }
 
     const productPayload = {
-
       name: formData.name,
       sku: formData.sku,
       category: formData.category,
@@ -413,806 +365,755 @@ const AdminAddProduct = () => {
   const hasDiscount = formData.price && formData.oldPrice && Number(formData.oldPrice) > Number(formData.price);
 
   return (
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white transition-colors">
 
-    <div className="min-h-screen bg-slate-950 text-white">
-
-      {saveStatus === 'error' && ( <div className="fixed top-8 right-8 z-50 bg-red-500 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 animate-slide-in">
-
-        <AlertCircle size={24} />
-
-        <div>
-
-          <p className="font-bold">Hata!</p>
-          <p className="text-sm">{toastMessage}</p>
-
+      {saveStatus === 'error' && (
+        <div className="fixed top-8 right-8 z-50 bg-red-500 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 animate-slide-in">
+          <AlertCircle size={24} />
+          <div>
+            <p className="font-bold">Hata!</p>
+            <p className="text-sm">{toastMessage}</p>
+          </div>
         </div>
+      )}
 
-      </div> )}
-
-      <div className="sticky top-0 z-40 bg-slate-950/95 backdrop-blur-md border-b border-slate-800">
-
+      <div className="sticky top-0 z-40 bg-white/95 dark:bg-slate-950/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
         <div className="max-w-7xl mx-auto px-6 py-4">
-
           <div className="flex items-center justify-between">
-
             <div className="flex items-center gap-4">
-
-              <button onClick={() => navigate(-1)} aria-label="Geri" className="p-2 hover:bg-slate-800 rounded-xl transition-colors" >
+              <button onClick={() => navigate(-1)} aria-label="Geri" className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors" >
                 <ArrowLeft size={20} />
               </button>
 
               <div>
-
                 <h1 className="text-2xl font-bold flex items-center gap-3">
-
-                  <div className="p-2 bg-gradient-to-br from-blue-500 to-purple-500 rounded-xl"><Package size={24} /></div>
+                  <div className="p-2 bg-gradient-to-br from-blue-500 to-purple-500 rounded-xl text-white"><Package size={24} /></div>
                   Yeni Ürün Ekle
-
                 </h1>
-
-                <p className="text-sm text-slate-400 mt-1">Ürün bilgilerini eksiksiz doldurun</p>
-
+                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Ürün bilgilerini eksiksiz doldurun</p>
               </div>
-
             </div>
 
             <div className="flex items-center gap-3">
-
-              <button onClick={() => setPreviewMode(!previewMode)} className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl transition-colors">
+              <button onClick={() => setPreviewMode(!previewMode)} className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl transition-colors">
                 <Eye size={18} />
                 Önizle
               </button>
 
-              <button onClick={duplicateProduct} className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl transition-colors">
+              <button onClick={duplicateProduct} className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl transition-colors">
                 <Copy size={18} />
                 Kopyala
               </button>
 
-              <button onClick={() => handleSave(true)} disabled={isSaving} className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl transition-colors disabled:opacity-50">
+              <button onClick={() => handleSave(true)} disabled={isSaving} className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl transition-colors disabled:opacity-50">
                 Taslak Kaydet
               </button>
 
-              <button onClick={() => handleSave(false)} disabled={isSaving} className="flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 rounded-xl transition-colors disabled:opacity-50 shadow-lg shadow-blue-500/25">
-
-                {isSaving ? ( <>
-
-                  <Loader2 size={18} className="animate-spin" />
-                  Kaydediliyor...
-
-                </> ) : ( <>
-
-                  <Save size={18} />
-                  Yayınla
-
-                </> )}
-
+              <button onClick={() => handleSave(false)} disabled={isSaving} className="flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl transition-colors disabled:opacity-50 shadow-lg shadow-blue-500/25">
+                {isSaving ? (
+                  <>
+                    <Loader2 size={18} className="animate-spin" />
+                    Kaydediliyor...
+                  </>
+                ) : (
+                  <>
+                    <Save size={18} />
+                    Yayınla
+                  </>
+                )}
               </button>
-
             </div>
-
           </div>
-
         </div>
-
       </div>
 
       <div className="max-w-7xl mx-auto px-6 py-8">
-
         <div className="grid lg:grid-cols-12 gap-8">
 
           <div className="lg:col-span-3">
-
-            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-4 sticky top-24">
-
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-4 sticky top-24 shadow-sm dark:shadow-none">
               <div className="space-y-2">
-
-                {tabs.map((tab) => ( <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === tab.id ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
-
-                  <tab.icon size={20} />
-                  <span className="font-medium">{tab.label}</span>
-                  {tabHasError(tab.id) && ( <AlertCircle size={16} className="ml-auto text-red-400" /> )}
-
-                </button> ))}
-
+                {tabs.map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+                      activeTab === tab.id
+                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25'
+                        : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                  >
+                    <tab.icon size={20} />
+                    <span className="font-medium">{tab.label}</span>
+                    {tabHasError(tab.id) && ( <AlertCircle size={16} className="ml-auto text-red-500 dark:text-red-400" /> )}
+                  </button>
+                ))}
               </div>
 
-              <div className="mt-6 pt-6 border-t border-slate-800 space-y-3">
-
-                <div className="text-xs text-slate-500 uppercase font-bold mb-3">Hızlı Bilgi</div>
+              <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-800 space-y-3">
+                <div className="text-xs text-slate-400 dark:text-slate-500 uppercase font-bold mb-3">Hızlı Bilgi</div>
 
                 <div className="flex items-center justify-between text-sm">
-
-                  <span className="text-slate-400">Görseller</span>
+                  <span className="text-slate-500 dark:text-slate-400">Görseller</span>
                   <span className="font-semibold">{formData.images.length}</span>
-
                 </div>
 
                 <div className="flex items-center justify-between text-sm">
-
-                  <span className="text-slate-400">Özellikler</span>
+                  <span className="text-slate-500 dark:text-slate-400">Özellikler</span>
                   <span className="font-semibold">{formData.features.filter(f => f).length}</span>
-
                 </div>
 
                 <div className="flex items-center justify-between text-sm">
-
-                  <span className="text-slate-400">Etiketler</span>
+                  <span className="text-slate-500 dark:text-slate-400">Etiketler</span>
                   <span className="font-semibold">{formData.tags.length}</span>
-
                 </div>
 
                 <div className="flex items-center justify-between text-sm">
-
-                  <span className="text-slate-400">Durum</span>
-                  <span className={`px-2 py-1 rounded-full text-xs font-bold ${formData.isActive ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>{formData.isActive ? 'Aktif' : 'Pasif'}</span>
-
+                  <span className="text-slate-500 dark:text-slate-400">Durum</span>
+                  <span className={`px-2 py-1 rounded-full text-xs font-bold ${
+                    formData.isActive
+                      ? 'bg-green-500/10 text-green-600 dark:bg-green-500/20 dark:text-green-400'
+                      : 'bg-red-500/10 text-red-600 dark:bg-red-500/20 dark:text-red-400'
+                  }`}>{formData.isActive ? 'Aktif' : 'Pasif'}</span>
                 </div>
-
               </div>
-
             </div>
-
           </div>
 
           <div className="lg:col-span-9">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 space-y-8 shadow-sm dark:shadow-none">
 
-            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-8 space-y-8">
-
-              {activeTab === 'basic' && ( <div className="space-y-6">
-
-                <div className="flex items-center gap-3 mb-6">
-
-                  <div className="p-3 bg-blue-500/10 rounded-xl"><Package className="text-blue-400" size={24} /></div>
-
-                  <div>
-
-                    <h2 className="text-2xl font-bold">Temel Bilgiler</h2>
-                    <p className="text-sm text-slate-400">Ürünün genel bilgilerini girin</p>
-
-                  </div>
-
-                </div>
-
-                <div className="space-y-2">
-
-                  <label htmlFor="product-name" className="text-sm font-semibold text-slate-400 flex items-center gap-2"><FileText size={14} />Ürün Adı *</label>
-                  <input id="product-name" type="text" placeholder="Örn: Smart LED Panel Pro" value={formData.name} onChange={(e) => handleChange('name', e.target.value)} className={`w-full bg-slate-950 border rounded-xl px-4 py-3 focus:outline-none transition-colors ${errors.name ? 'border-red-500' : 'border-slate-800 focus:border-blue-500'}`}/>
-
-                  {errors.name && ( <p className="text-red-400 text-xs flex items-center gap-1">
-                    <AlertCircle size={12} />
-                    {errors.name}
-                  </p> )}
-
-                </div>
-
-                <div className="grid md:grid-cols-2 gap-6">
-
-                  <div className="space-y-2">
-
-                    <label htmlFor="product-sku" className="text-sm font-semibold text-slate-400 flex items-center gap-2"><Hash size={14} />SKU / Stok Kodu *</label>
-
-                    <div className="flex gap-2">
-
-                      <input id="product-sku" type="text" placeholder="SKU-12345" value={formData.sku} onChange={(e) => handleChange('sku', e.target.value)} className={`flex-1 bg-slate-950 border rounded-xl px-4 py-3 focus:outline-none transition-colors ${errors.sku ? 'border-red-500' : 'border-slate-800 focus:border-blue-500'}`}/>
-
-                      <button onClick={() => generateSKU(formData)} aria-label="SKU oluştur" className="px-4 bg-slate-800 hover:bg-slate-700 rounded-xl transition-colors" title="SKU Oluştur">
-                        <Zap size={18} />
-                      </button>
-
+              {activeTab === 'basic' && (
+                <div className="space-y-6">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="p-3 bg-blue-500/10 rounded-xl"><Package className="text-blue-600 dark:text-blue-400" size={24} /></div>
+                    <div>
+                      <h2 className="text-2xl font-bold">Temel Bilgiler</h2>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">Ürünün genel bilgilerini girin</p>
                     </div>
-
-                    {errors.sku && ( <p className="text-red-400 text-xs flex items-center gap-1">
-                      <AlertCircle size={12} />
-                      {errors.sku}
-                    </p> )}
-
                   </div>
 
                   <div className="space-y-2">
-
-                    <label htmlFor="product-brand" className="text-sm font-semibold text-slate-400 flex items-center gap-2"><Tag size={14} />Marka</label>
-                    <input id="product-brand" type="text" placeholder="Örn: TechHome" value={formData.brand} onChange={(e) => handleChange('brand', e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"/>
-
+                    <label htmlFor="product-name" className="text-sm font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-2"><FileText size={14} />Ürün Adı *</label>
+                    <input
+                      id="product-name"
+                      type="text"
+                      placeholder="Örn: Smart LED Panel Pro"
+                      value={formData.name}
+                      onChange={(e) => handleChange('name', e.target.value)}
+                      className={`w-full bg-slate-50 dark:bg-slate-950 border rounded-xl px-4 py-3 focus:outline-none transition-colors ${
+                        errors.name ? 'border-red-500' : 'border-slate-200 dark:border-slate-800 focus:border-blue-500'
+                      }`}
+                    />
+                    {errors.name && (
+                      <p className="text-red-500 dark:text-red-400 text-xs flex items-center gap-1">
+                        <AlertCircle size={12} />
+                        {errors.name}
+                      </p>
+                    )}
                   </div>
 
-                </div>
-
-                <div className="grid md:grid-cols-2 gap-6">
-
-                  <div className="space-y-2">
-
-                    <label htmlFor="product-category" className="text-sm font-semibold text-slate-400 flex items-center gap-2"><Layers size={14} />Kategori *</label>
-
-                    <div className="relative">
-
-                      <select id="product-category" value={formData.category} onChange={(e) => { setFormData(prev => ({ ...prev, category: e.target.value, subcategory: '' })); if (errors.category) { setErrors(prev => ({ ...prev, category: '' })); } }} className={`w-full bg-slate-950 border rounded-xl px-4 py-3 focus:outline-none transition-colors appearance-none ${errors.category ? 'border-red-500' : 'border-slate-800 focus:border-blue-500'}`}>
-
-                        <option value="">Kategori Seçin</option>
-                        {categories.map((cat) => ( <option key={cat.name} value={cat.name}>{cat.name}</option> ))}
-
-                      </select>
-
-                      <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={20} />
-
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <label htmlFor="product-sku" className="text-sm font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-2"><Hash size={14} />SKU / Stok Kodu *</label>
+                      <div className="flex gap-2">
+                        <input
+                          id="product-sku"
+                          type="text"
+                          placeholder="SKU-12345"
+                          value={formData.sku}
+                          onChange={(e) => handleChange('sku', e.target.value)}
+                          className={`flex-1 bg-slate-50 dark:bg-slate-950 border rounded-xl px-4 py-3 focus:outline-none transition-colors ${
+                            errors.sku ? 'border-red-500' : 'border-slate-200 dark:border-slate-800 focus:border-blue-500'
+                          }`}
+                        />
+                        <button onClick={() => generateSKU(formData)} aria-label="SKU oluştur" className="px-4 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl transition-colors" title="SKU Oluştur">
+                          <Zap size={18} />
+                        </button>
+                      </div>
+                      {errors.sku && (
+                        <p className="text-red-500 dark:text-red-400 text-xs flex items-center gap-1">
+                          <AlertCircle size={12} />
+                          {errors.sku}
+                        </p>
+                      )}
                     </div>
-
-                    {errors.category && ( <p className="text-red-400 text-xs flex items-center gap-1">
-                      <AlertCircle size={12} />
-                      {errors.category}
-                    </p>)}
-
-                  </div>
-
-                  <div className="space-y-2">
-
-                    <label htmlFor="product-subcategory" className="text-sm font-semibold text-slate-400 flex items-center gap-2"><Filter size={14} />Alt Kategori</label>
-
-                    <div className="relative">
-
-                      <select id="product-subcategory" value={formData.subcategory} onChange={(e) => handleChange('subcategory', e.target.value)} disabled={!selectedCategory} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors appearance-none disabled:opacity-50">
-
-                        <option value="">Alt Kategori Seçin</option>
-                        {selectedCategory?.subcategories.map((sub) => ( <option key={sub} value={sub}>{sub}</option> ))}
-
-                      </select>
-
-                      <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={20} />
-
-                    </div>
-
-                  </div>
-
-                </div>
-
-                <div className="space-y-2">
-
-                  <label htmlFor="product-short" className="text-sm font-semibold text-slate-400 flex items-center gap-2"><FileText size={14} />Kısa Açıklama</label>
-                  <textarea id="product-short" rows="3" maxLength={200} placeholder="Ürünün kısa özeti (Liste görünümünde gösterilir)" value={formData.shortDescription} onChange={(e) => handleChange('shortDescription', e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors resize-none"/>
-                  <p className="text-xs text-slate-500">{formData.shortDescription.length} / 200 karakter</p>
-
-                </div>
-
-              </div> )}
-
-              {activeTab === 'pricing' && ( <div className="space-y-6">
-
-                <div className="flex items-center gap-3 mb-6">
-
-                  <div className="p-3 bg-green-500/10 rounded-xl"><DollarSign className="text-green-400" size={24} /></div>
-
-                  <div>
-
-                    <h2 className="text-2xl font-bold">Fiyat & Stok</h2>
-                    <p className="text-sm text-slate-400">Fiyatlandırma ve stok bilgilerini ayarlayın</p>
-
-                  </div>
-
-                </div>
-
-                <div className="grid md:grid-cols-3 gap-6">
-
-                  <div className="space-y-2">
-
-                    <label htmlFor="product-price" className="text-sm font-semibold text-slate-400 flex items-center gap-2"><DollarSign size={14} />Satış Fiyatı *</label>
-
-                    <div className="relative">
-
-                      <input id="product-price" type="number" min="0" step="0.01" placeholder="1299" value={formData.price} onChange={(e) => handleChange('price', e.target.value)} className={`w-full bg-slate-950 border rounded-xl pl-4 pr-12 py-3 focus:outline-none transition-colors ${errors.price ? 'border-red-500' : 'border-slate-800 focus:border-blue-500'}`}/>
-                      <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500">₺</span>
-
-                    </div>
-
-                    {errors.price && ( <p className="text-red-400 text-xs flex items-center gap-1">
-                      <AlertCircle size={12} />
-                      {errors.price}
-                    </p> )}
-
-                  </div>
-
-                  <div className="space-y-2">
-
-                    <label htmlFor="product-old-price" className="text-sm font-semibold text-slate-400 flex items-center gap-2"><Tag size={14} />Eski Fiyat</label>
-
-                    <div className="relative">
-
-                      <input id="product-old-price" type="number" min="0" step="0.01" placeholder="1599" value={formData.oldPrice} onChange={(e) => handleChange('oldPrice', e.target.value)} className={`w-full bg-slate-950 border rounded-xl pl-4 pr-12 py-3 focus:outline-none transition-colors ${errors.oldPrice ? 'border-red-500' : 'border-slate-800 focus:border-blue-500'}`}/>
-                      <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500">₺</span>
-
-                    </div>
-
-                    {hasDiscount && ( <p className="text-xs text-green-400">%{Math.round(((formData.oldPrice - formData.price) / formData.oldPrice) * 100)} İndirim</p> )}
-
-                    {errors.oldPrice && ( <p className="text-red-400 text-xs flex items-center gap-1">
-                      <AlertCircle size={12} />
-                      {errors.oldPrice}
-                    </p> )}
-
-                  </div>
-
-                  <div className="space-y-2">
-
-                    <label htmlFor="product-stock" className="text-sm font-semibold text-slate-400 flex items-center gap-2"><Box size={14} />Stok Adedi *</label>
-                    <input id="product-stock" type="number" min="0" step="1" placeholder="50" value={formData.stock} onChange={(e) => handleChange('stock', e.target.value)} className={`w-full bg-slate-950 border rounded-xl px-4 py-3 focus:outline-none transition-colors ${errors.stock ? 'border-red-500' : 'border-slate-800 focus:border-blue-500'}`}/>
-
-                    {errors.stock && ( <p className="text-red-400 text-xs flex items-center gap-1">
-                      <AlertCircle size={12} />
-                      {errors.stock}
-                    </p> )}
-
-                  </div>
-
-                </div>
-
-                <div className="grid md:grid-cols-2 gap-6">
-
-                  <div className="space-y-2">
-
-                    <label htmlFor="product-warranty" className="text-sm font-semibold text-slate-400 flex items-center gap-2"><Shield size={14} />Garanti Süresi</label>
-
-                    <div className="relative">
-
-                      <select id="product-warranty" value={formData.warranty} onChange={(e) => handleChange('warranty', e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors appearance-none">
-
-                        <option value="">Garanti Seçin</option>
-                        <option value="6">6 Ay</option>
-                        <option value="12">1 Yıl</option>
-                        <option value="24">2 Yıl</option>
-                        <option value="36">3 Yıl</option>
-
-                      </select>
-
-                      <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={20} />
-
-                    </div>
-
-                  </div>
-
-                  <div className="space-y-2">
-
-                    <label htmlFor="product-return" className="text-sm font-semibold text-slate-400 flex items-center gap-2"><Calendar size={14} />İade Süresi (Gün)</label>
-                    <input id="product-return" type="number" min="0" step="1" placeholder="14" value={formData.returnDays} onChange={(e) => handleChange('returnDays', e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"/>
-
-                  </div>
-
-                </div>
-
-                <div className="space-y-4">
-
-                  <label className="text-sm font-semibold text-slate-400 flex items-center gap-2"><Sparkles size={14} />Rozet & Etiketler</label>
-
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-
-                    {badges.map((badge) => ( <button key={badge.value} onClick={() => handleChange('badge', formData.badge === badge.value ? '' : badge.value)} className={`p-4 rounded-xl border transition-all ${formData.badge === badge.value ? `bg-gradient-to-br ${badge.color} border-transparent shadow-lg` : 'bg-slate-950 border-slate-800 hover:border-slate-700'}`}>
-                      <p className="font-semibold text-sm">{badge.label}</p>
-                    </button> ))}
-
-                  </div>
-
-                </div>
-
-                <div className="space-y-3">
-
-                  <label className="flex items-center gap-3 cursor-pointer group">
-
-                    <input type="checkbox" checked={formData.freeShipping} onChange={(e) => handleChange('freeShipping', e.target.checked)} className="w-5 h-5 rounded border-slate-700 bg-slate-950 text-blue-600 focus:ring-2 focus:ring-blue-500"/>
-
-                    <div className="flex items-center gap-2">
-
-                      <Truck size={18} className="text-blue-400" />
-                      <span className="font-medium group-hover:text-blue-400 transition-colors">Ücretsiz Kargo</span>
-
-                    </div>
-
-                  </label>
-
-                  <label className="flex items-center gap-3 cursor-pointer group">
-
-                    <input type="checkbox" checked={formData.isNew} onChange={(e) => handleChange('isNew', e.target.checked)} className="w-5 h-5 rounded border-slate-700 bg-slate-950 text-blue-600 focus:ring-2 focus:ring-blue-500"/>
-
-                    <div className="flex items-center gap-2">
-
-                      <Sparkles size={18} className="text-green-400" />
-                      <span className="font-medium group-hover:text-blue-400 transition-colors">Yeni Ürün</span>
-
-                    </div>
-
-                  </label>
-
-                  <label className="flex items-center gap-3 cursor-pointer group">
-
-                    <input type="checkbox" checked={formData.isFeatured} onChange={(e) => handleChange('isFeatured', e.target.checked)} className="w-5 h-5 rounded border-slate-700 bg-slate-950 text-blue-600 focus:ring-2 focus:ring-blue-500"/>
-
-                    <div className="flex items-center gap-2">
-
-                      <Star size={18} className="text-yellow-400" />
-                      <span className="font-medium group-hover:text-blue-400 transition-colors">Öne Çıkan Ürün</span>
-
-                    </div>
-
-                  </label>
-
-                  <label className="flex items-center gap-3 cursor-pointer group">
-
-                    <input type="checkbox" checked={formData.isActive} onChange={(e) => handleChange('isActive', e.target.checked)} className="w-5 h-5 rounded border-slate-700 bg-slate-950 text-blue-600 focus:ring-2 focus:ring-blue-500"/>
-
-                    <div className="flex items-center gap-2">
-
-                      <Zap size={18} className="text-purple-400" />
-                      <span className="font-medium group-hover:text-blue-400 transition-colors">Aktif (Satışta)</span>
-
-                    </div>
-
-                  </label>
-
-                </div>
-
-              </div> )}
-
-              {activeTab === 'details' && ( <div className="space-y-6">
-
-                <div className="flex items-center gap-3 mb-6">
-
-                  <div className="p-3 bg-purple-500/10 rounded-xl"><FileText className="text-purple-400" size={24} /></div>
-
-                  <div>
-
-                    <h2 className="text-2xl font-bold">Detaylı Bilgiler</h2>
-                    <p className="text-sm text-slate-400">Ürün açıklaması ve özellikleri</p>
-
-                  </div>
-
-                </div>
-
-                <div className="space-y-2">
-
-                  <label htmlFor="product-description" className="text-sm font-semibold text-slate-400 flex items-center gap-2"><FileText size={14} />Detaylı Açıklama</label>
-                  <textarea id="product-description" rows="8" placeholder="Ürününüzü detaylı olarak açıklayın..." value={formData.description} onChange={(e) => handleChange('description', e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors resize-none"/>
-
-                </div>
-
-                <div className="space-y-4">
-
-                  <div className="flex items-center justify-between">
-
-                    <label className="text-sm font-semibold text-slate-400 flex items-center gap-2"><List size={14} />Özellikler</label>
-
-                    <button onClick={addFeature} className="flex items-center gap-2 px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm transition-colors">
-                      <Plus size={16} />
-                      Özellik Ekle
-                    </button>
-
-                  </div>
-
-                  <div className="space-y-3">
-
-                    {formData.features.map((feature, index) => ( <div key={index} className="flex gap-2">
-
-                      <input type="text" placeholder="Örn: WiFi 2.4GHz & 5GHz Desteği" value={feature} onChange={(e) => updateFeature(index, e.target.value)} className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"/>
-
-                      <button onClick={() => removeFeature(index)} aria-label="Özelliği sil" className="p-3 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl transition-colors">
-                        <Trash2 size={18} />
-                      </button>
-
-                    </div> ))}
-
-                  </div>
-
-                </div>
-
-                <div className="space-y-4">
-
-                  <div className="flex items-center justify-between">
-
-                    <label className="text-sm font-semibold text-slate-400 flex items-center gap-2"><Settings size={14} />Teknik Özellikler</label>
-
-                    <button onClick={addSpecification} className="flex items-center gap-2 px-3 py-1 bg-purple-600 hover:bg-purple-700 rounded-lg text-sm transition-colors">
-                      <Plus size={16} />
-                      Özellik Ekle
-                    </button>
-
-                  </div>
-
-                  <div className="space-y-3">
-
-                    {formData.specifications.map((spec, index) => ( <div key={index} className="flex gap-2">
-
-                      <input type="text" placeholder="Özellik (örn: Güç Tüketimi)" value={spec.key} onChange={(e) => updateSpecification(index, 'key', e.target.value)} className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"/>
-                      <input type="text" placeholder="Değer (örn: 18W)" value={spec.value} onChange={(e) => updateSpecification(index, 'value', e.target.value)} className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"/>
-
-                      <button onClick={() => removeSpecification(index)} aria-label="Teknik özelliği sil" className="p-3 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl transition-colors">
-                        <Trash2 size={18} />
-                      </button>
-
-                    </div> ))}
-
-                  </div>
-
-                </div>
-
-                <div className="space-y-4">
-
-                  <label htmlFor="product-tag" className="text-sm font-semibold text-slate-400 flex items-center gap-2"><Tag size={14} />Etiketler</label>
-
-                  <div className="flex gap-2">
-
-                    <input id="product-tag" type="text" placeholder="Etiket ekle (örn: akıllı, LED, enerji)" value={tagInput} onChange={(e) => setTagInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addTag(); } }} className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"/>
-
-                    <button onClick={addTag} aria-label="Etiket ekle" className="px-6 bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors">
-                      <Plus size={18} />
-                    </button>
-
-                  </div>
-
-                  {formData.tags.length > 0 && ( <div className="flex flex-wrap gap-2">
-                    {formData.tags.map((tag) => ( <span key={tag} className="flex items-center gap-2 bg-blue-500/10 text-blue-400 px-3 py-1 rounded-full text-sm">{tag}<button onClick={() => removeTag(tag)} aria-label={`${tag} etiketini sil`} className="hover:text-red-400"><X size={14} /></button></span> ))}
-                  </div> )}
-
-                </div>
-
-              </div> )}
-
-              {activeTab === 'variants' && ( <div className="space-y-6">
-
-                <div className="flex items-center gap-3 mb-6">
-
-                  <div className="p-3 bg-orange-500/10 rounded-xl"><Layers className="text-orange-400" size={24} /></div>
-
-                  <div>
-
-                    <h2 className="text-2xl font-bold">Varyantlar</h2>
-                    <p className="text-sm text-slate-400">Renk ve model seçenekleri</p>
-
-                  </div>
-
-                </div>
-
-                <div className="space-y-4">
-
-                  <label className="text-sm font-semibold text-slate-400 flex items-center gap-2"><Palette size={14} />Renk Seçenekleri</label>
-
-                  <div className="grid md:grid-cols-2 gap-4">
 
                     <div className="space-y-2">
-
-                      <input type="text" placeholder="Renk Adı (örn: Siyah)" value={colorInput.name} onChange={(e) => setColorInput({ ...colorInput, name: e.target.value })} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"/>
-
+                      <label htmlFor="product-brand" className="text-sm font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-2"><Tag size={14} />Marka</label>
+                      <input
+                        id="product-brand"
+                        type="text"
+                        placeholder="Örn: TechHome"
+                        value={formData.brand}
+                        onChange={(e) => handleChange('brand', e.target.value)}
+                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"
+                      />
                     </div>
-
-                    <div className="flex gap-2">
-
-                      <input type="color" value={HEX_RE.test(colorInput.hex) ? colorInput.hex : '#000000'} onChange={(e) => setColorInput({ ...colorInput, hex: e.target.value })} className="w-16 h-12 bg-slate-950 border border-slate-800 rounded-xl cursor-pointer"/>
-                      <input type="text" placeholder="#000000" maxLength={7} value={colorInput.hex} onChange={(e) => setColorInput({ ...colorInput, hex: e.target.value })} className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"/>
-
-                      <button onClick={addColor} aria-label="Renk ekle" className="px-6 bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors">
-                        <Plus size={18} />
-                      </button>
-
-                    </div>
-
                   </div>
 
-                  {formData.colors.length > 0 && ( <div className="flex flex-wrap gap-3">
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <label htmlFor="product-category" className="text-sm font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-2"><Layers size={14} />Kategori *</label>
+                      <div className="relative">
+                        <select
+                          id="product-category"
+                          value={formData.category}
+                          onChange={(e) => {
+                            setFormData(prev => ({ ...prev, category: e.target.value, subcategory: '' }));
+                            if (errors.category) { setErrors(prev => ({ ...prev, category: '' })); }
+                          }}
+                          className={`w-full bg-slate-50 dark:bg-slate-950 border rounded-xl px-4 py-3 focus:outline-none transition-colors appearance-none ${
+                            errors.category ? 'border-red-500' : 'border-slate-200 dark:border-slate-800 focus:border-blue-500'
+                          }`}
+                        >
+                          <option value="">Kategori Seçin</option>
+                          {categories.map((cat) => ( <option key={cat.name} value={cat.name}>{cat.name}</option> ))}
+                        </select>
+                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 pointer-events-none" size={20} />
+                      </div>
+                      {errors.category && (
+                        <p className="text-red-500 dark:text-red-400 text-xs flex items-center gap-1">
+                          <AlertCircle size={12} />
+                          {errors.category}
+                        </p>
+                      )}
+                    </div>
 
-                    {formData.colors.map((color, index) => ( <div key={index} className="flex items-center gap-2 bg-slate-950 border border-slate-800 rounded-xl px-4 py-2">
+                    <div className="space-y-2">
+                      <label htmlFor="product-subcategory" className="text-sm font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-2"><Filter size={14} />Alt Kategori</label>
+                      <div className="relative">
+                        <select
+                          id="product-subcategory"
+                          value={formData.subcategory}
+                          onChange={(e) => handleChange('subcategory', e.target.value)}
+                          disabled={!selectedCategory}
+                          className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors appearance-none disabled:opacity-50"
+                        >
+                          <option value="">Alt Kategori Seçin</option>
+                          {selectedCategory?.subcategories.map((sub) => ( <option key={sub} value={sub}>{sub}</option> ))}
+                        </select>
+                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 pointer-events-none" size={20} />
+                      </div>
+                    </div>
+                  </div>
 
-                      <div className="w-6 h-6 rounded-full border-2 border-slate-700" style={{ backgroundColor: color.hex }}/>
-                      <span className="text-sm">{color.name}</span>
-                      <button onClick={() => removeColor(index)} aria-label={`${color.name} rengini sil`} className="ml-2 text-red-400 hover:text-red-300"><X size={14} /></button>
-
-                    </div> ))}
-
-                  </div> )}
-
+                  <div className="space-y-2">
+                    <label htmlFor="product-short" className="text-sm font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-2"><FileText size={14} />Kısa Açıklama</label>
+                    <textarea
+                      id="product-short"
+                      rows="3"
+                      maxLength={200}
+                      placeholder="Ürünün kısa özeti (Liste görünümünde gösterilir)"
+                      value={formData.shortDescription}
+                      onChange={(e) => handleChange('shortDescription', e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors resize-none"
+                    />
+                    <p className="text-xs text-slate-400 dark:text-slate-500">{formData.shortDescription.length} / 200 karakter</p>
+                  </div>
                 </div>
+              )}
 
-                <div className="space-y-4">
+              {activeTab === 'pricing' && (
+                <div className="space-y-6">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="p-3 bg-green-500/10 rounded-xl"><DollarSign className="text-green-600 dark:text-green-400" size={24} /></div>
+                    <div>
+                      <h2 className="text-2xl font-bold">Fiyat & Stok</h2>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">Fiyatlandırma ve stok bilgilerini ayarlayın</p>
+                    </div>
+                  </div>
 
-                  <div className="flex items-center justify-between">
+                  <div className="grid md:grid-cols-3 gap-6">
+                    <div className="space-y-2">
+                      <label htmlFor="product-price" className="text-sm font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-2"><DollarSign size={14} />Satış Fiyatı *</label>
+                      <div className="relative">
+                        <input
+                          id="product-price"
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          placeholder="1299"
+                          value={formData.price}
+                          onChange={(e) => handleChange('price', e.target.value)}
+                          className={`w-full bg-slate-50 dark:bg-slate-950 border rounded-xl pl-4 pr-12 py-3 focus:outline-none transition-colors ${
+                            errors.price ? 'border-red-500' : 'border-slate-200 dark:border-slate-800 focus:border-blue-500'
+                          }`}
+                        />
+                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500">₺</span>
+                      </div>
+                      {errors.price && (
+                        <p className="text-red-500 dark:text-red-400 text-xs flex items-center gap-1">
+                          <AlertCircle size={12} />
+                          {errors.price}
+                        </p>
+                      )}
+                    </div>
 
-                    <label className="text-sm font-semibold text-slate-400 flex items-center gap-2"><Box size={14} />Model Varyantları</label>
+                    <div className="space-y-2">
+                      <label htmlFor="product-old-price" className="text-sm font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-2"><Tag size={14} />Eski Fiyat</label>
+                      <div className="relative">
+                        <input
+                          id="product-old-price"
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          placeholder="1599"
+                          value={formData.oldPrice}
+                          onChange={(e) => handleChange('oldPrice', e.target.value)}
+                          className={`w-full bg-slate-50 dark:bg-slate-950 border rounded-xl pl-4 pr-12 py-3 focus:outline-none transition-colors ${
+                            errors.oldPrice ? 'border-red-500' : 'border-slate-200 dark:border-slate-800 focus:border-blue-500'
+                          }`}
+                        />
+                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500">₺</span>
+                      </div>
+                      {hasDiscount && ( <p className="text-xs text-green-600 dark:text-green-400">%{Math.round(((formData.oldPrice - formData.price) / formData.oldPrice) * 100)} İndirim</p> )}
+                      {errors.oldPrice && (
+                        <p className="text-red-500 dark:text-red-400 text-xs flex items-center gap-1">
+                          <AlertCircle size={12} />
+                          {errors.oldPrice}
+                        </p>
+                      )}
+                    </div>
 
-                    <button onClick={addModel} className="flex items-center gap-2 px-3 py-1 bg-orange-600 hover:bg-orange-700 rounded-lg text-sm transition-colors">
-                      <Plus size={16} />
-                      Model Ekle
-                    </button>
+                    <div className="space-y-2">
+                      <label htmlFor="product-stock" className="text-sm font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-2"><Box size={14} />Stok Adedi *</label>
+                      <input
+                        id="product-stock"
+                        type="number"
+                        min="0"
+                        step="1"
+                        placeholder="50"
+                        value={formData.stock}
+                        onChange={(e) => handleChange('stock', e.target.value)}
+                        className={`w-full bg-slate-50 dark:bg-slate-950 border rounded-xl px-4 py-3 focus:outline-none transition-colors ${
+                          errors.stock ? 'border-red-500' : 'border-slate-200 dark:border-slate-800 focus:border-blue-500'
+                        }`}
+                      />
+                      {errors.stock && (
+                        <p className="text-red-500 dark:text-red-400 text-xs flex items-center gap-1">
+                          <AlertCircle size={12} />
+                          {errors.stock}
+                        </p>
+                      )}
+                    </div>
+                  </div>
 
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <label htmlFor="product-warranty" className="text-sm font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-2"><Shield size={14} />Garanti Süresi</label>
+                      <div className="relative">
+                        <select
+                          id="product-warranty"
+                          value={formData.warranty}
+                          onChange={(e) => handleChange('warranty', e.target.value)}
+                          className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors appearance-none"
+                        >
+                          <option value="">Garanti Seçin</option>
+                          <option value="6">6 Ay</option>
+                          <option value="12">1 Yıl</option>
+                          <option value="24">2 Yıl</option>
+                          <option value="36">3 Yıl</option>
+                        </select>
+                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 pointer-events-none" size={20} />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label htmlFor="product-return" className="text-sm font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-2"><Calendar size={14} />İade Süresi (Gün)</label>
+                      <input
+                        id="product-return"
+                        type="number"
+                        min="0"
+                        step="1"
+                        placeholder="14"
+                        value={formData.returnDays}
+                        onChange={(e) => handleChange('returnDays', e.target.value)}
+                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"
+                      />
+                    </div>
                   </div>
 
                   <div className="space-y-4">
-
-                    {formData.models.map((model, index) => ( <div key={index} className="bg-slate-950 border border-slate-800 rounded-2xl p-6 space-y-4">
-
-                      <div className="flex items-center justify-between">
-
-                        <h4 className="font-semibold">Model {index + 1}</h4>
-
-                        <button onClick={() => removeModel(index)} aria-label="Modeli sil" className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors">
-                          <Trash2 size={16} />
+                    <label className="text-sm font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-2"><Sparkles size={14} />Rozet & Etiketler</label>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      {badges.map((badge) => (
+                        <button
+                          key={badge.value}
+                          onClick={() => handleChange('badge', formData.badge === badge.value ? '' : badge.value)}
+                          className={`p-4 rounded-xl border transition-all ${
+                            formData.badge === badge.value
+                              ? `bg-gradient-to-br ${badge.color} border-transparent text-white shadow-lg`
+                              : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+                          }`}
+                        >
+                          <p className="font-semibold text-sm">{badge.label}</p>
                         </button>
-
-                      </div>
-
-                      <div className="grid md:grid-cols-3 gap-4">
-
-                        <input type="text" placeholder="Model Adı (örn: Pro)" value={model.name} onChange={(e) => updateModel(index, 'name', e.target.value)} className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors" />
-                        <input type="number" min="0" step="0.01" placeholder="Fiyat" value={model.price} onChange={(e) => updateModel(index, 'price', e.target.value)} className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"/>
-                        <input type="number" min="0" step="1" placeholder="Stok" value={model.stock} onChange={(e) => updateModel(index, 'stock', e.target.value)} className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"/>
-
-                      </div>
-
-                    </div> ))}
-
-                  </div>
-
-                </div>
-
-              </div> )}
-
-              {activeTab === 'media' && ( <div className="space-y-6">
-
-                <div className="flex items-center gap-3 mb-6">
-
-                  <div className="p-3 bg-pink-500/10 rounded-xl"><ImageIcon className="text-pink-400" size={24} /></div>
-
-                  <div>
-
-                    <h2 className="text-2xl font-bold">Ürün Görselleri</h2>
-                    <p className="text-sm text-slate-400">En fazla {MAX_IMAGES} görsel, görsel başına 5 MB</p>
-
-                  </div>
-
-                </div>
-
-                <div onDragOver={(e) => e.preventDefault()} onDrop={handleDrop} className={`border-2 border-dashed rounded-2xl p-12 text-center hover:border-blue-500/50 transition-colors ${errors.images ? 'border-red-500' : 'border-slate-800'}`}>
-
-                  <input type="file" id="image-upload" multiple accept="image/*" onChange={handleImageUpload} className="hidden"/>
-                  <label htmlFor="image-upload" className="cursor-pointer flex flex-col items-center gap-4">
-                    <div className="p-6 bg-blue-500/10 rounded-2xl"><Upload size={48} className="text-blue-400" /></div>
-
-                    <div>
-
-                      <p className="text-lg font-semibold mb-2">Görsel Yükle</p>
-                      <p className="text-sm text-slate-400">veya sürükle-bırak yapın (PNG, JPG, WEBP)</p>
-
+                      ))}
                     </div>
-
-                  </label>
-
-                </div>
-
-                {errors.images && ( <p className="text-red-400 text-sm flex items-center gap-2"><AlertCircle size={16} />{errors.images}</p> )}
-
-                {formData.images.length > 0 && ( <div>
-
-                  <div className="flex items-center justify-between mb-4">
-
-                    <p className="text-sm text-slate-400">{formData.images.length} / {MAX_IMAGES} görsel yüklendi</p>
-                    <p className="text-xs text-slate-500">İlk görsel ana görsel olarak kullanılacak</p>
-
                   </div>
 
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="space-y-3">
+                    <label className="flex items-center gap-3 cursor-pointer group">
+                      <input type="checkbox" checked={formData.freeShipping} onChange={(e) => handleChange('freeShipping', e.target.checked)} className="w-5 h-5 rounded border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-blue-600 focus:ring-2 focus:ring-blue-500"/>
+                      <div className="flex items-center gap-2">
+                        <Truck size={18} className="text-blue-600 dark:text-blue-400" />
+                        <span className="font-medium group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">Ücretsiz Kargo</span>
+                      </div>
+                    </label>
 
-                    {formData.images.map((image, index) => ( <div key={image.preview} className="relative group aspect-square bg-slate-950 border border-slate-800 rounded-2xl overflow-hidden">
+                    <label className="flex items-center gap-3 cursor-pointer group">
+                      <input type="checkbox" checked={formData.isNew} onChange={(e) => handleChange('isNew', e.target.checked)} className="w-5 h-5 rounded border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-blue-600 focus:ring-2 focus:ring-blue-500"/>
+                      <div className="flex items-center gap-2">
+                        <Sparkles size={18} className="text-green-600 dark:text-green-400" />
+                        <span className="font-medium group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">Yeni Ürün</span>
+                      </div>
+                    </label>
 
-                      <img src={image.preview} alt={`Product ${index + 1}`} className="w-full h-full object-cover" />
-                      {index === 0 && ( <div className="absolute top-2 left-2 bg-blue-600 px-2 py-1 rounded-lg text-xs font-bold">Ana Görsel</div> )}
+                    <label className="flex items-center gap-3 cursor-pointer group">
+                      <input type="checkbox" checked={formData.isFeatured} onChange={(e) => handleChange('isFeatured', e.target.checked)} className="w-5 h-5 rounded border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-blue-600 focus:ring-2 focus:ring-blue-500"/>
+                      <div className="flex items-center gap-2">
+                        <Star size={18} className="text-yellow-600 dark:text-yellow-400" />
+                        <span className="font-medium group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">Öne Çıkan Ürün</span>
+                      </div>
+                    </label>
 
-                      <button onClick={() => removeImage(index)} aria-label="Görseli sil" className="absolute top-2 right-2 p-2 bg-red-500 rounded-lg opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity">
-                        <Trash2 size={16} />
-                      </button>
-
-                    </div> ))}
-
+                    <label className="flex items-center gap-3 cursor-pointer group">
+                      <input type="checkbox" checked={formData.isActive} onChange={(e) => handleChange('isActive', e.target.checked)} className="w-5 h-5 rounded border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-blue-600 focus:ring-2 focus:ring-blue-500"/>
+                      <div className="flex items-center gap-2">
+                        <Zap size={18} className="text-purple-600 dark:text-purple-400" />
+                        <span className="font-medium group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">Aktif (Satışta)</span>
+                      </div>
+                    </label>
                   </div>
+                </div>
+              )}
 
-                </div> )}
-
-              </div> )}
-
-              {activeTab === 'seo' && ( <div className="space-y-6">
-
-                <div className="flex items-center gap-3 mb-6">
-
-                  <div className="p-3 bg-cyan-500/10 rounded-xl"><BarChart3 className="text-cyan-400" size={24} /></div>
-
-                  <div>
-
-                    <h2 className="text-2xl font-bold">SEO Ayarları</h2>
-                    <p className="text-sm text-slate-400">Arama motoru optimizasyonu</p>
-
+              {activeTab === 'details' && (
+                <div className="space-y-6">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="p-3 bg-purple-500/10 rounded-xl"><FileText className="text-purple-600 dark:text-purple-400" size={24} /></div>
+                    <div>
+                      <h2 className="text-2xl font-bold">Detaylı Bilgiler</h2>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">Ürün açıklaması ve özellikleri</p>
+                    </div>
                   </div>
-
-                </div>
-
-                <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-4 flex items-start gap-3">
-
-                  <Info className="text-blue-400 flex-shrink-0 mt-0.5" size={20} />
-
-                  <div className="text-sm text-slate-300">
-
-                    <p className="font-semibold mb-1">SEO İpucu</p>
-                    <p className="text-slate-400">Başlık ve açıklama alanlarını boş bırakırsanız, ürün adı ve kısa açıklama otomatik kullanılır.</p>
-
-                  </div>
-
-                </div>
-
-                <div className="space-y-2">
-
-                  <label htmlFor="seo-title" className="text-sm font-semibold text-slate-400 flex items-center gap-2"><FileText size={14} />SEO Başlığı</label>
-                  <input id="seo-title" type="text" maxLength={60} placeholder="Ürün için SEO başlığı" value={formData.seoTitle} onChange={(e) => handleChange('seoTitle', e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"/>
-                  <p className="text-xs text-slate-500">{formData.seoTitle.length} / 60 karakter</p>
-
-                </div>
-
-                <div className="space-y-2">
-
-                  <label htmlFor="seo-description" className="text-sm font-semibold text-slate-400 flex items-center gap-2"><FileText size={14} />SEO Açıklaması</label>
-                  <textarea id="seo-description" rows="4" maxLength={160} placeholder="Ürün için SEO açıklaması" value={formData.seoDescription} onChange={(e) => handleChange('seoDescription', e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors resize-none"/>
-                  <p className="text-xs text-slate-500">{formData.seoDescription.length} / 160 karakter</p>
-
-                </div>
-
-                <div className="space-y-2">
-
-                  <label htmlFor="seo-keywords" className="text-sm font-semibold text-slate-400 flex items-center gap-2"><Tag size={14} />SEO Anahtar Kelimeler</label>
-                  <input id="seo-keywords" type="text" placeholder="akıllı led, panel, aydınlatma (virgülle ayırın)" value={formData.seoKeywords} onChange={(e) => handleChange('seoKeywords', e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"/>
-
-                </div>
-
-                <div className="bg-slate-950 border border-slate-800 rounded-2xl p-6">
-
-                  <h4 className="font-semibold mb-4 text-sm text-slate-400">Arama Motoru Önizlemesi</h4>
 
                   <div className="space-y-2">
-
-                    <h3 className="text-blue-400 text-lg hover:underline cursor-pointer">{formData.seoTitle || formData.name || 'Ürün Başlığı'}</h3>
-                    <p className="text-green-600 text-sm">smarthome.com › urunler › {formData.sku || 'sku'}</p>
-                    <p className="text-slate-400 text-sm">{formData.seoDescription || formData.shortDescription || 'Ürün açıklaması burada görünecek...'}</p>
-
+                    <label htmlFor="product-description" className="text-sm font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-2"><FileText size={14} />Detaylı Açıklama</label>
+                    <textarea
+                      id="product-description"
+                      rows="8"
+                      placeholder="Ürününüzü detaylı olarak açıklayın..."
+                      value={formData.description}
+                      onChange={(e) => handleChange('description', e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors resize-none"
+                    />
                   </div>
 
-                </div>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-2"><List size={14} />Özellikler</label>
+                      <button onClick={addFeature} className="flex items-center gap-2 px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm transition-colors">
+                        <Plus size={16} />
+                        Özellik Ekle
+                      </button>
+                    </div>
 
-              </div> )}
+                    <div className="space-y-3">
+                      {formData.features.map((feature, index) => (
+                        <div key={index} className="flex gap-2">
+                          <input
+                            type="text"
+                            placeholder="Örn: WiFi 2.4GHz & 5GHz Desteği"
+                            value={feature}
+                            onChange={(e) => updateFeature(index, e.target.value)}
+                            className="flex-1 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"
+                          />
+                          <button onClick={() => removeFeature(index)} aria-label="Özelliği sil" className="p-3 bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 rounded-xl transition-colors">
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-2"><Settings size={14} />Teknik Özellikler</label>
+                      <button onClick={addSpecification} className="flex items-center gap-2 px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm transition-colors">
+                        <Plus size={16} />
+                        Özellik Ekle
+                      </button>
+                    </div>
+
+                    <div className="space-y-3">
+                      {formData.specifications.map((spec, index) => (
+                        <div key={index} className="flex gap-2">
+                          <input type="text" placeholder="Özellik (örn: Güç Tüketimi)" value={spec.key} onChange={(e) => updateSpecification(index, 'key', e.target.value)} className="flex-1 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"/>
+                          <input type="text" placeholder="Değer (örn: 18W)" value={spec.value} onChange={(e) => updateSpecification(index, 'value', e.target.value)} className="flex-1 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"/>
+                          <button onClick={() => removeSpecification(index)} aria-label="Teknik özelliği sil" className="p-3 bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 rounded-xl transition-colors">
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <label htmlFor="product-tag" className="text-sm font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-2"><Tag size={14} />Etiketler</label>
+                    <div className="flex gap-2">
+                      <input
+                        id="product-tag"
+                        type="text"
+                        placeholder="Etiket ekle (örn: akıllı, LED, enerji)"
+                        value={tagInput}
+                        onChange={(e) => setTagInput(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addTag(); } }}
+                        className="flex-1 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"
+                      />
+                      <button onClick={addTag} aria-label="Etiket ekle" className="px-6 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors">
+                        <Plus size={18} />
+                      </button>
+                    </div>
+
+                    {formData.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {formData.tags.map((tag) => (
+                          <span key={tag} className="flex items-center gap-2 bg-blue-500/10 text-blue-600 dark:text-blue-400 px-3 py-1 rounded-full text-sm">
+                            {tag}
+                            <button onClick={() => removeTag(tag)} aria-label={`${tag} etiketini sil`} className="hover:text-red-500 dark:hover:text-red-400"><X size={14} /></button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'variants' && (
+                <div className="space-y-6">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="p-3 bg-orange-500/10 rounded-xl"><Layers className="text-orange-600 dark:text-orange-400" size={24} /></div>
+                    <div>
+                      <h2 className="text-2xl font-bold">Varyantlar</h2>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">Renk ve model seçenekleri</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <label className="text-sm font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-2"><Palette size={14} />Renk Seçenekleri</label>
+
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <input
+                          type="text"
+                          placeholder="Renk Adı (örn: Siyah)"
+                          value={colorInput.name}
+                          onChange={(e) => setColorInput({ ...colorInput, name: e.target.value })}
+                          className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"
+                        />
+                      </div>
+
+                      <div className="flex gap-2">
+                        <input type="color" value={HEX_RE.test(colorInput.hex) ? colorInput.hex : '#000000'} onChange={(e) => setColorInput({ ...colorInput, hex: e.target.value })} className="w-16 h-12 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl cursor-pointer"/>
+                        <input type="text" placeholder="#000000" maxLength={7} value={colorInput.hex} onChange={(e) => setColorInput({ ...colorInput, hex: e.target.value })} className="flex-1 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"/>
+                        <button onClick={addColor} aria-label="Renk ekle" className="px-6 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors">
+                          <Plus size={18} />
+                        </button>
+                      </div>
+                    </div>
+
+                    {formData.colors.length > 0 && (
+                      <div className="flex flex-wrap gap-3">
+                        {formData.colors.map((color, index) => (
+                          <div key={index} className="flex items-center gap-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2">
+                            <div className="w-6 h-6 rounded-full border-2 border-slate-300 dark:border-slate-700" style={{ backgroundColor: color.hex }}/>
+                            <span className="text-sm">{color.name}</span>
+                            <button onClick={() => removeColor(index)} aria-label={`${color.name} rengini sil`} className="ml-2 text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300"><X size={14} /></button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-2"><Box size={14} />Model Varyantları</label>
+                      <button onClick={addModel} className="flex items-center gap-2 px-3 py-1 bg-orange-600 hover:bg-orange-700 text-white rounded-lg text-sm transition-colors">
+                        <Plus size={16} />
+                        Model Ekle
+                      </button>
+                    </div>
+
+                    <div className="space-y-4">
+                      {formData.models.map((model, index) => (
+                        <div key={index} className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 space-y-4">
+                          <div className="flex items-center justify-between">
+                            <h4 className="font-semibold">Model {index + 1}</h4>
+                            <button onClick={() => removeModel(index)} aria-label="Modeli sil" className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 rounded-lg transition-colors">
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+
+                          <div className="grid md:grid-cols-3 gap-4">
+                            <input type="text" placeholder="Model Adı (örn: Pro)" value={model.name} onChange={(e) => updateModel(index, 'name', e.target.value)} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors" />
+                            <input type="number" min="0" step="0.01" placeholder="Fiyat" value={model.price} onChange={(e) => updateModel(index, 'price', e.target.value)} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"/>
+                            <input type="number" min="0" step="1" placeholder="Stok" value={model.stock} onChange={(e) => updateModel(index, 'stock', e.target.value)} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"/>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'media' && (
+                <div className="space-y-6">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="p-3 bg-pink-500/10 rounded-xl"><ImageIcon className="text-pink-600 dark:text-pink-400" size={24} /></div>
+                    <div>
+                      <h2 className="text-2xl font-bold">Ürün Görselleri</h2>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">En fazla {MAX_IMAGES} görsel, görsel başına 5 MB</p>
+                    </div>
+                  </div>
+
+                  <div
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={handleDrop}
+                    className={`border-2 border-dashed rounded-2xl p-12 text-center hover:border-blue-500/50 transition-colors ${
+                      errors.images ? 'border-red-500' : 'border-slate-200 dark:border-slate-800'
+                    }`}
+                  >
+                    <input type="file" id="image-upload" multiple accept="image/*" onChange={handleImageUpload} className="hidden"/>
+                    <label htmlFor="image-upload" className="cursor-pointer flex flex-col items-center gap-4">
+                      <div className="p-6 bg-blue-500/10 rounded-2xl"><Upload size={48} className="text-blue-600 dark:text-blue-400" /></div>
+                      <div>
+                        <p className="text-lg font-semibold mb-2">Görsel Yükle</p>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">veya sürükle-bırak yapın (PNG, JPG, WEBP)</p>
+                      </div>
+                    </label>
+                  </div>
+
+                  {errors.images && ( <p className="text-red-500 dark:text-red-400 text-sm flex items-center gap-2"><AlertCircle size={16} />{errors.images}</p> )}
+
+                  {formData.images.length > 0 && (
+                    <div>
+                      <div className="flex items-center justify-between mb-4">
+                        <p className="text-sm text-slate-500 dark:text-slate-400">{formData.images.length} / {MAX_IMAGES} görsel yüklendi</p>
+                        <p className="text-xs text-slate-400 dark:text-slate-500">İlk görsel ana görsel olarak kullanılacak</p>
+                      </div>
+
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        {formData.images.map((image, index) => (
+                          <div key={image.preview} className="relative group aspect-square bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden">
+                            <img src={image.preview} alt={`Product ${index + 1}`} className="w-full h-full object-cover" />
+                            {index === 0 && ( <div className="absolute top-2 left-2 bg-blue-600 text-white px-2 py-1 rounded-lg text-xs font-bold">Ana Görsel</div> )}
+                            <button onClick={() => removeImage(index)} aria-label="Görseli sil" className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-lg opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity">
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {activeTab === 'seo' && (
+                <div className="space-y-6">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="p-3 bg-cyan-500/10 rounded-xl"><BarChart3 className="text-cyan-600 dark:text-cyan-400" size={24} /></div>
+                    <div>
+                      <h2 className="text-2xl font-bold">SEO Ayarları</h2>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">Arama motoru optimizasyonu</p>
+                    </div>
+                  </div>
+
+                  <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-4 flex items-start gap-3">
+                    <Info className="text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" size={20} />
+                    <div className="text-sm text-slate-700 dark:text-slate-300">
+                      <p className="font-semibold mb-1">SEO İpucu</p>
+                      <p className="text-slate-500 dark:text-slate-400">Başlık ve açıklama alanlarını boş bırakırsanız, ürün adı ve kısa açıklama otomatik kullanılır.</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label htmlFor="seo-title" className="text-sm font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-2"><FileText size={14} />SEO Başlığı</label>
+                    <input
+                      id="seo-title"
+                      type="text"
+                      maxLength={60}
+                      placeholder="Ürün için SEO başlığı"
+                      value={formData.seoTitle}
+                      onChange={(e) => handleChange('seoTitle', e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"
+                    />
+                    <p className="text-xs text-slate-400 dark:text-slate-500">{formData.seoTitle.length} / 60 karakter</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label htmlFor="seo-description" className="text-sm font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-2"><FileText size={14} />SEO Açıklaması</label>
+                    <textarea
+                      id="seo-description"
+                      rows="4"
+                      maxLength={160}
+                      placeholder="Ürün için SEO açıklaması"
+                      value={formData.seoDescription}
+                      onChange={(e) => handleChange('seoDescription', e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors resize-none"
+                    />
+                    <p className="text-xs text-slate-400 dark:text-slate-500">{formData.seoDescription.length} / 160 karakter</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label htmlFor="seo-keywords" className="text-sm font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-2"><Tag size={14} />SEO Anahtar Kelimeler</label>
+                    <input
+                      id="seo-keywords"
+                      type="text"
+                      placeholder="akıllı led, panel, aydınlatma (virgülle ayırın)"
+                      value={formData.seoKeywords}
+                      onChange={(e) => handleChange('seoKeywords', e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"
+                    />
+                  </div>
+
+                  <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-6">
+                    <h4 className="font-semibold mb-4 text-sm text-slate-500 dark:text-slate-400">Arama Motoru Önizlemesi</h4>
+                    <div className="space-y-2">
+                      <h3 className="text-blue-600 dark:text-blue-400 text-lg hover:underline cursor-pointer">{formData.seoTitle || formData.name || 'Ürün Başlığı'}</h3>
+                      <p className="text-green-700 dark:text-green-500 text-sm">smarthome.com › urunler › {formData.sku || 'sku'}</p>
+                      <p className="text-slate-500 dark:text-slate-400 text-sm">{formData.seoDescription || formData.shortDescription || 'Ürün açıklaması burada görünecek...'}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
             </div>
-
           </div>
-
         </div>
 
-        {previewMode && ( <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-slide-in">
-
-          <div className="bg-slate-950 border border-slate-800 rounded-2xl p-8 w-full max-w-3xl">
-
-            <div className="flex items-center gap-3 mb-6">
-
-              <div className="p-3 bg-blue-500/10 rounded-xl"><Package className="text-blue-400" size={24} /></div>
-
-              <div>
-
-                <h2 className="text-2xl font-bold">Ürün Önizlemesi</h2>
-                <p className="text-sm text-slate-400">Ürününüzün müşterilere nasıl görüneceğini kontrol edin</p>
-
+        {previewMode && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-slide-in">
+            <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-8 w-full max-w-3xl">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="p-3 bg-blue-500/10 rounded-xl"><Package className="text-blue-600 dark:text-blue-400" size={24} /></div>
+                <div>
+                  <h2 className="text-2xl font-bold">Ürün Önizlemesi</h2>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">Ürününüzün müşterilere nasıl görüneceğini kontrol edin</p>
+                </div>
               </div>
 
+              <div className="border border-slate-200 dark:border-slate-800 rounded-xl p-6 text-center text-sm text-slate-400 dark:text-slate-500">
+                Ürün önizleme bileşeni burada görünecek (geliştirme aşamasında)
+              </div>
+
+              <button onClick={() => setPreviewMode(false)} className="mt-6 px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl transition-colors">
+                Önizlemeyi Kapat
+              </button>
             </div>
-
-            {/* Burada ürün önizleme bileşeni olacak */}
-            <div className="border border-slate-800 rounded-xl p-6 text-center text-sm text-slate-500">
-              Ürün önizleme bileşeni burada görünecek (geliştirme aşamasında)
-            </div>
-
-            <button onClick={() => setPreviewMode(false)} className="mt-6 px-6 py-3 bg-red-600 hover:bg-red-700 rounded-xl transition-colors">
-              Önizlemeyi Kapat
-            </button>
-
           </div>
-
-        </div> )}
-
+        )}
       </div>
 
       <style>{`
