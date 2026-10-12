@@ -3,7 +3,7 @@ import { useNavigate } from "react-router";
 import { useDispatch, useSelector } from 'react-redux';
 
 import { login, clearError } from '../../redux/userSlice';
-import { registerRequest, resendVerificationRequest } from '../../api/emailVerification';
+import { registerRequest, resendVerificationRequest } from '../../api/Emailverification';
 
 import { Mail, Lock, User, Phone, LogIn, UserPlus, ShieldCheck, Home, Eye, EyeOff, AlertCircle, CheckCircle2, Loader2, Sparkles, Shield, Zap, Github, Chrome, Facebook, ArrowRight, Info, MailCheck, RefreshCw } from 'lucide-react';
 
