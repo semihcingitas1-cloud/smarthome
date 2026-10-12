@@ -177,28 +177,7 @@ const CookieConsent = () => {
 
     <div role="dialog" aria-label="Çerez bildirimi" className="fixed bottom-0 inset-x-0 z-[60] bg-white dark:bg-slate-900 border-t border-gray-200 dark:border-slate-800">
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex flex-col lg:flex-row lg:items-center gap-4">
-
-        <div className="flex items-start gap-3 flex-1">
-
-          <Cookie size={22} className="text-typus flex-shrink-0 mt-0.5" aria-hidden="true" />
-
-          <p className="text-sm text-gray-600 dark:text-slate-400 leading-relaxed">
-            Deneyiminizi iyileştirmek için çerezler kullanıyoruz. Zorunlu çerezler dışındakileri yalnızca izninizle kullanırız. Ayrıntılar için{' '}
-            <Link to="/privacy" className="text-typus-dark dark:text-typus-light hover:underline">Gizlilik Politikası</Link>'nı inceleyebilirsiniz.
-          </p>
-
-        </div>
-
-        <div className="flex flex-col sm:flex-row gap-2 lg:flex-shrink-0">
-
-          <button type="button" onClick={() => setShowPrefs(true)} className={secondaryBtn}>Tercihleri Yönet</button>
-          <button type="button" onClick={() => finish(false, false)} className={secondaryBtn}>Sadece Gerekli</button>
-          <button type="button" onClick={() => finish(true, true)} className={primaryBtn}>Tümünü Kabul Et</button>
-
-        </div>
-
-      </div>
+      
 
     </div>
   );
