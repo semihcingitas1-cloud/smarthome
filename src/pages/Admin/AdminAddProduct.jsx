@@ -1,10 +1,26 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 
 import { createProductWithImages, resetStatus } from '../../redux/productSlice';
 
-import { Package, Upload, X, Plus, Minus, Save, Eye, Sparkles, Tag, DollarSign, Layers, Image as ImageIcon, AlertCircle, CheckCircle2, Loader2, Info, Trash2, Copy, BarChart3, Box, Palette, Zap, Shield, Truck, Star, Calendar, Hash, FileText, Settings, List, Grid3x3, ArrowLeft, ChevronDown, Search, Filter } from 'lucide-react';
+import { Package, Upload, X, Plus, Save, Eye, Sparkles, Tag, DollarSign, Layers, Image as ImageIcon, AlertCircle, Loader2, Info, Trash2, Copy, BarChart3, Box, Palette, Zap, Shield, Truck, Star, Calendar, Hash, FileText, Settings, List, ArrowLeft, ChevronDown, Filter } from 'lucide-react';
+
+const MAX_IMAGES = 8;
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5 MB
+
+// Hangi alan hangi sekmede? (hata ikonu ve otomatik sekme geçişi için)
+const FIELD_TAB = {
+  name: 'basic',
+  sku: 'basic',
+  category: 'basic',
+  price: 'pricing',
+  oldPrice: 'pricing',
+  stock: 'pricing',
+  images: 'media',
+};
+
+const HEX_RE = /^#[0-9a-fA-F]{6}$/;
 
 const AdminAddProduct = () => {
 
@@ -44,53 +60,72 @@ const AdminAddProduct = () => {
 
   const [errors, setErrors] = useState({});
   const [activeTab, setActiveTab] = useState('basic');
-  const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState(null);
+  const [toastMessage, setToastMessage] = useState('');
   const [previewMode, setPreviewMode] = useState(false);
   const [tagInput, setTagInput] = useState('');
-  const [colorInput, setColorInput] = useState({ name: '', hex: '' });
+  const [colorInput, setColorInput] = useState({ name: '', hex: '#000000' });
 
-  const { loading, error, success, newProductId } = useSelector((state) => state.products);
+  const { createStatus, createError, newProductId } = useSelector((state) => state.products);
+  const isSaving = createStatus === 'loading';
+
+  // Sayfa kapanırken önizleme URL'lerini temizlemek için güncel görselleri ref'te tut
+  const imagesRef = useRef([]);
+  useEffect(() => {
+    imagesRef.current = formData.images;
+  }, [formData.images]);
 
   useEffect(() => {
 
+    dispatch(resetStatus());
     window.scrollTo(0, 0);
-  }, []);
+
+    return () => {
+      dispatch(resetStatus());
+      imagesRef.current.forEach((img) => URL.revokeObjectURL(img.preview));
+    };
+  }, [dispatch]);
 
   useEffect(() => {
 
-    if (success && newProductId) {
+    if (createStatus === 'succeeded' && newProductId) {
 
       dispatch(resetStatus());
-      navigate(`/admin/product`);
+      navigate('/admin/product');
     }
-  }, [success, newProductId]);
+  }, [createStatus, newProductId, dispatch, navigate]);
 
   useEffect(() => {
 
-    if (error) {
+    if (createStatus === 'failed') {
 
-      setSaveStatus('error');
-      setTimeout(() => setSaveStatus(null), 3000);
+      showToast(typeof createError === 'string' ? createError : 'Ürün kaydedilemedi.');
     }
-  }, [error]);
+  }, [createStatus, createError]);
+
+  const showToast = (message) => {
+
+    setToastMessage(message);
+    setSaveStatus('error');
+    setTimeout(() => setSaveStatus(null), 4000);
+  };
 
   const categories = [
-    { 
-      name: 'Akıllı Aydınlatma', 
-      subcategories: ['LED Paneller', 'Ampuller', 'Şerit LED', 'Spot Işıklar'] 
+    {
+      name: 'Akıllı Aydınlatma',
+      subcategories: ['LED Paneller', 'Ampuller', 'Şerit LED', 'Spot Işıklar']
     },
-    { 
-      name: 'Kameralar', 
-      subcategories: ['İç Mekan', 'Dış Mekan', 'Kapı Zilleri', 'PTZ Kameralar'] 
+    {
+      name: 'Kameralar',
+      subcategories: ['İç Mekan', 'Dış Mekan', 'Kapı Zilleri', 'PTZ Kameralar']
     },
-    { 
-      name: 'Sensörler', 
-      subcategories: ['Hareket', 'Sıcaklık', 'Kapı/Pencere', 'Duman'] 
+    {
+      name: 'Sensörler',
+      subcategories: ['Hareket', 'Sıcaklık', 'Kapı/Pencere', 'Duman']
     },
-    { 
-      name: 'Akıllı Kilitler', 
-      subcategories: ['Biyometrik', 'Şifreli', 'Kartlı', 'Bluetooth'] 
+    {
+      name: 'Akıllı Kilitler',
+      subcategories: ['Biyometrik', 'Şifreli', 'Kartlı', 'Bluetooth']
     },
   ];
 
@@ -112,6 +147,9 @@ const AdminAddProduct = () => {
     { id: 'seo', label: 'SEO', icon: BarChart3 },
   ];
 
+  const tabHasError = (tabId) =>
+    Object.keys(errors).some((field) => errors[field] && FIELD_TAB[field] === tabId);
+
   const handleChange = (field, value) => {
 
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -122,113 +160,146 @@ const AdminAddProduct = () => {
     }
   };
 
+  // ───────────── Görseller ─────────────
+  const addFiles = (fileList) => {
+
+    const room = Math.max(MAX_IMAGES - formData.images.length, 0);
+    const all = Array.from(fileList);
+
+    const valid = all
+      .filter((f) => f.type.startsWith('image/') && f.size <= MAX_IMAGE_SIZE)
+      .slice(0, room)
+      .map((file) => ({ file, preview: URL.createObjectURL(file), name: file.name }));
+
+    if (valid.length < all.length) {
+      showToast(`Bazı dosyalar eklenmedi (en fazla ${MAX_IMAGES} görsel, görsel başına 5 MB, sadece resim).`);
+    }
+
+    if (valid.length) {
+      setFormData(prev => ({ ...prev, images: [...prev.images, ...valid] }));
+      setErrors(prev => ({ ...prev, images: '' }));
+    }
+  };
+
   const handleImageUpload = (e) => {
 
-    const files = Array.from(e.target.files);
+    addFiles(e.target.files);
+    e.target.value = ''; // aynı dosya tekrar seçilebilsin
+  };
 
-    const newImages = files.map(file => ({
+  const handleDrop = (e) => {
 
-      file,
-      preview: URL.createObjectURL(file),
-      name: file.name
-    }));
-
-    setFormData({ ...formData, images: [...formData.images, ...newImages] });
+    e.preventDefault();
+    addFiles(e.dataTransfer.files);
   };
 
   const removeImage = (index) => {
 
-    const newImages = formData.images.filter((_, i) => i !== index);
-    setFormData({ ...formData, images: newImages });
+    URL.revokeObjectURL(formData.images[index]?.preview);
+    setFormData(prev => ({ ...prev, images: prev.images.filter((_, i) => i !== index) }));
   };
 
+  // ───────────── Özellikler ─────────────
   const addFeature = () => {
 
-    setFormData({ ...formData, features: [...formData.features, ''] });
+    setFormData(prev => ({ ...prev, features: [...prev.features, ''] }));
   };
 
   const updateFeature = (index, value) => {
 
-    const newFeatures = [...formData.features];
-    newFeatures[index] = value;
-    setFormData({ ...formData, features: newFeatures });
+    setFormData(prev => ({
+      ...prev,
+      features: prev.features.map((f, i) => (i === index ? value : f))
+    }));
   };
 
   const removeFeature = (index) => {
 
-    const newFeatures = formData.features.filter((_, i) => i !== index);
-    setFormData({ ...formData, features: newFeatures });
+    setFormData(prev => ({ ...prev, features: prev.features.filter((_, i) => i !== index) }));
   };
 
+  // ───────────── Teknik özellikler ─────────────
   const addSpecification = () => {
 
-    setFormData({
-      ...formData,
-      specifications: [...formData.specifications, { key: '', value: '' }]
-    });
+    setFormData(prev => ({
+      ...prev,
+      specifications: [...prev.specifications, { key: '', value: '' }]
+    }));
   };
 
   const updateSpecification = (index, field, value) => {
 
-    const newSpecs = [...formData.specifications];
-    newSpecs[index][field] = value;
-    setFormData({ ...formData, specifications: newSpecs });
+    setFormData(prev => ({
+      ...prev,
+      specifications: prev.specifications.map((s, i) => (i === index ? { ...s, [field]: value } : s))
+    }));
   };
 
   const removeSpecification = (index) => {
 
-    const newSpecs = formData.specifications.filter((_, i) => i !== index);
-    setFormData({ ...formData, specifications: newSpecs });
+    setFormData(prev => ({
+      ...prev,
+      specifications: prev.specifications.filter((_, i) => i !== index)
+    }));
   };
 
+  // ───────────── Etiketler ─────────────
   const addTag = () => {
 
-    if (tagInput.trim() && !formData.tags.includes(tagInput.trim())) {
+    const tag = tagInput.trim();
 
-      setFormData({ ...formData, tags: [...formData.tags, tagInput.trim()] });
+    if (tag && !formData.tags.includes(tag)) {
+
+      setFormData(prev => ({ ...prev, tags: [...prev.tags, tag] }));
       setTagInput('');
     }
   };
 
   const removeTag = (tag) => {
 
-    setFormData({ ...formData, tags: formData.tags.filter(t => t !== tag) });
+    setFormData(prev => ({ ...prev, tags: prev.tags.filter(t => t !== tag) }));
   };
 
+  // ───────────── Renkler ─────────────
   const addColor = () => {
 
-    if (colorInput.name && colorInput.hex) {
+    const name = colorInput.name.trim();
 
-      setFormData({ ...formData, colors: [...formData.colors, colorInput] });
-      setColorInput({ name: '', hex: '' });
+    if (name && HEX_RE.test(colorInput.hex)) {
+
+      setFormData(prev => ({ ...prev, colors: [...prev.colors, { name, hex: colorInput.hex }] }));
+      setColorInput({ name: '', hex: '#000000' });
     }
   };
 
   const removeColor = (index) => {
 
-    const newColors = formData.colors.filter((_, i) => i !== index);
-    setFormData({ ...formData, colors: newColors });
+    setFormData(prev => ({ ...prev, colors: prev.colors.filter((_, i) => i !== index) }));
   };
 
+  // ───────────── Modeller ─────────────
   const addModel = () => {
 
-    setFormData({...formData, models: [...formData.models, { name: '', price: '', stock: '', features: [''] }]});
+    setFormData(prev => ({
+      ...prev,
+      models: [...prev.models, { name: '', price: '', stock: '', features: [''] }]
+    }));
   };
 
   const updateModel = (index, field, value) => {
 
-    const newModels = [...formData.models];
-    newModels[index][field] = value;
-    setFormData({ ...formData, models: newModels });
+    setFormData(prev => ({
+      ...prev,
+      models: prev.models.map((m, i) => (i === index ? { ...m, [field]: value } : m))
+    }));
   };
 
   const removeModel = (index) => {
 
-    const newModels = formData.models.filter((_, i) => i !== index);
-    setFormData({ ...formData, models: newModels });
+    setFormData(prev => ({ ...prev, models: prev.models.filter((_, i) => i !== index) }));
   };
 
-
+  // ───────────── SKU ─────────────
   const generateSKU = (data) => {
 
     if (!data || !data.name) {
@@ -240,8 +311,10 @@ const AdminAddProduct = () => {
     const turkishChars = { 'Ç': 'C', 'Ş': 'S', 'Ğ': 'G', 'Ü': 'U', 'İ': 'I', 'Ö': 'O', 'ç': 'C', 'ş': 'S', 'ğ': 'G', 'ü': 'U', 'ı': 'I', 'ö': 'O' };
     let cleaned = data.name.replace(/[ÇŞĞÜİÖçşğüıö]/g, match => turkishChars[match]);
     cleaned = cleaned.toUpperCase().trim().replace(/\s+/g, '-').replace(/[^A-Z0-9-]/g, '');
-    const sku = `SKU-${cleaned}`;
-    handleChange('sku', sku);
+
+    // Aynı isimli ürünlerde çakışmasın diye kısa rastgele ek
+    const suffix = Date.now().toString(36).slice(-4).toUpperCase();
+    handleChange('sku', `SKU-${cleaned}-${suffix}`);
   };
 
   const duplicateProduct = () => {
@@ -249,26 +322,49 @@ const AdminAddProduct = () => {
     console.log('Ürün kopyalanıyor...');
   };
 
+  // ───────────── Doğrulama ─────────────
   const validateForm = () => {
 
     const newErrors = {};
+    const price = Number(formData.price);
+    const stock = Number(formData.stock);
+
     if (!formData.name.trim()) newErrors.name = 'Ürün adı gereklidir';
     if (!formData.sku.trim()) newErrors.sku = 'SKU gereklidir';
     if (!formData.category) newErrors.category = 'Kategori seçiniz';
-    if (!formData.price) newErrors.price = 'Fiyat gereklidir';
-    if (!formData.stock) newErrors.stock = 'Stok miktarı gereklidir';
+
+    if (formData.price === '' || !(price > 0)) {
+      newErrors.price = 'Geçerli bir fiyat giriniz (0\'dan büyük)';
+    }
+
+    if (formData.oldPrice !== '' && !(Number(formData.oldPrice) > price)) {
+      newErrors.oldPrice = 'Eski fiyat satış fiyatından yüksek olmalı';
+    }
+
+    if (formData.stock === '' || !Number.isInteger(stock) || stock < 0) {
+      newErrors.stock = 'Stok 0 veya pozitif tam sayı olmalı';
+    }
+
     if (formData.images.length === 0) newErrors.images = 'En az 1 görsel yükleyiniz';
 
     setErrors(newErrors);
+
+    const firstField = Object.keys(newErrors)[0];
+
+    if (firstField) {
+      setActiveTab(FIELD_TAB[firstField]);
+    }
+
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSave = async (isDraft = false) => {
+  const handleSave = (isDraft = false) => {
+
+    if (isSaving) return;
 
     if (!isDraft && !validateForm()) {
 
-      setSaveStatus('error');
-      setTimeout(() => setSaveStatus(null), 3000);
+      showToast('Lütfen işaretli alanları kontrol edin.');
       return;
     }
 
@@ -286,10 +382,17 @@ const AdminAddProduct = () => {
       shortDescription: formData.shortDescription,
       description: formData.description,
       features: formData.features.filter(f => f.trim() !== ''),
-      specifications: formData.specifications.filter( s => s.key.trim() !== '' && s.value.trim() !== '' ),
+      specifications: formData.specifications.filter(s => s.key.trim() !== '' && s.value.trim() !== ''),
       tags: formData.tags,
       colors: formData.colors,
-      models: formData.models.filter(m => m.name.trim() !== ''),
+      models: formData.models
+        .filter(m => m.name.trim() !== '')
+        .map(m => ({
+          ...m,
+          price: m.price === '' ? undefined : Number(m.price),
+          stock: m.stock === '' ? undefined : Number(m.stock),
+          features: (m.features || []).filter(f => f.trim() !== ''),
+        })),
       images: formData.images,
       badge: formData.badge,
       isNew: formData.isNew,
@@ -307,36 +410,22 @@ const AdminAddProduct = () => {
   };
 
   const selectedCategory = categories.find(cat => cat.name === formData.category);
+  const hasDiscount = formData.price && formData.oldPrice && Number(formData.oldPrice) > Number(formData.price);
 
   return (
 
     <div className="min-h-screen bg-slate-950 text-white">
 
-      {saveStatus && ( <div className={`fixed top-8 right-8 z-50 ${saveStatus === 'success' ? 'bg-green-500' : 'bg-red-500'} text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 animate-slide-in`}>
+      {saveStatus === 'error' && ( <div className="fixed top-8 right-8 z-50 bg-red-500 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 animate-slide-in">
 
-        {saveStatus === 'success' ? ( <>
+        <AlertCircle size={24} />
 
-          <CheckCircle2 size={24} />
+        <div>
 
-          <div>
+          <p className="font-bold">Hata!</p>
+          <p className="text-sm">{toastMessage}</p>
 
-            <p className="font-bold">Başarılı!</p>
-            <p className="text-sm">Ürün başarıyla kaydedildi.</p>
-
-          </div>
-
-        </> ) : ( <>
-
-          <AlertCircle size={24} />
-
-          <div>
-
-            <p className="font-bold">Hata!</p>
-            <p className="text-sm">Lütfen tüm alanları kontrol edin.</p>
-
-          </div>
-
-        </> )}
+        </div>
 
       </div> )}
 
@@ -348,7 +437,7 @@ const AdminAddProduct = () => {
 
             <div className="flex items-center gap-4">
 
-              <button onClick={() => window.history.back()} className="p-2 hover:bg-slate-800 rounded-xl transition-colors" >
+              <button onClick={() => navigate(-1)} aria-label="Geri" className="p-2 hover:bg-slate-800 rounded-xl transition-colors" >
                 <ArrowLeft size={20} />
               </button>
 
@@ -421,7 +510,7 @@ const AdminAddProduct = () => {
 
                   <tab.icon size={20} />
                   <span className="font-medium">{tab.label}</span>
-                  {errors[tab.id] && ( <AlertCircle size={16} className="ml-auto text-red-400" /> )}
+                  {tabHasError(tab.id) && ( <AlertCircle size={16} className="ml-auto text-red-400" /> )}
 
                 </button> ))}
 
@@ -486,8 +575,8 @@ const AdminAddProduct = () => {
 
                 <div className="space-y-2">
 
-                  <label className="text-sm font-semibold text-slate-400 flex items-center gap-2"><FileText size={14} />Ürün Adı *</label>
-                  <input type="text" placeholder="Örn: Smart LED Panel Pro" value={formData.name} onChange={(e) => handleChange('name', e.target.value)} className={`w-full bg-slate-950 border rounded-xl px-4 py-3 focus:outline-none transition-colors ${errors.name ? 'border-red-500' : 'border-slate-800 focus:border-blue-500'}`}/>
+                  <label htmlFor="product-name" className="text-sm font-semibold text-slate-400 flex items-center gap-2"><FileText size={14} />Ürün Adı *</label>
+                  <input id="product-name" type="text" placeholder="Örn: Smart LED Panel Pro" value={formData.name} onChange={(e) => handleChange('name', e.target.value)} className={`w-full bg-slate-950 border rounded-xl px-4 py-3 focus:outline-none transition-colors ${errors.name ? 'border-red-500' : 'border-slate-800 focus:border-blue-500'}`}/>
 
                   {errors.name && ( <p className="text-red-400 text-xs flex items-center gap-1">
                     <AlertCircle size={12} />
@@ -500,13 +589,13 @@ const AdminAddProduct = () => {
 
                   <div className="space-y-2">
 
-                    <label className="text-sm font-semibold text-slate-400 flex items-center gap-2"><Hash size={14} />SKU / Stok Kodu *</label>
+                    <label htmlFor="product-sku" className="text-sm font-semibold text-slate-400 flex items-center gap-2"><Hash size={14} />SKU / Stok Kodu *</label>
 
                     <div className="flex gap-2">
 
-                      <input type="text" placeholder="SKU-12345" value={formData.sku} onChange={(e) => handleChange('sku', e.target.value)} className={`flex-1 bg-slate-950 border rounded-xl px-4 py-3 focus:outline-none transition-colors ${errors.sku ? 'border-red-500' : 'border-slate-800 focus:border-blue-500'}`}/>
+                      <input id="product-sku" type="text" placeholder="SKU-12345" value={formData.sku} onChange={(e) => handleChange('sku', e.target.value)} className={`flex-1 bg-slate-950 border rounded-xl px-4 py-3 focus:outline-none transition-colors ${errors.sku ? 'border-red-500' : 'border-slate-800 focus:border-blue-500'}`}/>
 
-                      <button onClick={() => generateSKU(formData)} className="px-4 bg-slate-800 hover:bg-slate-700 rounded-xl transition-colors" title="SKU Oluştur">
+                      <button onClick={() => generateSKU(formData)} aria-label="SKU oluştur" className="px-4 bg-slate-800 hover:bg-slate-700 rounded-xl transition-colors" title="SKU Oluştur">
                         <Zap size={18} />
                       </button>
 
@@ -521,8 +610,8 @@ const AdminAddProduct = () => {
 
                   <div className="space-y-2">
 
-                    <label className="text-sm font-semibold text-slate-400 flex items-center gap-2"><Tag size={14} />Marka</label>
-                    <input type="text" placeholder="Örn: TechHome" value={formData.brand} onChange={(e) => handleChange('brand', e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"/>
+                    <label htmlFor="product-brand" className="text-sm font-semibold text-slate-400 flex items-center gap-2"><Tag size={14} />Marka</label>
+                    <input id="product-brand" type="text" placeholder="Örn: TechHome" value={formData.brand} onChange={(e) => handleChange('brand', e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"/>
 
                   </div>
 
@@ -532,11 +621,11 @@ const AdminAddProduct = () => {
 
                   <div className="space-y-2">
 
-                    <label className="text-sm font-semibold text-slate-400 flex items-center gap-2"><Layers size={14} />Kategori *</label>
+                    <label htmlFor="product-category" className="text-sm font-semibold text-slate-400 flex items-center gap-2"><Layers size={14} />Kategori *</label>
 
                     <div className="relative">
 
-                      <select value={formData.category} onChange={(e) => { setFormData(prev => ({ ...prev, category: e.target.value, subcategory: '' })); if (errors.category) { setErrors(prev => ({ ...prev, category: '' })); } }} className={`w-full bg-slate-950 border rounded-xl px-4 py-3 focus:outline-none transition-colors appearance-none ${errors.category ? 'border-red-500' : 'border-slate-800 focus:border-blue-500'}`}>
+                      <select id="product-category" value={formData.category} onChange={(e) => { setFormData(prev => ({ ...prev, category: e.target.value, subcategory: '' })); if (errors.category) { setErrors(prev => ({ ...prev, category: '' })); } }} className={`w-full bg-slate-950 border rounded-xl px-4 py-3 focus:outline-none transition-colors appearance-none ${errors.category ? 'border-red-500' : 'border-slate-800 focus:border-blue-500'}`}>
 
                         <option value="">Kategori Seçin</option>
                         {categories.map((cat) => ( <option key={cat.name} value={cat.name}>{cat.name}</option> ))}
@@ -556,11 +645,11 @@ const AdminAddProduct = () => {
 
                   <div className="space-y-2">
 
-                    <label className="text-sm font-semibold text-slate-400 flex items-center gap-2"><Filter size={14} />Alt Kategori</label>
+                    <label htmlFor="product-subcategory" className="text-sm font-semibold text-slate-400 flex items-center gap-2"><Filter size={14} />Alt Kategori</label>
 
                     <div className="relative">
 
-                      <select value={formData.subcategory} onChange={(e) => handleChange('subcategory', e.target.value)} disabled={!selectedCategory} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors appearance-none disabled:opacity-50">
+                      <select id="product-subcategory" value={formData.subcategory} onChange={(e) => handleChange('subcategory', e.target.value)} disabled={!selectedCategory} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors appearance-none disabled:opacity-50">
 
                         <option value="">Alt Kategori Seçin</option>
                         {selectedCategory?.subcategories.map((sub) => ( <option key={sub} value={sub}>{sub}</option> ))}
@@ -577,8 +666,8 @@ const AdminAddProduct = () => {
 
                 <div className="space-y-2">
 
-                  <label className="text-sm font-semibold text-slate-400 flex items-center gap-2"><FileText size={14} />Kısa Açıklama</label>
-                  <textarea rows="3" placeholder="Ürünün kısa özeti (Liste görünümünde gösterilir)" value={formData.shortDescription} onChange={(e) => handleChange('shortDescription', e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors resize-none"/>
+                  <label htmlFor="product-short" className="text-sm font-semibold text-slate-400 flex items-center gap-2"><FileText size={14} />Kısa Açıklama</label>
+                  <textarea id="product-short" rows="3" maxLength={200} placeholder="Ürünün kısa özeti (Liste görünümünde gösterilir)" value={formData.shortDescription} onChange={(e) => handleChange('shortDescription', e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors resize-none"/>
                   <p className="text-xs text-slate-500">{formData.shortDescription.length} / 200 karakter</p>
 
                 </div>
@@ -604,11 +693,11 @@ const AdminAddProduct = () => {
 
                   <div className="space-y-2">
 
-                    <label className="text-sm font-semibold text-slate-400 flex items-center gap-2"><DollarSign size={14} />Satış Fiyatı *</label>
+                    <label htmlFor="product-price" className="text-sm font-semibold text-slate-400 flex items-center gap-2"><DollarSign size={14} />Satış Fiyatı *</label>
 
                     <div className="relative">
 
-                      <input type="number" placeholder="1299" value={formData.price} onChange={(e) => handleChange('price', e.target.value)} className={`w-full bg-slate-950 border rounded-xl pl-4 pr-12 py-3 focus:outline-none transition-colors ${errors.price ? 'border-red-500' : 'border-slate-800 focus:border-blue-500'}`}/>
+                      <input id="product-price" type="number" min="0" step="0.01" placeholder="1299" value={formData.price} onChange={(e) => handleChange('price', e.target.value)} className={`w-full bg-slate-950 border rounded-xl pl-4 pr-12 py-3 focus:outline-none transition-colors ${errors.price ? 'border-red-500' : 'border-slate-800 focus:border-blue-500'}`}/>
                       <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500">₺</span>
 
                     </div>
@@ -622,23 +711,28 @@ const AdminAddProduct = () => {
 
                   <div className="space-y-2">
 
-                    <label className="text-sm font-semibold text-slate-400 flex items-center gap-2"><Tag size={14} />Eski Fiyat</label>
+                    <label htmlFor="product-old-price" className="text-sm font-semibold text-slate-400 flex items-center gap-2"><Tag size={14} />Eski Fiyat</label>
 
                     <div className="relative">
 
-                      <input type="number" placeholder="1599" value={formData.oldPrice} onChange={(e) => handleChange('oldPrice', e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-4 pr-12 py-3 focus:outline-none focus:border-blue-500 transition-colors"/>
+                      <input id="product-old-price" type="number" min="0" step="0.01" placeholder="1599" value={formData.oldPrice} onChange={(e) => handleChange('oldPrice', e.target.value)} className={`w-full bg-slate-950 border rounded-xl pl-4 pr-12 py-3 focus:outline-none transition-colors ${errors.oldPrice ? 'border-red-500' : 'border-slate-800 focus:border-blue-500'}`}/>
                       <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500">₺</span>
 
                     </div>
 
-                    {formData.price && formData.oldPrice && ( <p className="text-xs text-green-400">%{Math.round(((formData.oldPrice - formData.price) / formData.oldPrice) * 100)} İndirim</p> )}
+                    {hasDiscount && ( <p className="text-xs text-green-400">%{Math.round(((formData.oldPrice - formData.price) / formData.oldPrice) * 100)} İndirim</p> )}
+
+                    {errors.oldPrice && ( <p className="text-red-400 text-xs flex items-center gap-1">
+                      <AlertCircle size={12} />
+                      {errors.oldPrice}
+                    </p> )}
 
                   </div>
 
                   <div className="space-y-2">
 
-                    <label className="text-sm font-semibold text-slate-400 flex items-center gap-2"><Box size={14} />Stok Adedi *</label>
-                    <input type="number" placeholder="50" value={formData.stock} onChange={(e) => handleChange('stock', e.target.value)} className={`w-full bg-slate-950 border rounded-xl px-4 py-3 focus:outline-none transition-colors ${errors.stock ? 'border-red-500' : 'border-slate-800 focus:border-blue-500'}`}/>
+                    <label htmlFor="product-stock" className="text-sm font-semibold text-slate-400 flex items-center gap-2"><Box size={14} />Stok Adedi *</label>
+                    <input id="product-stock" type="number" min="0" step="1" placeholder="50" value={formData.stock} onChange={(e) => handleChange('stock', e.target.value)} className={`w-full bg-slate-950 border rounded-xl px-4 py-3 focus:outline-none transition-colors ${errors.stock ? 'border-red-500' : 'border-slate-800 focus:border-blue-500'}`}/>
 
                     {errors.stock && ( <p className="text-red-400 text-xs flex items-center gap-1">
                       <AlertCircle size={12} />
@@ -653,11 +747,11 @@ const AdminAddProduct = () => {
 
                   <div className="space-y-2">
 
-                    <label className="text-sm font-semibold text-slate-400 flex items-center gap-2"><Shield size={14} />Garanti Süresi</label>
+                    <label htmlFor="product-warranty" className="text-sm font-semibold text-slate-400 flex items-center gap-2"><Shield size={14} />Garanti Süresi</label>
 
                     <div className="relative">
 
-                      <select value={formData.warranty} onChange={(e) => handleChange('warranty', e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors appearance-none">
+                      <select id="product-warranty" value={formData.warranty} onChange={(e) => handleChange('warranty', e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors appearance-none">
 
                         <option value="">Garanti Seçin</option>
                         <option value="6">6 Ay</option>
@@ -675,8 +769,8 @@ const AdminAddProduct = () => {
 
                   <div className="space-y-2">
 
-                    <label className="text-sm font-semibold text-slate-400 flex items-center gap-2"><Calendar size={14} />İade Süresi (Gün)</label>
-                    <input type="number" placeholder="14" value={formData.returnDays} onChange={(e) => handleChange('returnDays', e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"/>
+                    <label htmlFor="product-return" className="text-sm font-semibold text-slate-400 flex items-center gap-2"><Calendar size={14} />İade Süresi (Gün)</label>
+                    <input id="product-return" type="number" min="0" step="1" placeholder="14" value={formData.returnDays} onChange={(e) => handleChange('returnDays', e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"/>
 
                   </div>
 
@@ -771,8 +865,8 @@ const AdminAddProduct = () => {
 
                 <div className="space-y-2">
 
-                  <label className="text-sm font-semibold text-slate-400 flex items-center gap-2"><FileText size={14} />Detaylı Açıklama</label>
-                  <textarea rows="8" placeholder="Ürününüzü detaylı olarak açıklayın..." value={formData.description} onChange={(e) => handleChange('description', e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors resize-none"/>
+                  <label htmlFor="product-description" className="text-sm font-semibold text-slate-400 flex items-center gap-2"><FileText size={14} />Detaylı Açıklama</label>
+                  <textarea id="product-description" rows="8" placeholder="Ürününüzü detaylı olarak açıklayın..." value={formData.description} onChange={(e) => handleChange('description', e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors resize-none"/>
 
                 </div>
 
@@ -795,7 +889,7 @@ const AdminAddProduct = () => {
 
                       <input type="text" placeholder="Örn: WiFi 2.4GHz & 5GHz Desteği" value={feature} onChange={(e) => updateFeature(index, e.target.value)} className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"/>
 
-                      <button onClick={() => removeFeature(index)} className="p-3 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl transition-colors">
+                      <button onClick={() => removeFeature(index)} aria-label="Özelliği sil" className="p-3 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl transition-colors">
                         <Trash2 size={18} />
                       </button>
 
@@ -825,7 +919,7 @@ const AdminAddProduct = () => {
                       <input type="text" placeholder="Özellik (örn: Güç Tüketimi)" value={spec.key} onChange={(e) => updateSpecification(index, 'key', e.target.value)} className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"/>
                       <input type="text" placeholder="Değer (örn: 18W)" value={spec.value} onChange={(e) => updateSpecification(index, 'value', e.target.value)} className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"/>
 
-                      <button onClick={() => removeSpecification(index)} className="p-3 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl transition-colors">
+                      <button onClick={() => removeSpecification(index)} aria-label="Teknik özelliği sil" className="p-3 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl transition-colors">
                         <Trash2 size={18} />
                       </button>
 
@@ -837,20 +931,20 @@ const AdminAddProduct = () => {
 
                 <div className="space-y-4">
 
-                  <label className="text-sm font-semibold text-slate-400 flex items-center gap-2"><Tag size={14} />Etiketler</label>
+                  <label htmlFor="product-tag" className="text-sm font-semibold text-slate-400 flex items-center gap-2"><Tag size={14} />Etiketler</label>
 
                   <div className="flex gap-2">
 
-                    <input type="text" placeholder="Etiket ekle (örn: akıllı, LED, enerji)" value={tagInput} onChange={(e) => setTagInput(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())} className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"/>
+                    <input id="product-tag" type="text" placeholder="Etiket ekle (örn: akıllı, LED, enerji)" value={tagInput} onChange={(e) => setTagInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addTag(); } }} className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"/>
 
-                    <button onClick={addTag} className="px-6 bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors">
+                    <button onClick={addTag} aria-label="Etiket ekle" className="px-6 bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors">
                       <Plus size={18} />
                     </button>
 
                   </div>
 
                   {formData.tags.length > 0 && ( <div className="flex flex-wrap gap-2">
-                    {formData.tags.map((tag, index) => ( <span key={index} className="flex items-center gap-2 bg-blue-500/10 text-blue-400 px-3 py-1 rounded-full text-sm">{tag}<button onClick={() => removeTag(tag)} className="hover:text-red-400"><X size={14} /></button></span> ))}
+                    {formData.tags.map((tag) => ( <span key={tag} className="flex items-center gap-2 bg-blue-500/10 text-blue-400 px-3 py-1 rounded-full text-sm">{tag}<button onClick={() => removeTag(tag)} aria-label={`${tag} etiketini sil`} className="hover:text-red-400"><X size={14} /></button></span> ))}
                   </div> )}
 
                 </div>
@@ -880,16 +974,16 @@ const AdminAddProduct = () => {
 
                     <div className="space-y-2">
 
-                      <input type="text" placeholder="Renk Adı (örn: Siyah)" value={colorInput.name} onChange={(e) => setColorInput({ ...colorInput, name: e.target.value })} className="w-full dark:bg-slate-950 border dark:border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"/>
+                      <input type="text" placeholder="Renk Adı (örn: Siyah)" value={colorInput.name} onChange={(e) => setColorInput({ ...colorInput, name: e.target.value })} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"/>
 
                     </div>
 
                     <div className="flex gap-2">
 
-                      <input type="color" value={colorInput.hex} onChange={(e) => setColorInput({ ...colorInput, hex: e.target.value })} className="w-16 h-12 dark:bg-slate-950 border dark:border-slate-800 rounded-xl cursor-pointer"/>
-                      <input type="text" placeholder="#000000" value={colorInput.hex} onChange={(e) => setColorInput({ ...colorInput, hex: e.target.value })} className="flex-1 dark:bg-slate-950 border dark:border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"/>
+                      <input type="color" value={HEX_RE.test(colorInput.hex) ? colorInput.hex : '#000000'} onChange={(e) => setColorInput({ ...colorInput, hex: e.target.value })} className="w-16 h-12 bg-slate-950 border border-slate-800 rounded-xl cursor-pointer"/>
+                      <input type="text" placeholder="#000000" maxLength={7} value={colorInput.hex} onChange={(e) => setColorInput({ ...colorInput, hex: e.target.value })} className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"/>
 
-                      <button onClick={addColor} className="px-6 bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors">
+                      <button onClick={addColor} aria-label="Renk ekle" className="px-6 bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors">
                         <Plus size={18} />
                       </button>
 
@@ -903,7 +997,7 @@ const AdminAddProduct = () => {
 
                       <div className="w-6 h-6 rounded-full border-2 border-slate-700" style={{ backgroundColor: color.hex }}/>
                       <span className="text-sm">{color.name}</span>
-                      <button onClick={() => removeColor(index)} className="ml-2 text-red-400 hover:text-red-300"><X size={14} /></button>
+                      <button onClick={() => removeColor(index)} aria-label={`${color.name} rengini sil`} className="ml-2 text-red-400 hover:text-red-300"><X size={14} /></button>
 
                     </div> ))}
 
@@ -926,13 +1020,13 @@ const AdminAddProduct = () => {
 
                   <div className="space-y-4">
 
-                    {formData.models.map((model, index) => ( <div key={index} className="dark:bg-slate-950 border dark:border-slate-800 rounded-2xl p-6 space-y-4">
+                    {formData.models.map((model, index) => ( <div key={index} className="bg-slate-950 border border-slate-800 rounded-2xl p-6 space-y-4">
 
                       <div className="flex items-center justify-between">
 
                         <h4 className="font-semibold">Model {index + 1}</h4>
 
-                        <button onClick={() => removeModel(index)} className="p-2 dark:bg-red-500/10 hover:dark:bg-red-500/20 text-red-400 rounded-lg transition-colors">
+                        <button onClick={() => removeModel(index)} aria-label="Modeli sil" className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors">
                           <Trash2 size={16} />
                         </button>
 
@@ -940,9 +1034,9 @@ const AdminAddProduct = () => {
 
                       <div className="grid md:grid-cols-3 gap-4">
 
-                        <input type="text" placeholder="Model Adı (örn: Pro)" value={model.name} onChange={(e) => updateModel(index, 'name', e.target.value)} className="dark:bg-slate-900 border dark:border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors" />
-                        <input type="number" placeholder="Fiyat" value={model.price} onChange={(e) => updateModel(index, 'price', e.target.value)} className="dark:bg-slate-900 border dark:border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"/>
-                        <input type="number" placeholder="Stok" value={model.stock} onChange={(e) => updateModel(index, 'stock', e.target.value)} className="dark:bg-slate-900 border dark:border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"/>
+                        <input type="text" placeholder="Model Adı (örn: Pro)" value={model.name} onChange={(e) => updateModel(index, 'name', e.target.value)} className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors" />
+                        <input type="number" min="0" step="0.01" placeholder="Fiyat" value={model.price} onChange={(e) => updateModel(index, 'price', e.target.value)} className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"/>
+                        <input type="number" min="0" step="1" placeholder="Stok" value={model.stock} onChange={(e) => updateModel(index, 'stock', e.target.value)} className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"/>
 
                       </div>
 
@@ -963,13 +1057,13 @@ const AdminAddProduct = () => {
                   <div>
 
                     <h2 className="text-2xl font-bold">Ürün Görselleri</h2>
-                    <p className="text-sm text-slate-400">Ürün fotoğraflarını yükleyin</p>
+                    <p className="text-sm text-slate-400">En fazla {MAX_IMAGES} görsel, görsel başına 5 MB</p>
 
                   </div>
 
                 </div>
 
-                <div className="border-2 border-dashed border-slate-800 rounded-2xl p-12 text-center hover:border-blue-500/50 transition-colors">
+                <div onDragOver={(e) => e.preventDefault()} onDrop={handleDrop} className={`border-2 border-dashed rounded-2xl p-12 text-center hover:border-blue-500/50 transition-colors ${errors.images ? 'border-red-500' : 'border-slate-800'}`}>
 
                   <input type="file" id="image-upload" multiple accept="image/*" onChange={handleImageUpload} className="hidden"/>
                   <label htmlFor="image-upload" className="cursor-pointer flex flex-col items-center gap-4">
@@ -992,19 +1086,19 @@ const AdminAddProduct = () => {
 
                   <div className="flex items-center justify-between mb-4">
 
-                    <p className="text-sm dark:text-slate-400">{formData.images.length} görsel yüklendi</p>
-                    <p className="text-xs dark:text-slate-500">İlk görsel ana görsel olarak kullanılacak</p>
+                    <p className="text-sm text-slate-400">{formData.images.length} / {MAX_IMAGES} görsel yüklendi</p>
+                    <p className="text-xs text-slate-500">İlk görsel ana görsel olarak kullanılacak</p>
 
                   </div>
 
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
 
-                    {formData.images.map((image, index) => ( <div key={index} className="relative group aspect-square dark:bg-slate-950 border dark:border-slate-800 rounded-2xl overflow-hidden">
+                    {formData.images.map((image, index) => ( <div key={image.preview} className="relative group aspect-square bg-slate-950 border border-slate-800 rounded-2xl overflow-hidden">
 
                       <img src={image.preview} alt={`Product ${index + 1}`} className="w-full h-full object-cover" />
-                      {index === 0 && ( <div className="absolute top-2 left-2 dark:bg-blue-600 px-2 py-1 rounded-lg text-xs font-bold">Ana Görsel</div> )}
+                      {index === 0 && ( <div className="absolute top-2 left-2 bg-blue-600 px-2 py-1 rounded-lg text-xs font-bold">Ana Görsel</div> )}
 
-                      <button onClick={() => removeImage(index)} className="absolute top-2 right-2 p-2 dark:bg-red-500 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button onClick={() => removeImage(index)} aria-label="Görseli sil" className="absolute top-2 right-2 p-2 bg-red-500 rounded-lg opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity">
                         <Trash2 size={16} />
                       </button>
 
@@ -1020,12 +1114,12 @@ const AdminAddProduct = () => {
 
                 <div className="flex items-center gap-3 mb-6">
 
-                  <div className="p-3 dark:bg-cyan-500/10 rounded-xl"><BarChart3 className="dark:text-cyan-400" size={24} /></div>
+                  <div className="p-3 bg-cyan-500/10 rounded-xl"><BarChart3 className="text-cyan-400" size={24} /></div>
 
                   <div>
 
                     <h2 className="text-2xl font-bold">SEO Ayarları</h2>
-                    <p className="text-sm dark:text-slate-400">Arama motoru optimizasyonu</p>
+                    <p className="text-sm text-slate-400">Arama motoru optimizasyonu</p>
 
                   </div>
 
@@ -1035,10 +1129,10 @@ const AdminAddProduct = () => {
 
                   <Info className="text-blue-400 flex-shrink-0 mt-0.5" size={20} />
 
-                  <div className="text-sm dark:text-slate-300">
+                  <div className="text-sm text-slate-300">
 
                     <p className="font-semibold mb-1">SEO İpucu</p>
-                    <p className="dark:text-slate-400">Başlık ve açıklama alanlarını boş bırakırsanız, ürün adı ve kısa açıklama otomatik kullanılır.</p>
+                    <p className="text-slate-400">Başlık ve açıklama alanlarını boş bırakırsanız, ürün adı ve kısa açıklama otomatik kullanılır.</p>
 
                   </div>
 
@@ -1046,36 +1140,36 @@ const AdminAddProduct = () => {
 
                 <div className="space-y-2">
 
-                  <label className="text-sm font-semibold dark:text-slate-400 flex items-center gap-2"><FileText size={14} />SEO Başlığı</label>
-                  <input type="text" placeholder="Ürün için SEO başlığı" value={formData.seoTitle} onChange={(e) => handleChange('seoTitle', e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"/>
-                  <p className="text-xs dark:text-slate-500">{formData.seoTitle.length} / 60 karakter</p>
+                  <label htmlFor="seo-title" className="text-sm font-semibold text-slate-400 flex items-center gap-2"><FileText size={14} />SEO Başlığı</label>
+                  <input id="seo-title" type="text" maxLength={60} placeholder="Ürün için SEO başlığı" value={formData.seoTitle} onChange={(e) => handleChange('seoTitle', e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"/>
+                  <p className="text-xs text-slate-500">{formData.seoTitle.length} / 60 karakter</p>
 
                 </div>
 
                 <div className="space-y-2">
 
-                  <label className="text-sm font-semibold dark:text-slate-400 flex items-center gap-2"><FileText size={14} />SEO Açıklaması</label>
-                  <textarea rows="4" placeholder="Ürün için SEO açıklaması" value={formData.seoDescription} onChange={(e) => handleChange('seoDescription', e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors resize-none"/>
-                  <p className="text-xs dark:text-slate-500">{formData.seoDescription.length} / 160 karakter</p>
+                  <label htmlFor="seo-description" className="text-sm font-semibold text-slate-400 flex items-center gap-2"><FileText size={14} />SEO Açıklaması</label>
+                  <textarea id="seo-description" rows="4" maxLength={160} placeholder="Ürün için SEO açıklaması" value={formData.seoDescription} onChange={(e) => handleChange('seoDescription', e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors resize-none"/>
+                  <p className="text-xs text-slate-500">{formData.seoDescription.length} / 160 karakter</p>
 
                 </div>
 
                 <div className="space-y-2">
 
-                  <label className="text-sm font-semibold dark:text-slate-400 flex items-center gap-2"><Tag size={14} />SEO Anahtar Kelimeler</label>
-                  <input type="text" placeholder="akıllı led, panel, aydınlatma (virgülle ayırın)" value={formData.seoKeywords} onChange={(e) => handleChange('seoKeywords', e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"/>
+                  <label htmlFor="seo-keywords" className="text-sm font-semibold text-slate-400 flex items-center gap-2"><Tag size={14} />SEO Anahtar Kelimeler</label>
+                  <input id="seo-keywords" type="text" placeholder="akıllı led, panel, aydınlatma (virgülle ayırın)" value={formData.seoKeywords} onChange={(e) => handleChange('seoKeywords', e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"/>
 
                 </div>
 
                 <div className="bg-slate-950 border border-slate-800 rounded-2xl p-6">
 
-                  <h4 className="font-semibold mb-4 text-sm dark:text-slate-400">Arama Motoru Önizlemesi</h4>
+                  <h4 className="font-semibold mb-4 text-sm text-slate-400">Arama Motoru Önizlemesi</h4>
 
                   <div className="space-y-2">
 
-                    <h3 className="dark:text-blue-400 text-lg hover:underline cursor-pointer">{formData.seoTitle || formData.name || 'Ürün Başlığı'}</h3>
-                    <p className="dark:text-green-600 text-sm">smarthome.com › urunler › {formData.sku || 'sku'}</p>
-                    <p className="dark:text-slate-400 text-sm">{formData.seoDescription || formData.shortDescription || 'Ürün açıklaması burada görünecek...'}</p>
+                    <h3 className="text-blue-400 text-lg hover:underline cursor-pointer">{formData.seoTitle || formData.name || 'Ürün Başlığı'}</h3>
+                    <p className="text-green-600 text-sm">smarthome.com › urunler › {formData.sku || 'sku'}</p>
+                    <p className="text-slate-400 text-sm">{formData.seoDescription || formData.shortDescription || 'Ürün açıklaması burada görünecek...'}</p>
 
                   </div>
 
@@ -1121,7 +1215,7 @@ const AdminAddProduct = () => {
 
       </div>
 
-      <style jsx>{`
+      <style>{`
         @keyframes slide-in {
           from {
             transform: translateX(100%);
