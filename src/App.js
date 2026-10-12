@@ -173,6 +173,8 @@ function App() {
 
       <Footer />
 
+      <CookieConsent />
+
     </Router>
 
   );
