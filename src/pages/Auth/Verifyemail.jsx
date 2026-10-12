@@ -1,13 +1,15 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { useDispatch } from "react-redux";
 import { CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 
-import { verifyEmailRequest } from "../api/emailVerification";
+import { verifyEmail } from "../../redux/userSlice";
 
 const VerifyEmail = () => {
 
   const { token } = useParams();
   const navigate = useNavigate();
+  const dispatch = useDispatch();
 
   const [status, setStatus] = useState("loading"); // loading | success | error
   const [message, setMessage] = useState("");
@@ -20,7 +22,8 @@ const VerifyEmail = () => {
     if (calledRef.current) return;
     calledRef.current = true;
 
-    verifyEmailRequest(token)
+    dispatch(verifyEmail(token))
+      .unwrap()
       .then((data) => {
 
         setStatus("success");
@@ -29,9 +32,9 @@ const VerifyEmail = () => {
       .catch((err) => {
 
         setStatus("error");
-        setMessage(err.message);
+        setMessage(err?.message || "Bir sorun oluştu, lütfen tekrar deneyin.");
       });
-  }, [token]);
+  }, [token, dispatch]);
 
   return (
 
