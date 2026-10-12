@@ -87,8 +87,6 @@ function App() {
     }
   }, [dispatch]);
 
-  <CookieConsent />
-
   const isMaintenance = false;
   if (isMaintenance && user?.user?.role !== 'admin') {return <Maintenance />;}
 
@@ -174,6 +172,8 @@ function App() {
       </Routes>
 
       <Footer />
+
+      <CookieConsent />
 
     </Router>
 
