@@ -120,6 +120,57 @@ export const resetPassword = createAsyncThunk(
     }
 );
 
+// [YENİ] Doğrulama mailini yeniden gönderir (reducer'ı yok, global loading/error'a dokunmaz)
+export const resendVerification = createAsyncThunk(
+
+    'resendVerification',
+
+    async (email, { rejectWithValue }) => {
+
+        const requestOptions = {
+
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({email})
+        }
+
+        const response = await fetch(`${BASE_URL}/resend-verification`, requestOptions);
+
+        if (!response.ok) {
+
+            let error = await response.json();
+            return rejectWithValue(error);
+        }
+
+        return (await response.json());
+    }
+);
+
+// [YENİ] Maildeki linkteki token ile e-postayı doğrular (reducer'ı yok)
+export const verifyEmail = createAsyncThunk(
+
+    'verifyEmail',
+
+    async (token, { rejectWithValue }) => {
+
+        const requestOptions = {
+
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        }
+
+        const response = await fetch(`${BASE_URL}/verify-email/${token}`, requestOptions);
+
+        if (!response.ok) {
+
+            let error = await response.json();
+            return rejectWithValue(error);
+        }
+
+        return (await response.json());
+    }
+);
+
 export const profile = createAsyncThunk(
 
     'profile',
@@ -239,6 +290,11 @@ export const userSlice = createSlice({
         setLoading: (state, action) => {
 
             state.loading = action.payload;
+        },
+        // [YENİ] Giriş/Kayıt sekmesi değişince eski hatayı temizler
+        clearError: (state) => {
+
+            state.error = null;
         }
     },
     extraReducers: (builder) => {
@@ -259,17 +315,11 @@ export const userSlice = createSlice({
             state.isAuth = false;
             state.error = null;
         });
-        builder.addCase(register.fulfilled, (state, action) => {
+        // [DEĞİŞTİ] Kayıt sonrası artık giriş yapılmıyor (backend user/token dönmüyor, e-posta doğrulaması bekleniyor)
+        builder.addCase(register.fulfilled, (state) => {
 
-            state.isAuth = true;
             state.loading = false;
-            state.user = action.payload;
             state.error = null;
-
-            if (action.payload?.token) {
-
-                localStorage.setItem('token', action.payload.token);
-            }
         });
 
         builder.addCase(login.pending, (state) => {
@@ -359,5 +409,5 @@ export const userSlice = createSlice({
     },
 });
 
-export const { logoutUser, setLoading } = userSlice.actions;
+export const { logoutUser, setLoading, clearError } = userSlice.actions;
 export default userSlice.reducer;
