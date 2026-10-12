@@ -454,7 +454,7 @@ const AdminAddProduct = () => {
                 <div className="text-xs text-slate-400 dark:text-slate-500 uppercase font-bold mb-3">Hızlı Bilgi</div>
 
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-slate-500 dark:text-slate-400">Görseller</span>
+                  <span className="text-slate-500 dark:text-slate-400">Video Ve Görseller</span>
                   <span className="font-semibold">{formData.images.length}</span>
                 </div>
 
