@@ -7,7 +7,7 @@ import { ROUTE_ROLES } from "./utils/roles";
 import { profile, setLoading } from './redux/userSlice';
 
 import ProtectedRoute from "./components/ProtectedRoute";
-import CookieConsent from "./components/CookieConsent";
+import CookieConsent from "./components/Cookieconsent";
 
 import Header from './layout/Header';
 import Footer from './layout/Footer';
