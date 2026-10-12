@@ -102,7 +102,12 @@ const CookieConsent = () => {
 
     if (!showPrefs) return;
 
-    const onKey = (e) => { if (e.key === "Escape") setShowPrefs(false); };
+    const onKey = (e) => {
+
+      if (e.key !== "Escape") return;
+      setShowPrefs(false);
+      if (getCookieConsent()) setVisible(false);
+    };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [showPrefs]);
@@ -115,6 +120,13 @@ const CookieConsent = () => {
     setVisible(false);
   };
 
+  // Tercihler footer'dan açıldıysa (daha önce seçim yapılmışsa) kapatınca alt banner geri gelmesin
+  const closePrefs = () => {
+
+    setShowPrefs(false);
+    if (getCookieConsent()) setVisible(false);
+  };
+
   if (!visible) return null;
 
   const primaryBtn = "px-5 py-2.5 bg-typus hover:bg-typus-dark text-white text-sm font-semibold rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-typus focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900";
@@ -124,7 +136,7 @@ const CookieConsent = () => {
 
     return (
 
-      <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50" onClick={() => setShowPrefs(false)}>
+      <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50" onClick={closePrefs}>
 
         <div role="dialog" aria-modal="true" aria-label="Çerez tercihleri" onClick={(e) => e.stopPropagation()} className="w-full max-w-lg max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl p-6">
 
@@ -150,7 +162,7 @@ const CookieConsent = () => {
 
           <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
 
-            <button type="button" onClick={() => setShowPrefs(false)} className={secondaryBtn}>Geri</button>
+            <button type="button" onClick={closePrefs} className={secondaryBtn}>Geri</button>
             <button type="button" onClick={() => finish(choices.analytics, choices.marketing)} className={primaryBtn}>Tercihleri Kaydet</button>
 
           </div>
