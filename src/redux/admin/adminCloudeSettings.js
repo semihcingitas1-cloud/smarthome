@@ -1,118 +1,201 @@
+
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import axios from 'axios';
 
-const BASE_URL = "https://ornekciceksitesi.com";
+const BASE_URL = 'https://ornekciceksitesi.com';
 
 const getAuthConfig = () => {
-    const token = localStorage.getItem("token");
-    return {
-        headers: {
-            'Content-Type': 'application/json',
-            'authorization': `Bearer ${token?.trim()}`
-        },
-        withCredentials: true
-    };
+  const token = localStorage.getItem('token');
+
+  return {
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token
+        ? { Authorization: `Bearer ${token.trim()}` }
+        : {})
+    },
+    withCredentials: true
+  };
 };
+
+// ======================================================
+// INITIAL STATE
+// ======================================================
 
 const initialState = {
+  metrics: {
+    cpu: {
+      usagePercent: null
+    },
+    ram: {
+      usagePercent: null
+    },
+    network: {
+      inboundBytesPerSecond: null,
+      outboundBytesPerSecond: null
+    },
+    timestamp: null
+  },
 
-    ramUsageData: [], 
-    logs: [], 
-    metricsLoading: false, 
-    logsLoading: false, 
-    metricsError: null, 
-    logsError: null, 
+  logs: [],
+
+  metricsLoading: false,
+  logsLoading: false,
+
+  metricsError: null,
+  logsError: null
 };
 
-export const getServerRamUsage = createAsyncThunk(
+// ======================================================
+// CPU + RAM + NETWORK
+// GET /admin/server
+// ======================================================
 
-    'serverMetrics/getServerRamUsage',
+export const getServerMetrics = createAsyncThunk(
+  'serverMetrics/getServerMetrics',
+  async (_, { rejectWithValue }) => {
+    try {
+      const { data } = await axios.get(
+        `${BASE_URL}/admin/server`,
+        getAuthConfig()
+      );
 
-    async ({ projectId, instanceId }, { rejectWithValue }) => {
+      if (!data.success) {
+        return rejectWithValue({
+          message: data.message || 'Sunucu metrikleri alınamadı.'
+        });
+      }
 
-        try {
-
-            const { data } = await axios.get(`${BASE_URL}/admin/server/ram-usage?projectId=${projectId}&instanceId=${instanceId}`, getAuthConfig() );
-            return data.data; 
-        } catch (error) {
-
-            return rejectWithValue(error.response?.data || { message: 'RAM metrikleri alınamadı.' });
+      return {
+        cpu: {
+          usagePercent: data.cpu?.usagePercent ?? null
+        },
+        ram: {
+          usagePercent: data.ram?.usagePercent ?? null
+        },
+        network: {
+          inboundBytesPerSecond:
+            data.network?.inboundBytesPerSecond ?? null,
+          outboundBytesPerSecond:
+            data.network?.outboundBytesPerSecond ?? null
+        },
+        timestamp: data.timestamp ?? null
+      };
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data || {
+          message: error.message || 'Sunucu metrikleri alınamadı.'
         }
+      );
     }
+  }
 );
+
+// ======================================================
+// SUNUCU LOGLARI
+// Bu endpoint backend'de ayrıca tanımlı olmalıdır.
+// ======================================================
 
 export const getServerLogs = createAsyncThunk(
-
-    'serverMetrics/getServerLogs',
-
-    async ({ projectId, instanceId }, { rejectWithValue }) => {
-
-        try {
-
-            const { data } = await axios.get( `${BASE_URL}/admin/server/logs?projectId=${projectId}&instanceId=${instanceId}`, getAuthConfig() );
-            return data.data;
-        } catch (error) {
-
-            return rejectWithValue(error.response?.data || { message: 'Sunucu logları alınamadı.' });
+  'serverMetrics/getServerLogs',
+  async ({ projectId, instanceId } = {}, { rejectWithValue }) => {
+    try {
+      const { data } = await axios.get(
+        `${BASE_URL}/admin/server/logs`,
+        {
+          ...getAuthConfig(),
+          params: {
+            ...(projectId ? { projectId } : {}),
+            ...(instanceId ? { instanceId } : {})
+          }
         }
+      );
+
+      return data.data ?? [];
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data || {
+          message: 'Sunucu logları alınamadı.'
+        }
+      );
     }
+  }
 );
 
+// ======================================================
+// SLICE
+// ======================================================
+
 const serverMetricsSlice = createSlice({
+  name: 'serverMetrics',
+  initialState,
 
-    name: 'serverMetrics',
-    initialState,
-    reducers: {
-        clearMetricsError: (state) => {
-
-            state.metricsError = null;
-        },
-        clearLogsError: (state) => {
-
-            state.logsError = null;
-        },
-        resetServerState: (state) => {
-
-            state.ramUsageData = [];
-            state.logs = [];
-            state.metricsError = null;
-            state.logsError = null;
-        }
+  reducers: {
+    clearMetricsError: (state) => {
+      state.metricsError = null;
     },
-    extraReducers: (builder) => {
 
-        builder.addCase(getServerRamUsage.pending, (state) => {
-
-            state.metricsLoading = true;
-            state.metricsError = null;
-        });
-        builder.addCase(getServerRamUsage.fulfilled, (state, action) => {
-
-            state.metricsLoading = false;
-            state.ramUsageData = action.payload;
-        });
-        builder.addCase(getServerRamUsage.rejected, (state, action) => {
-
-            state.metricsLoading = false;
-            state.metricsError = action.payload?.message || 'RAM verileri yüklenirken bir hata oluştu.';
-        });
-        builder.addCase(getServerLogs.pending, (state) => {
-
-            state.logsLoading = true;
-            state.logsError = null;
-        });
-        builder.addCase(getServerLogs.fulfilled, (state, action) => {
-
-            state.logsLoading = false;
-            state.logs = action.payload;
-        });
-        builder.addCase(getServerLogs.rejected, (state, action) => {
-
-            state.logsLoading = false;
-            state.logsError = action.payload?.message || 'Loglar yüklenirken bir hata oluştu.';
-        });
+    clearLogsError: (state) => {
+      state.logsError = null;
     },
+
+    resetServerState: (state) => {
+      state.metrics = {
+        cpu: { usagePercent: null },
+        ram: { usagePercent: null },
+        network: {
+          inboundBytesPerSecond: null,
+          outboundBytesPerSecond: null
+        },
+        timestamp: null
+      };
+
+      state.logs = [];
+      state.metricsError = null;
+      state.logsError = null;
+    }
+  },
+
+  extraReducers: (builder) => {
+    builder
+      // CPU + RAM + Network
+      .addCase(getServerMetrics.pending, (state) => {
+        state.metricsLoading = true;
+        state.metricsError = null;
+      })
+      .addCase(getServerMetrics.fulfilled, (state, action) => {
+        state.metricsLoading = false;
+        state.metrics = action.payload;
+      })
+      .addCase(getServerMetrics.rejected, (state, action) => {
+        state.metricsLoading = false;
+        state.metricsError =
+          action.payload?.message ||
+          'Sunucu metrikleri yüklenirken bir hata oluştu.';
+      })
+
+      // Logs
+      .addCase(getServerLogs.pending, (state) => {
+        state.logsLoading = true;
+        state.logsError = null;
+      })
+      .addCase(getServerLogs.fulfilled, (state, action) => {
+        state.logsLoading = false;
+        state.logs = action.payload;
+      })
+      .addCase(getServerLogs.rejected, (state, action) => {
+        state.logsLoading = false;
+        state.logsError =
+          action.payload?.message ||
+          'Loglar yüklenirken bir hata oluştu.';
+      });
+  }
 });
 
-export const { clearMetricsError, clearLogsError, resetServerState } = serverMetricsSlice.actions;
+export const {
+  clearMetricsError,
+  clearLogsError,
+  resetServerState
+} = serverMetricsSlice.actions;
+
 export default serverMetricsSlice.reducer;
