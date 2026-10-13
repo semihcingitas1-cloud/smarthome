@@ -145,7 +145,7 @@ function App() {
           <Route path="/editor/message" element={<EditorMessage />} />
           <Route path="/editor/orders" element={<EditorOrders />} />
           <Route path="/editor/support" element={<EditorSupport />} />
-          <Route path="/editor/reports" element={<EditorResports />} />
+          <Route path="/editor/reports" element={<EditorReports />} />
           <Route exact path='/editor/qrcode' element={<EditorQR />} />
 
         </Route>
