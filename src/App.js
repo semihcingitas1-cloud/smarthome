@@ -48,7 +48,7 @@ import EditorDashboard from './pages/Editor/EditorDashboard';
 import EditorMessage from './pages/Editor/EditorMessage';
 import EditorOrders from './pages/Editor/EditorOrders';
 import EditorSupport from './pages/Editor/EditorSupport';
-import EditorReport from './pages/Editor/EditorReport';
+import EditorReports from './pages/Editor/EditorReports';
 import EditorQR from './pages/Editor/EditorQR';
 
 import AdminDashboard from './pages/Admin/AdminDashboard';
@@ -145,7 +145,7 @@ function App() {
           <Route path="/editor/message" element={<EditorMessage />} />
           <Route path="/editor/orders" element={<EditorOrders />} />
           <Route path="/editor/support" element={<EditorSupport />} />
-          <Route path="/editor/reports" element={<EditorResport />} />
+          <Route path="/editor/reports" element={<EditorResports />} />
           <Route exact path='/editor/qrcode' element={<EditorQR />} />
 
         </Route>
