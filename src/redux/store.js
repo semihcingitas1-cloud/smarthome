@@ -5,6 +5,8 @@ import favoriteSlice from "./favoriteSlice";
 
 import userSlice from "./userSlice";
 import adminUserSlice from "./admin/adminUserSlice";
+import serverMetricsSlice from "./admin/adminCloudeSettings";
+
 import devicesSlice from "./devicesSlice";
 import firmwareSlice from "./admin/firmwareSlice";
 import automationSlice from "./automationSlice";
@@ -22,6 +24,7 @@ export const  store = configureStore({
 
         user: userSlice,
         adminUser: adminUserSlice,
+        serverMetrics: serverMetricsSlice,
         devices: devicesSlice,
         firmware: firmwareSlice,
         automation: automationSlice,
