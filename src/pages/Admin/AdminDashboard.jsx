@@ -3,10 +3,32 @@ import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from 'react-router-dom';
 
 import { getAllUsers } from "../../redux/admin/adminUserSlice";
+import { getServerMetrics } from "../../redux/admin/adminCloudeSettings";
 
 import AdminSidebar from '../../layout/AdminSidebar';
 
 import { Users, Server, CreditCard, Activity, ArrowUpRight, ArrowDownRight, MoreVertical, Cpu, Database, Globe, CheckCircle2, CircleCheck, Shield, User } from 'lucide-react';
+
+const POLL_MS = 3000;
+
+const clamp = (v) => Math.min(100, Math.max(0, v ?? 0));
+
+const formatPercent = (v) => (v == null ? '—' : `%${Math.round(v)}`);
+
+const formatBytes = (bytes) => {
+  if (bytes == null) return '—';
+  const units = ['B/s', 'KB/s', 'MB/s', 'GB/s'];
+  let value = bytes;
+  let i = 0;
+  while (value >= 1024 && i < units.length - 1) {
+    value /= 1024;
+    i++;
+  }
+  return `${value.toFixed(value >= 100 ? 0 : 1)} ${units[i]}`;
+};
+
+// Yüke göre renk: normal / dikkat / kritik
+const barColor = (v) => v >= 85 ? 'bg-red-500' : v >= 65 ? 'bg-amber-500' : 'bg-emerald-500';
 
 const AdminDashboard = () => {
 
@@ -54,6 +76,35 @@ const AdminDashboard = () => {
   ];
 
   const { loading, error, users } = useSelector(action => action.adminUser);
+  const { metrics, metricsError } = useSelector((state) => state.serverMetrics);
+
+  const peakNetRef = useRef(1);
+
+  const totalNet = (metrics.network.inboundBytesPerSecond ?? 0) + (metrics.network.outboundBytesPerSecond ?? 0);
+  peakNetRef.current = Math.max(peakNetRef.current, totalNet);
+  const netPercent = clamp((totalNet / peakNetRef.current) * 100);
+
+  useEffect(() => {
+
+    let stopped = false;
+    let timer;
+    let request;
+
+    const tick = async () => {
+
+      request = dispatch(getServerMetrics());
+      await request; // istek bitmeden yenisini başlatmaz, üst üste binme olmaz
+      if (!stopped) timer = setTimeout(tick, POLL_MS);
+    };
+
+    tick();
+
+    return () => {
+      stopped = true;
+      clearTimeout(timer);
+      request?.abort(); // sayfadan çıkınca uçuştaki isteği iptal et
+    };
+  }, [dispatch]);
 
   useEffect(() => { dispatch(getAllUsers()); }, [dispatch]);
 
@@ -206,19 +257,25 @@ const AdminDashboard = () => {
             <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-3xl p-6 shadow-lg shadow-gray-100/50 dark:shadow-none space-y-8">
 
               <h2 className="text-xl font-bold text-gray-900 dark:text-white">Sistem Kaynakları</h2>
+              {metricsError && ( <p className="text-xs font-semibold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 rounded-lg px-3 py-2">{metricsError}</p> )}
 
               <div>
 
                 <div className="flex justify-between items-center mb-2">
 
-                  <div className="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-slate-300"><Cpu size={18} className="text-blue-500" />Sunucu Yükü (CPU)</div>
-                  <span className="text-sm font-bold text-gray-900 dark:text-white">%42</span>
+                  <div className="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-slate-300">
+
+                    <Cpu size={18} className="text-blue-500" />Sunucu Yükü (CPU)
+
+                  </div>
+
+                  <span className="text-sm font-bold text-gray-900 dark:text-white">{formatPercent(metrics.cpu.usagePercent)}</span>
 
                 </div>
 
                 <div className="w-full bg-gray-100 dark:bg-slate-800 rounded-full h-2.5 overflow-hidden">
 
-                  <div className="bg-indigo-500 h-2.5 rounded-full" style={{ width: '42%' }}></div>
+                  <div className={`${barColor(metrics.cpu.usagePercent)} h-2.5 rounded-full transition-all duration-700 ease-out`} style={{ width: `${clamp(metrics.cpu.usagePercent)}%` }}/>
 
                 </div>
 
@@ -228,18 +285,46 @@ const AdminDashboard = () => {
 
                 <div className="flex justify-between items-center mb-2">
 
-                  <div className="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-slate-300"><Database size={18} className="text-blue-500" />Bellek Kullanımı (RAM)</div>
-                  <span className="text-sm font-bold text-gray-900 dark:text-white">12.4 GB / 32 GB</span>
+                  <div className="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-slate-300">
+
+                    <Database size={18} className="text-blue-500" />Bellek Kullanımı (RAM)
+
+                  </div>
+
+                  <span className="text-sm font-bold text-gray-900 dark:text-white">{formatPercent(metrics.ram.usagePercent)}</span>
 
                 </div>
 
                 <div className="w-full bg-gray-100 dark:bg-slate-800 rounded-full h-2.5 overflow-hidden">
 
-                  <div className="bg-blue-500 h-2.5 rounded-full" style={{ width: '38%' }}></div>
+                  <div className={`${barColor(metrics.ram.usagePercent)} h-2.5 rounded-full transition-all duration-700 ease-out`} style={{ width: `${clamp(metrics.ram.usagePercent)}%` }} />
 
                 </div>
 
               </div>
+
+<div>
+  <div className="flex justify-between items-center mb-2">
+    <div className="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-slate-300">
+      <Globe size={18} className="text-emerald-500" />Ağ Trafiği
+    </div>
+    <span className="text-sm font-bold text-gray-900 dark:text-white">
+      {formatBytes(totalNet)}
+    </span>
+  </div>
+  <div className="w-full bg-gray-100 dark:bg-slate-800 rounded-full h-2.5 overflow-hidden">
+    <div
+      className="bg-emerald-500 h-2.5 rounded-full transition-all duration-700 ease-out"
+      style={{ width: `${netPercent}%` }}
+    />
+  </div>
+  <div className="flex justify-between mt-1.5 text-xs font-medium text-gray-500 dark:text-slate-400">
+    <span>↓ {formatBytes(metrics.network.inboundBytesPerSecond)}</span>
+    <span>↑ {formatBytes(metrics.network.outboundBytesPerSecond)}</span>
+  </div>
+</div>
+
+
 
               <div>
 
