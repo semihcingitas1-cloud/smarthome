@@ -605,12 +605,12 @@ const ProductDetail = () => {
 
             <div className="grid md:grid-cols-2 gap-4">
 
-              {Object.entries(product?.smartSpecs).map(([key, value]) => ( <div key={key} className="flex justify-between items-center p-4 bg-gray-100 dark:bg-slate-800 rounded-xl">
+              {product?.specifications?.length > 0 ? ( product.specifications.map((s, i) => ( <div key={i} className="flex justify-between items-center p-4 bg-gray-100 dark:bg-slate-800 rounded-xl">
 
-                <span className="text-gray-600 dark:text-slate-400">{key}</span>
-                <span className="font-semibold text-gray-900 dark:text-white">{value}</span>
+                <span className="text-gray-600 dark:text-slate-400">{s.key}</span>
+                <span className="font-semibold text-gray-900 dark:text-white">{s.value}</span>
 
-              </div> ))}
+              </div> )) ) : ( <p className="text-gray-500 dark:text-slate-400">Teknik özellik eklenmemiş.</p> )}
 
             </div>
 
