@@ -9,6 +9,7 @@ import devicesSlice from "./devicesSlice";
 import firmwareSlice from "./admin/firmwareSlice";
 import automationSlice from "./automationSlice";
 import productSlice from "./productSlice";
+import orderSlice from "./orderSlice";
 import aiSlice from "./aiSlice";
 
 
@@ -25,6 +26,7 @@ export const  store = configureStore({
         firmware: firmwareSlice,
         automation: automationSlice,
         products: productSlice,
+        orders: orderSlice,
         ai: aiSlice,
     },
 });
