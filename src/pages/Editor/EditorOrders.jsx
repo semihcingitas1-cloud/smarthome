@@ -10,7 +10,7 @@ import {
   clearSelectedOrder,
   setFilters,
   clearOrderError,
-} from '../../store/orderSlice';
+} from '../../redux/orderSlice';
 
 import {
   Package, Search, Sparkles, X, MapPin, CreditCard, User, Truck,
