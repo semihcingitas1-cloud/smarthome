@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 
+import axios from 'axios';
+
 import { Facebook, Twitter, Instagram, Linkedin, Mail, Phone, QrCode } from 'lucide-react';
 
 const socialLinks = [
@@ -24,11 +26,14 @@ const supportLinks = [
   { name: 'İletişim', link: '/contact' },
 ];
 
+const BASE_URL = "https://ornekciceksitesi.com";
+
 const linkClass = "text-gray-600 dark:text-slate-400 hover:text-typus-dark dark:hover:text-typus-light transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-typus rounded";
 
 const Footer = () => {
 
   const [email, setEmail] = useState("");
+  const [message, setMessage] = useState("");
 
   const currentYear = new Date().getFullYear();
 
@@ -171,6 +176,8 @@ const Footer = () => {
           <p className="uppercase italic font-medium text-gray-600 dark:text-slate-400 text-center md:text-right md:justify-self-end">Typus Home Software Solutions</p>
 
         </div>
+
+        message && ( <p role="status" className="mt-2 text-xs text-gray-600 dark:text-slate-400">{message}</p> )}
 
       </div>
 
