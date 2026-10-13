@@ -132,7 +132,7 @@ const AdminAddProduct = () => {
     { id: 'pricing', label: 'Fiyat & Stok', icon: DollarSign },
     { id: 'details', label: 'Detaylar', icon: FileText },
     { id: 'variants', label: 'Varyantlar', icon: Layers },
-    { id: 'media', label: 'Video Ve Görseller', icon: ImageIcon },
+    { id: 'media', label: 'Video & Görseller', icon: ImageIcon },
     { id: 'seo', label: 'SEO', icon: BarChart3 },
   ];
 
