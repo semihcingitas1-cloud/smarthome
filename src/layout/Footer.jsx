@@ -39,6 +39,21 @@ const Footer = () => {
     setEmail("");
   };
 
+  const handleSubscribe = async (e) => {
+
+    e.preventDefault();
+
+    try {
+
+      const { data } = await axios.post(`${BASE_URL}/subscribe`, { email });
+      setMessage(data.message);
+      setEmail("");
+    } catch (err) {
+
+      setMessage(err.response?.data?.message || "Bir hata oluştu.");
+    }
+  };
+
   return (
 
     <footer className="w-full bg-gray-100 dark:bg-slate-950 text-gray-700 dark:text-slate-300 border-t border-gray-200 dark:border-slate-800 pt-14 pb-6 px-6 transition-colors duration-200">
