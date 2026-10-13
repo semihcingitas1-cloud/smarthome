@@ -1094,26 +1094,151 @@ const AdminAddProduct = () => {
         </div>
 
         {previewMode && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-slide-in">
-            <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-8 w-full max-w-3xl">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="p-3 bg-blue-500/10 rounded-xl"><Package className="text-blue-600 dark:text-blue-400" size={24} /></div>
-                <div>
-                  <h2 className="text-2xl font-bold">Ürün Önizlemesi</h2>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">Ürününüzün müşterilere nasıl görüneceğini kontrol edin</p>
-                </div>
-              </div>
+  <div
+    className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-slide-in"
+    onClick={() => setPreviewMode(false)}
+  >
+    <div
+      className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div className="sticky top-0 bg-white/95 dark:bg-slate-950/95 backdrop-blur-md flex items-center justify-between p-6 border-b border-slate-200 dark:border-slate-800">
+        <div>
+          <h2 className="text-2xl font-bold">Ürün Önizlemesi</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Müşterilere nasıl görüneceğini kontrol edin</p>
+        </div>
+        <button onClick={() => setPreviewMode(false)} aria-label="Kapat" className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
+          <X size={20} />
+        </button>
+      </div>
 
-              <div className="border border-slate-200 dark:border-slate-800 rounded-xl p-6 text-center text-sm text-slate-400 dark:text-slate-500">
-                Ürün önizleme bileşeni burada görünecek (geliştirme aşamasında)
-              </div>
-
-              <button onClick={() => setPreviewMode(false)} className="mt-6 px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl transition-colors">
-                Önizlemeyi Kapat
-              </button>
-            </div>
+      <div className="p-6 grid md:grid-cols-2 gap-8">
+        {/* Görseller */}
+        <div className="space-y-3">
+          <div className="aspect-square bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden flex items-center justify-center">
+            {formData.images[previewIndex] ? (
+              <img src={formData.images[previewIndex].preview} alt={formData.name} className="w-full h-full object-cover" />
+            ) : (
+              <ImageIcon size={48} className="text-slate-300 dark:text-slate-700" />
+            )}
           </div>
-        )}
+          {formData.images.length > 1 && (
+            <div className="grid grid-cols-5 gap-2">
+              {formData.images.map((img, i) => (
+                <button
+                  key={img.preview}
+                  onClick={() => setPreviewIndex(i)}
+                  className={`aspect-square rounded-lg overflow-hidden border-2 ${
+                    previewIndex === i ? 'border-blue-500' : 'border-transparent'
+                  }`}
+                >
+                  <img src={img.preview} alt="" className="w-full h-full object-cover" />
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Bilgiler */}
+        <div className="space-y-4">
+          <div className="flex flex-wrap gap-2">
+            {formData.badge && <span className="px-3 py-1 rounded-full text-xs font-bold bg-blue-600 text-white">{formData.badge}</span>}
+            {formData.isNew && <span className="px-3 py-1 rounded-full text-xs font-bold bg-green-600 text-white">Yeni</span>}
+            {formData.isFeatured && <span className="px-3 py-1 rounded-full text-xs font-bold bg-yellow-500 text-white">Öne Çıkan</span>}
+            {!formData.isActive && <span className="px-3 py-1 rounded-full text-xs font-bold bg-red-500 text-white">Pasif</span>}
+          </div>
+
+          <div>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              {[formData.brand, formData.category, formData.subcategory].filter(Boolean).join(' › ') || 'Marka › Kategori'}
+            </p>
+            <h3 className="text-2xl font-bold mt-1">{formData.name || 'Ürün Adı'}</h3>
+            <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">SKU: {formData.sku || '-'}</p>
+          </div>
+
+          <div className="flex items-end gap-3">
+            <span className="text-3xl font-bold">{formData.price ? `${Number(formData.price).toLocaleString('tr-TR')} ₺` : '— ₺'}</span>
+            {hasDiscount && (
+              <>
+                <span className="text-lg text-slate-400 line-through">{Number(formData.oldPrice).toLocaleString('tr-TR')} ₺</span>
+                <span className="text-sm font-bold text-green-600 dark:text-green-400">
+                  %{Math.round(((formData.oldPrice - formData.price) / formData.oldPrice) * 100)} İndirim
+                </span>
+              </>
+            )}
+          </div>
+
+          {formData.shortDescription && <p className="text-slate-600 dark:text-slate-300">{formData.shortDescription}</p>}
+
+          {formData.colors.length > 0 && (
+            <div className="flex items-center gap-2">
+              {formData.colors.map((c, i) => (
+                <span key={i} title={c.name} className="w-7 h-7 rounded-full border-2 border-slate-300 dark:border-slate-700" style={{ backgroundColor: c.hex }} />
+              ))}
+            </div>
+          )}
+
+          {formData.models.some((m) => m.name.trim()) && (
+            <div className="flex flex-wrap gap-2">
+              {formData.models.filter((m) => m.name.trim()).map((m, i) => (
+                <span key={i} className="px-3 py-1 rounded-lg border border-slate-200 dark:border-slate-800 text-sm">
+                  {m.name}{m.price !== '' ? ` · ${Number(m.price).toLocaleString('tr-TR')} ₺` : ''}
+                </span>
+              ))}
+            </div>
+          )}
+
+          <div className="flex flex-wrap gap-4 text-sm text-slate-500 dark:text-slate-400">
+            <span>Stok: {formData.stock === '' ? '-' : Number(formData.stock) > 0 ? `${formData.stock} ${formData.unit}` : 'Tükendi'}</span>
+            {formData.freeShipping && <span className="flex items-center gap-1"><Truck size={14} />Ücretsiz Kargo</span>}
+            {formData.warranty && <span className="flex items-center gap-1"><Shield size={14} />{formData.warranty} ay garanti</span>}
+            <span>{formData.returnDays} gün iade</span>
+          </div>
+        </div>
+      </div>
+
+      {(formData.description || formData.features.some((f) => f.trim()) || formData.specifications.some((s) => s.key.trim())) && (
+        <div className="px-6 pb-6 space-y-6">
+          {formData.description && (
+            <div>
+              <h4 className="font-semibold mb-2">Açıklama</h4>
+              <p className="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-line">{formData.description}</p>
+            </div>
+          )}
+
+          {formData.features.some((f) => f.trim()) && (
+            <div>
+              <h4 className="font-semibold mb-2">Özellikler</h4>
+              <ul className="list-disc pl-5 text-sm text-slate-600 dark:text-slate-300 space-y-1">
+                {formData.features.filter((f) => f.trim()).map((f, i) => <li key={i}>{f}</li>)}
+              </ul>
+            </div>
+          )}
+
+          {formData.specifications.some((s) => s.key.trim()) && (
+            <div>
+              <h4 className="font-semibold mb-2">Teknik Özellikler</h4>
+              <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden text-sm">
+                {formData.specifications.filter((s) => s.key.trim()).map((s, i) => (
+                  <div key={i} className="grid grid-cols-2 px-4 py-2 odd:bg-slate-50 dark:odd:bg-slate-900">
+                    <span className="text-slate-500 dark:text-slate-400">{s.key}</span>
+                    <span>{s.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="p-6 border-t border-slate-200 dark:border-slate-800">
+        <button onClick={() => setPreviewMode(false)} className="px-6 py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl transition-colors">
+          Önizlemeyi Kapat
+        </button>
+      </div>
+    </div>
+  </div>
+)}
       </div>
 
       <style>{`
