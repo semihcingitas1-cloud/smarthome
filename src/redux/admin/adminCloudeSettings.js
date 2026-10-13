@@ -82,10 +82,15 @@ export const getServerMetrics = createAsyncThunk(
         timestamp: data.timestamp ?? null
       };
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data || {
-          message: error.message || 'Sunucu metrikleri alınamadı.'
-        }
+
+      console.error('GET SERVER METRICS HATASI:', error);  // .message değil, tüm error objesini logla
+
+  return res.status(500).json({
+    success: false,
+    message: 'Sunucu metrikleri alınamadı.',
+    debug: error.message,  // GEÇİCİ - test bitince kaldır
+    debugStack: error.stack // GEÇİCİ
+  });
       );
     }
   }
