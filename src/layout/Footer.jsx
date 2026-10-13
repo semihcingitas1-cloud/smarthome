@@ -32,13 +32,6 @@ const Footer = () => {
 
   const currentYear = new Date().getFullYear();
 
-  const handleSubscribe = (e) => {
-
-    e.preventDefault();
-    console.log("Subscribe:", email);
-    setEmail("");
-  };
-
   const handleSubscribe = async (e) => {
 
     e.preventDefault();
