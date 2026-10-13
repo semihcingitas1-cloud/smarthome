@@ -6,6 +6,8 @@ import { Helmet } from 'react-helmet-async';
 import { getProductBySlug, createReview, clearProduct } from "../../redux/productSlice";
 import { addToCart } from "../../redux/cartSlice";
 
+import ProductModel3D from '../../components/ProductModel3D';
+
 import { Star, Heart, ShoppingCart, Minus, Plus, ShieldCheck, Truck, RotateCcw, Check, ArrowRight, Share2, ZoomIn, Gift, Award, Clock, Users, TrendingUp, Package, CreditCard, Info, X, ChevronLeft, ChevronRight, Tag } from "lucide-react";
 import { FaWhatsapp, FaLink, FaInstagram, FaReddit, FaXTwitter } from 'react-icons/fa6';
 
@@ -34,6 +36,7 @@ const ProductDetail = () => {
   const [reviewSuccess, setReviewSuccess] = useState(false);
   const [showReview, setShowReview] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [viewMode, setViewMode] = useState('image'); // 'image' | '3d'
 
   useEffect(() => {
 
@@ -187,28 +190,30 @@ const ProductDetail = () => {
   const currentUrl = encodeURIComponent(window.location.href);
   const text = encodeURIComponent(`${product?.name} ürününü incele! `);
 
+  const has3D = !!product?.model3d?.url;
+
   return (
 
     <div className="bg-gray-50 dark:bg-slate-950 text-gray-900 dark:text-white min-h-screen py-8 px-4 md:px-6 transition-colors duration-300">
 
       <Helmet>
 
-        <title>{product?.name ? `${product.name} | SmartHub` : 'Ürün Detayı | SmartHub'}</title>
-        <meta name="description" content={ product?.description ? product.description.slice(0, 155) + '...' : 'SmartHub akıllı ev ürünleri'}/>
-        <meta name="keywords" content={[product?.name, product?.brand, product?.category, 'akıllı ev', 'SmartHub', 'IoT', ...(product?.features?.slice(0, 3) || []),].filter(Boolean).join(', ')}/>
+        <title>{product?.name ? `${product.name} | SmartHub` : 'Ürün Detayı | TypusHOME'}</title>
+        <meta name="description" content={ product?.description ? product.description.slice(0, 155) + '...' : 'TypusHOME akıllı ev ürünleri'}/>
+        <meta name="keywords" content={[product?.name, product?.brand, product?.category, 'akıllı ev', 'TypusHOME', 'IoT', ...(product?.features?.slice(0, 3) || []),].filter(Boolean).join(', ')}/>
         <link rel="canonical" href={`https://smarthub.com/productdetail/${product?.slug}`}/>
 
         <meta property="og:type" content="product" />
-        <meta property="og:site_name" content="SmartHub" />
-        <meta property="og:title" content={product?.name || 'SmartHub Ürün'} />
+        <meta property="og:site_name" content="TypusHOME" />
+        <meta property="og:title" content={product?.name || 'TypusHOME Ürün'} />
         <meta property="og:description" content={product?.description?.slice(0, 200) || ''} />
         <meta property="og:image" content={product?.images[0]?.file} />
-        <meta property="og:url" content={`https://smarthub.com/productdetail/${product?.slug}`}/>
+        <meta property="og:url" content={`https://typushome.com.tr/productdetail/${product?.slug}`}/>
         {product?.price && ( <meta property="product:price:amount"   content={product?.price} /> )}
         <meta property="product:price:currency"   content="TRY" />
 
         <meta name="twitter:card"        content="summary_large_image" />
-        <meta name="twitter:title"       content={product?.name || 'SmartHub'} />
+        <meta name="twitter:title"       content={product?.name || 'TypusHOME'} />
         <meta name="twitter:description" content={product?.description?.slice(0, 200) || ''}/>
         <meta name="twitter:image"       content={product?.images[0]?.file} />
 
