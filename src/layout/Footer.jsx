@@ -177,7 +177,7 @@ const Footer = () => {
 
         </div>
 
-        message && ( <p role="status" className="mt-2 text-xs text-gray-600 dark:text-slate-400">{message}</p> )}
+        {message && ( <p role="status" className="mt-2 text-xs text-gray-600 dark:text-slate-400">{message}</p> )}
 
       </div>
 
