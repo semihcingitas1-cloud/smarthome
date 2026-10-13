@@ -303,41 +303,31 @@ const AdminDashboard = () => {
 
               </div>
 
-<div>
-  <div className="flex justify-between items-center mb-2">
-    <div className="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-slate-300">
-      <Globe size={18} className="text-emerald-500" />Ağ Trafiği
-    </div>
-    <span className="text-sm font-bold text-gray-900 dark:text-white">
-      {formatBytes(totalNet)}
-    </span>
-  </div>
-  <div className="w-full bg-gray-100 dark:bg-slate-800 rounded-full h-2.5 overflow-hidden">
-    <div
-      className="bg-emerald-500 h-2.5 rounded-full transition-all duration-700 ease-out"
-      style={{ width: `${netPercent}%` }}
-    />
-  </div>
-  <div className="flex justify-between mt-1.5 text-xs font-medium text-gray-500 dark:text-slate-400">
-    <span>↓ {formatBytes(metrics.network.inboundBytesPerSecond)}</span>
-    <span>↑ {formatBytes(metrics.network.outboundBytesPerSecond)}</span>
-  </div>
-</div>
-
-
 
               <div>
 
                 <div className="flex justify-between items-center mb-2">
 
-                  <div className="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-slate-300"><Globe size={18} className="text-emerald-500" />Ağ Trafiği</div>
-                  <span className="text-sm font-bold text-gray-900 dark:text-white">450 MB/s</span>
+                  <div className="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-slate-300">
+
+                    <Globe size={18} className="text-emerald-500" />Ağ Trafiği
+
+                  </div>
+
+                  <span className="text-sm font-bold text-gray-900 dark:text-white">{formatBytes(totalNet)}</span>
 
                 </div>
 
                 <div className="w-full bg-gray-100 dark:bg-slate-800 rounded-full h-2.5 overflow-hidden">
 
-                  <div className="bg-emerald-500 h-2.5 rounded-full" style={{ width: '65%' }}></div>
+                  <div className="bg-emerald-500 h-2.5 rounded-full transition-all duration-700 ease-out" style={{ width: `${netPercent}%` }} />
+
+                </div>
+
+                <div className="flex justify-between mt-1.5 text-xs font-medium text-gray-500 dark:text-slate-400">
+
+                  <span>↓ {formatBytes(metrics.network.inboundBytesPerSecond)}</span>
+                  <span>↑ {formatBytes(metrics.network.outboundBytesPerSecond)}</span>
 
                 </div>
 
