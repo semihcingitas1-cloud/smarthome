@@ -59,7 +59,9 @@ const AdminAddProduct = () => {
   const [errors, setErrors] = useState({});
   const [activeTab, setActiveTab] = useState('basic');
   const [saveStatus, setSaveStatus] = useState(null);
+  const [toast, setToast] = useState(null);
   const [toastMessage, setToastMessage] = useState('');
+  const [previewIndex, setPreviewIndex] = useState(0);
   const [previewMode, setPreviewMode] = useState(false);
   const [tagInput, setTagInput] = useState('');
   const [colorInput, setColorInput] = useState({ name: '', hex: '#000000' });
@@ -95,10 +97,10 @@ const AdminAddProduct = () => {
     }
   }, [createStatus, createError]);
 
-  const showToast = (message) => {
-    setToastMessage(message);
-    setSaveStatus('error');
-    setTimeout(() => setSaveStatus(null), 4000);
+  const showToast = (message, type = 'error') => {
+
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 4000);
   };
 
   const categories = [
@@ -179,6 +181,7 @@ const AdminAddProduct = () => {
   const removeImage = (index) => {
     URL.revokeObjectURL(formData.images[index]?.preview);
     setFormData(prev => ({ ...prev, images: prev.images.filter((_, i) => i !== index) }));
+    setPreviewIndex(0);
   };
 
   const addFeature = () => {
@@ -1253,6 +1256,17 @@ const duplicateProduct = () => {
           Önizlemeyi Kapat
         </button>
       </div>
+    </div>
+  </div>
+)}
+        {toast && (
+  <div className={`fixed top-8 right-8 z-50 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 animate-slide-in ${
+    toast.type === 'success' ? 'bg-green-600' : 'bg-red-500'
+  }`}>
+    <AlertCircle size={24} />
+    <div>
+      <p className="font-bold">{toast.type === 'success' ? 'Tamam' : 'Hata!'}</p>
+      <p className="text-sm">{toast.message}</p>
     </div>
   </div>
 )}
