@@ -29,7 +29,7 @@ export const updateOrderStatus = createAsyncThunk(
   'orders/updateStatus',
   async ({ orderId, status, note, trackingNumber, carrier }, { rejectWithValue }) => {
     try {
-      const { data } = await axios.patch(
+      const { data } = await axios.put(
         `${BASE_URL}/admin/orders/${orderId}/status`,
         { status, note, trackingNumber, carrier },
         authHeaders()
