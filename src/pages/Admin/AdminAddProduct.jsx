@@ -275,9 +275,26 @@ const AdminAddProduct = () => {
     handleChange('sku', `SKU-${cleaned}-${suffix}`);
   };
 
-  const duplicateProduct = () => {
-    console.log('Ürün kopyalanıyor...');
-  };
+const duplicateProduct = () => {
+  if (!formData.name.trim()) {
+    showToast('Kopyalanacak bilgi yok, önce formu doldurun.');
+    return;
+  }
+
+  formData.images.forEach((img) => URL.revokeObjectURL(img.preview));
+
+  setFormData((prev) => ({
+    ...prev,
+    name: `${prev.name} (Kopya)`,
+    sku: '',
+    images: [],
+  }));
+
+  setErrors({});
+  setActiveTab('basic');
+  window.scrollTo(0, 0);
+  showToast('Bilgiler şablon olarak kopyalandı. Yeni SKU ve görsel ekleyin.', 'success');
+};
 
   const validateForm = () => {
     const newErrors = {};
