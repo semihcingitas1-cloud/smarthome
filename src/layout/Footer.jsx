@@ -156,6 +156,8 @@ const Footer = () => {
 
               </form>
 
+              {message && ( <p role="status" className="mt-2 text-xs text-gray-600 dark:text-slate-400">{message}</p> )}
+
             </div>
 
           </div>
@@ -176,8 +178,6 @@ const Footer = () => {
           <p className="uppercase italic font-medium text-gray-600 dark:text-slate-400 text-center md:text-right md:justify-self-end">Typus Home Software Solutions</p>
 
         </div>
-
-        {message && ( <p role="status" className="mt-2 text-xs text-gray-600 dark:text-slate-400">{message}</p> )}
 
       </div>
 
