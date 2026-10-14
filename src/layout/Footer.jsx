@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 
 import axios from 'axios';
 
-import { Facebook, Twitter, Instagram, Linkedin, Mail, Phone, QrCode } from 'lucide-react';
+import { Facebook, Twitter, Instagram, Linkedin, Mail, Phone, QrCode, CheckCircle2, AlertCircle, Info, Loader2 } from 'lucide-react';
 
 const socialLinks = [
   { name: 'Twitter', icon: Twitter, href: '#' },
@@ -26,6 +26,21 @@ const supportLinks = [
   { name: 'İletişim', link: '/contact' },
 ];
 
+const feedbackStyles = {
+  success: {
+    icon: CheckCircle2,
+    className: 'text-emerald-700 bg-emerald-50 border-emerald-200 dark:text-emerald-300 dark:bg-emerald-950/40 dark:border-emerald-900',
+  },
+  info: {
+    icon: Info,
+    className: 'text-sky-700 bg-sky-50 border-sky-200 dark:text-sky-300 dark:bg-sky-950/40 dark:border-sky-900',
+  },
+  error: {
+    icon: AlertCircle,
+    className: 'text-red-700 bg-red-50 border-red-200 dark:text-red-300 dark:bg-red-950/40 dark:border-red-900',
+  },
+};
+
 const BASE_URL = "https://ornekciceksitesi.com";
 
 const linkClass = "text-gray-600 dark:text-slate-400 hover:text-typus-dark dark:hover:text-typus-light transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-typus rounded";
@@ -34,21 +49,48 @@ const Footer = () => {
 
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [feedback, setFeedback] = useState(null);
 
   const currentYear = new Date().getFullYear();
+
+  useEffect(() => {
+
+    if (!feedback) return;
+    const timer = setTimeout(() => setFeedback(null), 5000);
+    return () => clearTimeout(timer);
+  }, [feedback]);
 
   const handleSubscribe = async (e) => {
 
     e.preventDefault();
+    if (loading) return;
+
+    setLoading(true);
+    setFeedback(null);
 
     try {
 
-      const { data } = await axios.post(`${BASE_URL}/subscribe`, { email });
-      setMessage(data.message);
+      const res = await axios.post(`${BASE_URL}/subscribe`, { email });
+
+      setFeedback({
+
+        type: res.status === 201 ? 'success' : 'info',
+        text: res.data.message,
+      });
+
       setEmail("");
+
     } catch (err) {
 
-      setMessage(err.response?.data?.message || "Bir hata oluştu.");
+      setFeedback({
+
+        type: 'error',
+        text: err.response?.data?.message || "Bağlantı hatası, lütfen tekrar deneyin.",
+      });
+    } finally {
+
+      setLoading(false);
     }
   };
 
@@ -150,13 +192,34 @@ const Footer = () => {
                 <div className="flex">
 
                   <input id="newsletter-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="E-posta" className="w-full min-w-0 px-3 py-2 rounded-l-lg bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 focus:outline-none focus:border-typus dark:focus:border-typus transition-colors"/>
-                  <button type="submit" className="px-4 bg-typus hover:bg-typus-dark rounded-r-lg text-white text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-typus focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950">Gönder</button>
+
+                  <button type="submit" disabled={loading} className="px-4 bg-typus hover:bg-typus-dark disabled:opacity-60 disabled:cursor-not-allowed rounded-r-lg text-white text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-typus focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950">
+                    {loading ? <Loader2 size={16} className="animate-spin" aria-label="Gönderiliyor" /> : 'Gönder'}
+                  </button>
 
                 </div>
 
               </form>
 
-              {message && ( <p role="status" className="mt-2 text-xs text-gray-600 dark:text-slate-400">{message}</p> )}
+              <div aria-live="polite" className="min-h-[2.5rem]">
+
+                {feedback && (() => {
+
+                  const { icon: Icon, className } = feedbackStyles[feedback.type];
+
+                  return (
+
+                    <p className={`mt-2 flex items-start gap-2 rounded-lg border px-3 py-2 text-xs ${className}`}>
+
+                      <Icon size={14} className="mt-0.5 flex-shrink-0" aria-hidden="true" />
+                      <span>{feedback.text}</span>
+
+                    </p>
+                  );
+
+                })()}
+
+              </div>
 
             </div>
 
