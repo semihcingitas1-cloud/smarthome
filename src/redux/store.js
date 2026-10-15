@@ -4,6 +4,7 @@ import cartSlice from "./cartSlice";
 import favoriteSlice from "./favoriteSlice";
 
 import userSlice from "./userSlice";
+import notificationSlice from "./notificationSlice";
 import adminUserSlice from "./admin/adminUserSlice";
 import serverMetricsSlice from "./admin/adminCloudeSettings";
 
@@ -24,6 +25,7 @@ export const  store = configureStore({
 
         user: userSlice,
         adminUser: adminUserSlice,
+        notifications: notificationSlice,
         serverMetrics: serverMetricsSlice,
         devices: devicesSlice,
         firmware: firmwareSlice,
