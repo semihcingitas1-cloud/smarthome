@@ -5,7 +5,7 @@ import { useNavigate, useLocation, Link } from "react-router-dom";
 import { logoutUser } from "../redux/userSlice";
 import { fetchNotifications, markNotificationRead, markAllNotificationsRead, deleteNotification, clearNotifications } from "../redux/notificationSlice";
 
-import { Home, Settings, Bell, User, LogIn, Menu, X, ChevronDown, LogOut, Shield, Wifi, Sun, Moon, LayoutDashboard, Battery, Search, Zap, ShoppingCart, HelpCircle, Cpu, Check, AlertCircle, Info } from "lucide-react";
+import { Home, Settings, Bell, User, LogIn, Menu, X, ChevronDown, LogOut, Shield, Wifi, Sun, Moon, LayoutDashboard, Search, Zap, ShoppingCart, HelpCircle, Cpu, AlertCircle, Info } from "lucide-react";
 
 const TYPE_CONFIG = {
 
@@ -54,51 +54,6 @@ const Header = () => {
   const { carts } = useSelector(state => state.cart);
 
   const role = user?.user?.role;
-
-  const [notifications, setNotifications] = useState([
-    {
-      id: 1,
-      type: 'warning',
-      title: 'Düşük Pil Seviyesi',
-      message: 'Yatak odası sensörü pil seviyesi %15',
-      time: '5 dakika önce',
-      read: false,
-      icon: Battery,
-      color: 'orange'
-    },
-    {
-      id: 2,
-      type: 'success',
-      title: 'Otomasyon Tamamlandı',
-      message: 'Sabah rutini başarıyla tamamlandı',
-      time: '1 saat önce',
-      read: false,
-      icon: Check,
-      color: 'green'
-    },
-    {
-      id: 3,
-      type: 'info',
-      title: 'Yeni Cihaz Eklendi',
-      message: 'Akıllı termostat sisteme eklendi',
-      time: '2 saat önce',
-      read: true,
-      icon: Zap,
-      color: 'blue'
-    },
-    {
-      id: 4,
-      type: 'alert',
-      title: 'Güvenlik Uyarısı',
-      message: 'Ön kapı 5 dakika açık kaldı',
-      time: '3 saat önce',
-      read: true,
-      icon: AlertCircle,
-      color: 'red'
-    },
-  ]);
-
-  const unreadCount = notifications.filter(n => !n.read).length;
 
   useEffect(() => {
 
@@ -193,29 +148,7 @@ const Header = () => {
     return () => clearInterval(interval);
   }, [isMobileMenuOpen, isUserMenuOpen]);
 
-  const navItems = useMemo(
-    () => [
-      {
-        label: "Ana Sayfa",
-        path: "/",
-        icon: <Home size={14} />,
-        authRequired: false,
-      },
-      {
-        label: "Dashboard",
-        path: role === 'admin' ? "/admin/dashboard" : role === 'editor' ? "/editor/dashboard" : "/user/dashboard",
-        icon: <LayoutDashboard size={14} />,
-        authRequired: true,
-      },
-      {
-        label: "Alışveriş",
-        path: "/products",
-        icon: <ShoppingCart size={14} />,
-        authRequired: false,
-      },
-    ], [role]
-  );
-
+  // Bildirimler: giriş yapılmışsa 30 sn'de bir tazelenir, sekme arka plandayken istek atılmaz
   useEffect(() => {
 
     if (!isAuth) {
@@ -240,8 +173,30 @@ const Header = () => {
     };
   }, [isAuth, dispatch]);
 
-  const visibleNavItems = useMemo(
+  const navItems = useMemo(
+    () => [
+      {
+        label: "Ana Sayfa",
+        path: "/",
+        icon: <Home size={14} />,
+        authRequired: false,
+      },
+      {
+        label: "Dashboard",
+        path: role === 'admin' ? "/admin/dashboard" : role === 'editor' ? "/editor/dashboard" : "/user/dashboard",
+        icon: <LayoutDashboard size={14} />,
+        authRequired: true,
+      },
+      {
+        label: "Alışveriş",
+        path: "/products",
+        icon: <ShoppingCart size={14} />,
+        authRequired: false,
+      },
+    ], [role]
+  );
 
+  const visibleNavItems = useMemo(
     () => navItems.filter((item) => !item.authRequired || isAuth),
     [navItems, isAuth]
   );
@@ -314,33 +269,6 @@ const Header = () => {
     setIsMobileMenuOpen(false);
   };
 
-  const markAsRead = (id) => {
-
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
-  };
-
-  const markAllAsRead = () => {
-
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-  };
-
-  const clearNotification = (id) => {
-
-    setNotifications(prev => prev.filter(n => n.id !== id));
-  };
-
-  const getNotificationColor = (color) => {
-
-    const colors = {
-
-      orange: 'bg-orange-500',
-      green: 'bg-green-500',
-      blue: 'bg-typus',
-      red: 'bg-red-500'
-    };
-    return colors[color] || colors.blue;
-  };
-
   const toggleNotificationMenu = () => {
 
     const next = !isNotificationMenuOpen;
@@ -352,7 +280,7 @@ const Header = () => {
 
     if (!n.isRead) dispatch(markNotificationRead(n._id));
 
-  // Backend bildirimi gönderirken data.webPath verirse o sayfaya gider
+    // Backend bildirimi gönderirken data.webPath verirse o sayfaya gider
     if (n.data?.webPath) {
 
       setIsNotificationMenuOpen(false);
@@ -470,111 +398,111 @@ const Header = () => {
 
             {isAuth && ( <div ref={notificationMenuRef} className="sm:relative">
 
-  <button onClick={toggleNotificationMenu} aria-label="Bildirimler" aria-expanded={isNotificationMenuOpen} className={`relative ${iconButtonClass}`}>
+              <button onClick={toggleNotificationMenu} aria-label="Bildirimler" aria-expanded={isNotificationMenuOpen} className={`relative ${iconButtonClass}`}>
 
-    <Bell size={18} />
-    {unreadCount > 0 && ( <span className="absolute top-0.5 right-0.5 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">{unreadCount > 99 ? "99+" : unreadCount}</span> )}
+                <Bell size={18} />
+                {unreadCount > 0 && ( <span className="absolute top-0.5 right-0.5 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">{unreadCount > 99 ? "99+" : unreadCount}</span> )}
 
-  </button>
+              </button>
 
-  {/* Mobilde ekrana sabitlenir (taşma yok), sm+ üstte butona hizalanır */}
-  {isNotificationMenuOpen && ( <div className="fixed inset-x-4 top-[4.5rem] sm:absolute sm:inset-x-auto sm:top-auto sm:right-0 sm:mt-2 sm:w-96 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl shadow-sm overflow-hidden">
+              {/* Mobilde ekrana sabitlenir (taşma yok), sm+ üstte butona hizalanır */}
+              {isNotificationMenuOpen && ( <div className="fixed inset-x-4 top-[4.5rem] sm:absolute sm:inset-x-auto sm:top-auto sm:right-0 sm:mt-2 sm:w-96 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl shadow-sm overflow-hidden">
 
-    <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-slate-700/50">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-slate-700/50">
 
-      <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2">
 
-        <h3 className="font-semibold text-sm text-gray-900 dark:text-white">Bildirimler</h3>
-        {unreadCount > 0 && ( <span className="px-2 py-0.5 bg-typus/15 text-typus-dark dark:text-typus-light text-xs font-semibold rounded-full">{unreadCount} yeni</span> )}
+                    <h3 className="font-semibold text-sm text-gray-900 dark:text-white">Bildirimler</h3>
+                    {unreadCount > 0 && ( <span className="px-2 py-0.5 bg-typus/15 text-typus-dark dark:text-typus-light text-xs font-semibold rounded-full">{unreadCount} yeni</span> )}
 
-      </div>
+                  </div>
 
-      {unreadCount > 0 && ( <button onClick={() => dispatch(markAllNotificationsRead())} className="text-xs text-typus-dark dark:text-typus-light hover:underline">
-        Tümünü okundu işaretle
-      </button> )}
-
-    </div>
-
-    <div className="max-h-96 overflow-y-auto">
-
-      {notificationsLoading && notifications.length === 0 ? ( <div className="px-4 py-12 text-center">
-
-        <p className="text-sm text-gray-500 dark:text-slate-400">Yükleniyor...</p>
-
-      </div> ) : notifications.length > 0 ? ( notifications.map((n) => {
-
-        const config = TYPE_CONFIG[n.type] || TYPE_CONFIG.system;
-        const Icon = config.icon;
-        const critical = n.severity === "critical";
-
-        return ( <div key={n._id} onClick={() => handleNotificationClick(n)} className={`px-4 py-3 border-b border-gray-200 dark:border-slate-700/30 hover:bg-gray-50 dark:hover:bg-slate-700/30 transition-colors cursor-pointer ${critical && !n.isRead ? "bg-red-50 dark:bg-red-900/10" : !n.isRead ? "bg-typus/5 dark:bg-typus/10" : ""}`}>
-
-          <div className="flex items-start gap-3">
-
-            <div className={`w-10 h-10 ${config.bg} rounded-lg flex items-center justify-center flex-shrink-0`}>
-              <Icon size={18} className="text-white" />
-            </div>
-
-            <div className="flex-1 min-w-0">
-
-              <div className="flex items-start justify-between gap-2">
-
-                <h4 className="font-semibold text-sm text-gray-900 dark:text-white">{n.title}</h4>
-
-                <div className="flex items-center gap-1.5 flex-shrink-0 mt-1">
-
-                  {critical && ( <span className="px-1.5 py-0.5 bg-red-500 text-white text-[10px] font-bold rounded">Acil</span> )}
-                  {!n.isRead && ( <div className={`w-2 h-2 rounded-full ${critical ? "bg-red-500" : "bg-typus"}`} /> )}
-
-                </div>
-
-              </div>
-
-              <p className="text-xs text-gray-600 dark:text-slate-400 mt-1">{n.body}</p>
-
-              <div className="flex items-center justify-between mt-2">
-
-                <span className="text-xs text-gray-500 dark:text-slate-500">{timeAgo(n.createdAt)}</span>
-
-                <div className="flex gap-1">
-
-                  {!n.isRead && ( <button onClick={(e) => { e.stopPropagation(); dispatch(markNotificationRead(n._id)); }} className="text-xs text-typus-dark dark:text-typus-light hover:underline">
-                    Okundu
+                  {unreadCount > 0 && ( <button onClick={() => dispatch(markAllNotificationsRead())} className="text-xs text-typus-dark dark:text-typus-light hover:underline">
+                    Tümünü okundu işaretle
                   </button> )}
 
-                  <button onClick={(e) => { e.stopPropagation(); dispatch(deleteNotification(n._id)); }} className="text-xs text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors ml-2">
-                    Sil
-                  </button>
+                </div>
+
+                <div className="max-h-96 overflow-y-auto">
+
+                  {notificationsLoading && notifications.length === 0 ? ( <div className="px-4 py-12 text-center">
+
+                    <p className="text-sm text-gray-500 dark:text-slate-400">Yükleniyor...</p>
+
+                  </div> ) : notifications.length > 0 ? ( notifications.map((n) => {
+
+                    const config = TYPE_CONFIG[n.type] || TYPE_CONFIG.system;
+                    const Icon = config.icon;
+                    const critical = n.severity === "critical";
+
+                    return ( <div key={n._id} onClick={() => handleNotificationClick(n)} className={`px-4 py-3 border-b border-gray-200 dark:border-slate-700/30 hover:bg-gray-50 dark:hover:bg-slate-700/30 transition-colors cursor-pointer ${critical && !n.isRead ? "bg-red-50 dark:bg-red-900/10" : !n.isRead ? "bg-typus/5 dark:bg-typus/10" : ""}`}>
+
+                      <div className="flex items-start gap-3">
+
+                        <div className={`w-10 h-10 ${config.bg} rounded-lg flex items-center justify-center flex-shrink-0`}>
+                          <Icon size={18} className="text-white" />
+                        </div>
+
+                        <div className="flex-1 min-w-0">
+
+                          <div className="flex items-start justify-between gap-2">
+
+                            <h4 className="font-semibold text-sm text-gray-900 dark:text-white">{n.title}</h4>
+
+                            <div className="flex items-center gap-1.5 flex-shrink-0 mt-1">
+
+                              {critical && ( <span className="px-1.5 py-0.5 bg-red-500 text-white text-[10px] font-bold rounded">Acil</span> )}
+                              {!n.isRead && ( <div className={`w-2 h-2 rounded-full ${critical ? "bg-red-500" : "bg-typus"}`} /> )}
+
+                            </div>
+
+                          </div>
+
+                          <p className="text-xs text-gray-600 dark:text-slate-400 mt-1">{n.body}</p>
+
+                          <div className="flex items-center justify-between mt-2">
+
+                            <span className="text-xs text-gray-500 dark:text-slate-500">{timeAgo(n.createdAt)}</span>
+
+                            <div className="flex gap-1">
+
+                              {!n.isRead && ( <button onClick={(e) => { e.stopPropagation(); dispatch(markNotificationRead(n._id)); }} className="text-xs text-typus-dark dark:text-typus-light hover:underline">
+                                Okundu
+                              </button> )}
+
+                              <button onClick={(e) => { e.stopPropagation(); dispatch(deleteNotification(n._id)); }} className="text-xs text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors ml-2">
+                                Sil
+                              </button>
+
+                            </div>
+
+                          </div>
+
+                        </div>
+
+                      </div>
+
+                    </div> );
+                  }) ) : ( <div className="px-4 py-12 text-center">
+
+                    <Bell size={48} className="mx-auto mb-4 text-gray-300 dark:text-slate-700" />
+                    <p className="text-sm text-gray-500 dark:text-slate-400">Bildirim bulunmuyor</p>
+
+                  </div> )}
 
                 </div>
 
-              </div>
+                {notifications.length > 0 && ( <div className="px-4 py-3 border-t border-gray-200 dark:border-slate-700/50">
 
-            </div>
+                  <button onClick={() => { setIsNotificationMenuOpen(false); navigate('/user/notifications'); }} className="w-full text-sm text-typus-dark dark:text-typus-light hover:underline text-center">
+                    Tüm bildirimleri görüntüle
+                  </button>
 
-          </div>
+                </div> )}
 
-        </div> );
-      }) ) : ( <div className="px-4 py-12 text-center">
+              </div> )}
 
-        <Bell size={48} className="mx-auto mb-4 text-gray-300 dark:text-slate-700" />
-        <p className="text-sm text-gray-500 dark:text-slate-400">Bildirim bulunmuyor</p>
-
-      </div> )}
-
-    </div>
-
-    {notifications.length > 0 && ( <div className="px-4 py-3 border-t border-gray-200 dark:border-slate-700/50">
-
-      <button onClick={() => { setIsNotificationMenuOpen(false); navigate('/user/notifications'); }} className="w-full text-sm text-typus-dark dark:text-typus-light hover:underline text-center">
-        Tüm bildirimleri görüntüle
-      </button>
-
-    </div> )}
-
-  </div> )}
-
-</div> )}
+            </div> )}
 
             <button onClick={() => navigate('/cart')} aria-label="Sepet" className={`relative ${iconButtonClass}`}>
 
