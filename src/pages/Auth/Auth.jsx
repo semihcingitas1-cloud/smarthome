@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import { useDispatch, useSelector } from 'react-redux';
 
 import { login, register, resendVerification, clearError } from '../../redux/userSlice';
@@ -9,6 +9,14 @@ import { Mail, Lock, User, Phone, LogIn, UserPlus, ShieldCheck, Home, Eye, EyeOf
 const emptyForm = { name: '', email: '', phone: '', password: '', confirmPassword: '', acceptTerms: false };
 
 const RESEND_COOLDOWN_SECONDS = 60;
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+
+const SOCIAL_ERRORS = {
+
+  google_auth_failed: 'Google ile giriş yapılamadı. Lütfen tekrar deneyin.',
+  facebook_auth_failed: 'Facebook ile giriş yapılamadı. Lütfen tekrar deneyin.',
+  github_auth_failed: 'GitHub ile giriş yapılamadı. GitHub hesabında doğrulanmış bir e-posta olduğundan emin olup tekrar deneyin.',
+};
 
 const Auth = () => {
 
@@ -22,6 +30,8 @@ const Auth = () => {
   const [validationErrors, setValidationErrors] = useState({});
   const [passwordStrength, setPasswordStrength] = useState(0);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [socialError, setSocialError] = useState('');
 
   // Kayıt sonrası otomatik giriş yok; doğrulama bekleyen e-posta bilgisi burada tutulur
   const [pendingVerification, setPendingVerification] = useState(null); // { email, emailSent }
@@ -79,6 +89,23 @@ const Auth = () => {
     const timer = setTimeout(() => setResendCooldown((c) => c - 1), 1000);
     return () => clearTimeout(timer);
   }, [resendCooldown]);
+
+  useEffect(() => {
+
+    const code = searchParams.get('error');
+    if (!code) return;
+
+    setSocialError(SOCIAL_ERRORS[code] || 'Giriş sırasında bir hata oluştu.');
+    setSearchParams({}, { replace: true }); // URL'yi temizle
+  }, [searchParams, setSearchParams]);
+
+  useEffect(() => {
+
+    if (!socialError) return;
+
+    const timer = setTimeout(() => setSocialError(''), 6000);
+    return () => clearTimeout(timer);
+  }, [socialError]);
 
   const handleChange = (e) => {
 
@@ -196,18 +223,15 @@ const Auth = () => {
     }
   };
 
-  const singInWithGoogle = async () => {
+  const socialLogin = (provider) => {
 
-    try {
-      
-    } catch (error) {
-
-      console.log('Google ile giriş hatası:', error);
-    }
+    setSocialError('');
+    window.location.href = `${API_URL}/auth/${provider}`;
   };
 
-  const singInWithGithub = async () => {};
-  const singInWithFacebook = async () => {};
+  const singInWithGoogle = () => socialLogin('google');
+  const singInWithGithub = () => socialLogin('github');
+  const singInWithFacebook = () => socialLogin('facebook');
 
   const getPasswordStrengthColor = () => {
 
@@ -569,15 +593,15 @@ const Auth = () => {
 
                 <div className="grid grid-cols-3 gap-3">
 
-                  <button type="button" className={`bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 rounded-xl py-3 flex items-center justify-center transition-all hover:bg-red-50 dark:hover:bg-red-500/10 hover:border-red-500/30`} title={`Google ile giriş`}>
+                  <button type="button" onClick={singInWithGoogle} className={`bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 rounded-xl py-3 flex items-center justify-center transition-all hover:bg-red-50 dark:hover:bg-red-500/10 hover:border-red-500/30`} title={`Google ile giriş`}>
                     <Chrome size={20} className="text-gray-600 dark:text-slate-400" />
                   </button>
 
-                  <button type="button" className={`bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 rounded-xl py-3 flex items-center justify-center transition-all hover:bg-purple-50 dark:hover:bg-purple-500/10 hover:border-purple-500/30`} title={`GitHub ile giriş`}>
+                  <button type="button" onClick={singInWithGithub} className={`bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 rounded-xl py-3 flex items-center justify-center transition-all hover:bg-purple-50 dark:hover:bg-purple-500/10 hover:border-purple-500/30`} title={`GitHub ile giriş`}>
                     <Github size={20} className="text-gray-600 dark:text-slate-400" />
                   </button>
 
-                  <button type="button" className={`bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 rounded-xl py-3 flex items-center justify-center transition-all hover:bg-blue-50 dark:hover:bg-blue-500/10 hover:border-blue-500/30`} title={`Facebook ile giriş`}>
+                  <button type="button" onClick={singInWithFacebook} className={`bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 rounded-xl py-3 flex items-center justify-center transition-all hover:bg-blue-50 dark:hover:bg-blue-500/10 hover:border-blue-500/30`} title={`Facebook ile giriş`}>
                     <Facebook size={20} className="text-gray-600 dark:text-slate-400" />
                   </button>
 
@@ -627,6 +651,19 @@ const Auth = () => {
         </div>
 
       </div>
+
+      {socialError && ( <div role="alert" className="fixed top-8 right-8 bg-red-500 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 z-50 animate-slide-in max-w-sm">
+
+        <AlertCircle size={24} className="flex-shrink-0" />
+
+        <div>
+
+          <p className="font-bold">Hata!</p>
+          <p className="text-sm">{socialError}</p>
+
+        </div>
+
+      </div> )}
 
     </div>
   );
