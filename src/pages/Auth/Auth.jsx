@@ -9,7 +9,7 @@ import { Mail, Lock, User, Phone, LogIn, UserPlus, ShieldCheck, Home, Eye, EyeOf
 const emptyForm = { name: '', email: '', phone: '', password: '', confirmPassword: '', acceptTerms: false };
 
 const RESEND_COOLDOWN_SECONDS = 60;
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+const API_URL = import.meta.env.API_URL || 'http://localhost:4000';
 
 const SOCIAL_ERRORS = {
 
