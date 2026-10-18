@@ -4,6 +4,8 @@ import { useDispatch, useSelector } from 'react-redux';
 
 import { login, register, resendVerification, clearError } from '../../redux/userSlice';
 
+import TwoFactorLoginStep from '../../components/auth/TwoFactorLoginStep';
+
 import { Mail, Lock, User, Phone, LogIn, UserPlus, ShieldCheck, Home, Eye, EyeOff, AlertCircle, CheckCircle2, Loader2, Sparkles, Shield, Zap, Github, Chrome, Facebook, ArrowRight, Info, MailCheck, RefreshCw } from 'lucide-react';
 
 const emptyForm = { name: '', email: '', phone: '', password: '', confirmPassword: '', acceptTerms: false };
@@ -40,7 +42,7 @@ const Auth = () => {
   const [resendMessage, setResendMessage] = useState('');
   const [resendCooldown, setResendCooldown] = useState(0);
 
-  const { loading, error, isAuth, user } = useSelector((state) => state.user);
+  const { loading, error, isAuth, user, twoFactorChallenge } = useSelector((state) => state.user);
 
   // Giriş sırasında backend 403 + EMAIL_NOT_VERIFIED dönerse
   const isUnverifiedLogin = isLogin && error?.code === 'EMAIL_NOT_VERIFIED';
@@ -390,15 +392,15 @@ const Auth = () => {
               
               <div className="relative z-10">
 
-                <div className="inline-flex items-center justify-center p-4 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl mb-4 shadow-lg shadow-blue-900/50">{pendingVerification ? <MailCheck size={32} className="text-white" /> : <Home size={32} className="text-white" />}</div>
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight mb-2">{pendingVerification ? 'E-postanızı Doğrulayın' : isLogin ? 'Tekrar Hoş Geldiniz' : 'Hesap Oluşturun'}</h2>                
-                <p className="text-gray-600 dark:text-slate-400 text-sm">{pendingVerification ? 'Hesabınızı etkinleştirmek için son bir adım kaldı.' : isLogin ? 'Akıllı evinizi yönetmek için giriş yapın.' : 'Hemen başlamak için kayıt olun.'}</p>
+                <div className="inline-flex items-center justify-center p-4 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl mb-4 shadow-lg shadow-blue-900/50">{twoFactorChallenge ? <KeyRound size={32} className="text-white" /> : pendingVerification ? <MailCheck size={32} className="text-white" /> : <Home size={32} className="text-white" />}</div>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight mb-2">{twoFactorChallenge ? 'İki Aşamalı Doğrulama' : pendingVerification ? 'E-postanızı Doğrulayın' : isLogin ? 'Tekrar Hoş Geldiniz' : 'Hesap Oluşturun'}</h2>
+                <p className="text-gray-600 dark:text-slate-400 text-sm">{twoFactorChallenge ? 'Girişi tamamlamak için doğrulama kodunu gir.' : pendingVerification ? 'Hesabınızı etkinleştirmek için son bir adım kaldı.' : isLogin ? 'Akıllı evinizi yönetmek için giriş yapın.' : 'Hemen başlamak için kayıt olun.'}</p>
 
               </div>
 
             </div>
 
-            {pendingVerification ? ( <div className="p-8 pt-4 space-y-5 text-center">
+            {twoFactorChallenge ? ( <TwoFactorLoginStep /> ) : pendingVerification ? ( <div className="p-8 pt-4 space-y-5 text-center">
 
               {pendingVerification.emailSent ? ( <p className="text-sm text-gray-600 dark:text-slate-400 leading-relaxed">
                 <span className="font-semibold text-gray-900 dark:text-white break-all">{pendingVerification.email}</span> adresine bir doğrulama bağlantısı gönderdik. Bağlantı 24 saat geçerlidir. E-posta gelmediyse spam klasörünü kontrol edin.
