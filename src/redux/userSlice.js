@@ -20,7 +20,8 @@ const initialState = {
     user: {},
     isAuth: false,
     loading: true,
-    error: null
+    error: null,
+    twoFactorChallenge: null,
 };
 
 export const register = createAsyncThunk(
@@ -70,6 +71,104 @@ export const login = createAsyncThunk(
             return rejectWithValue(error.response.data);
         }
     }
+);
+
+// Yeni token geldiyse kaydet (2FA doğrulama, açma ve kapatma sonrası)
+const saveToken = async (data) => {
+  if (data?.token) await AsyncStorage.setItem('token', data.token);
+};
+
+const apiError = (error, fallback) => error.response?.data || { message: fallback };
+
+// ───────────── 2FA: giriş adımı ─────────────
+
+export const verifyLogin2FA = createAsyncThunk(
+  'user/verifyLogin2FA',
+  async ({ challengeToken, code, method }, { rejectWithValue }) => {
+    try {
+      const { data } = await api.post('/login/2fa/verify', { challengeToken, code, method });
+      await saveToken(data);
+      return data;
+    } catch (error) {
+      return rejectWithValue(apiError(error, 'Kod doğrulanamadı'));
+    }
+  }
+);
+
+export const sendLogin2FAEmail = createAsyncThunk(
+  'user/sendLogin2FAEmail',
+  async ({ challengeToken }, { rejectWithValue }) => {
+    try {
+      const { data } = await api.post('/login/2fa/email', { challengeToken });
+      return data;
+    } catch (error) {
+      return rejectWithValue(apiError(error, 'Kod gönderilemedi'));
+    }
+  }
+);
+
+// ───────────── 2FA: ayarlar ─────────────
+
+export const get2FAStatus = createAsyncThunk(
+  'user/get2FAStatus',
+  async (_, { rejectWithValue }) => {
+    try {
+      const { data } = await api.get('/2fa/status');
+      return data;
+    } catch (error) {
+      return rejectWithValue(apiError(error, 'Durum alınamadı'));
+    }
+  }
+);
+
+export const setup2FA = createAsyncThunk(
+  'user/setup2FA',
+  async (_, { rejectWithValue }) => {
+    try {
+      const { data } = await api.post('/2fa/setup');
+      return data;
+    } catch (error) {
+      return rejectWithValue(apiError(error, 'Kurulum başlatılamadı'));
+    }
+  }
+);
+
+export const enable2FA = createAsyncThunk(
+  'user/enable2FA',
+  async ({ code }, { rejectWithValue }) => {
+    try {
+      const { data } = await api.post('/2fa/enable', { code });
+      await saveToken(data);
+      return data;
+    } catch (error) {
+      return rejectWithValue(apiError(error, 'Doğrulama açılamadı'));
+    }
+  }
+);
+
+export const disable2FA = createAsyncThunk(
+  'user/disable2FA',
+  async ({ password, code }, { rejectWithValue }) => {
+    try {
+      const { data } = await api.post('/2fa/disable', { password, code });
+      await saveToken(data);
+      return data;
+    } catch (error) {
+      return rejectWithValue(apiError(error, 'Doğrulama kapatılamadı'));
+    }
+  }
+);
+
+export const regenerateBackupCodes = createAsyncThunk(
+  'user/regenerateBackupCodes',
+  async ({ password, code }, { rejectWithValue }) => {
+    try {
+      const { data } = await api.post('/2fa/backup-codes', { password, code });
+      return data;
+    } catch (error) {
+      return rejectWithValue(apiError(error, 'Yedek kodlar oluşturulamadı'));
+    }
+  }
 );
 
 export const forgotPassword = createAsyncThunk(
@@ -286,6 +385,7 @@ export const userSlice = createSlice({
             state.user = {};
             state.error = null;
             localStorage.removeItem("token");
+            state.twoFactorChallenge = null;
         },
         setLoading: (state, action) => {
 
@@ -295,7 +395,12 @@ export const userSlice = createSlice({
         clearError: (state) => {
 
             state.error = null;
-        }
+        },
+        cancelTwoFactor: (state) => {
+
+            state.twoFactorChallenge = null;
+            state.error = null;
+        },
     },
     extraReducers: (builder) => {
 
@@ -329,16 +434,57 @@ export const userSlice = createSlice({
         });
         builder.addCase(login.fulfilled, (state, action) => {
 
-            state.isAuth = true;
             state.loading = false;
-            state.user = action.payload;
             state.error = null;
 
-            if (action.payload?.token) {
+            // 2FA açık: henüz giriş yapılmadı, kod adımına geç
+            if (action.payload?.requires2FA) {
 
-                localStorage.setItem('token', action.payload.token);
+                state.isAuth = false;
+                state.twoFactorChallenge = {
+
+                    challengeToken: action.payload.challengeToken,
+                    methods: action.payload.methods ?? ['totp', 'email', 'backup'],
+                    emailHint: action.payload.emailHint,
+                    expiresAt: Date.now() + (action.payload.expiresIn ?? 600) * 1000,
+                };
+                return;
             }
+
+            state.isAuth = true;
+            state.user = action.payload;
+            state.twoFactorChallenge = null;
         });
+
+            // 2FA giriş
+    builder
+      .addCase(verifyLogin2FA.fulfilled, (state, action) => {
+        const { success, user, token } = action.payload;
+        state.isAuth = true;
+        state.user = { success, user, token };
+        state.twoFactorChallenge = null;
+        state.error = null;
+      })
+      .addCase(verifyLogin2FA.rejected, (state, action) => {
+        // Süre doldu / hak bitti: giriş formuna dön ve sebebi göster
+        if (action.payload?.code === 'CHALLENGE_EXPIRED' || action.payload?.code === 'TOO_MANY_ATTEMPTS') {
+          state.twoFactorChallenge = null;
+          state.error = action.payload;
+        }
+      })
+      .addCase(sendLogin2FAEmail.rejected, (state, action) => {
+        if (action.payload?.code === 'CHALLENGE_EXPIRED' || action.payload?.code === 'TOO_MANY_EMAILS') {
+          state.twoFactorChallenge = null;
+          state.error = action.payload;
+        }
+      });
+
+    // 2FA aç/kapat: yeni token ve güncel kullanıcı
+    [enable2FA, disable2FA].forEach((thunk) => {
+      builder.addCase(thunk.fulfilled, (state, action) => {
+        state.user = { ...state.user, user: action.payload.user, token: action.payload.token };
+      });
+    });
 
         builder.addCase(profile.pending, (state) => {
 
@@ -409,5 +555,5 @@ export const userSlice = createSlice({
     },
 });
 
-export const { logoutUser, setLoading, clearError } = userSlice.actions;
+export const { logoutUser, clearError, setLoading, cancelTwoFactor } = userSlice.actions;
 export default userSlice.reducer;
