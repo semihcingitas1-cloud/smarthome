@@ -1,10 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, Link } from 'react-router-dom';
 
-import { removeFromCart, updateQuantity, clearCart } from '../../redux/cartSlice';
+import { removeFromCart, updateQuantity, clearCart, validateCart, acknowledgeCartChanges } from '../../redux/cartSlice';
 
-import { ShoppingBag, Trash2, ShieldCheck, CreditCard, Tag, ArrowLeft, Plus, Minus, Truck, RotateCcw, ChevronRight, X, PackageX, Gift, Zap, Lock } from 'lucide-react';
+import { ShoppingBag, Trash2, ShieldCheck, CreditCard, Tag, ArrowLeft, Plus, Minus, Truck, RotateCcw, ChevronRight, X, AlertTriangle, Lock, RefreshCw } from 'lucide-react';
+
+const UNAVAILABLE_TEXT = {
+  out_of_stock: 'Stokta kalmadı',
+  model_not_found: 'Bu model artık satılmıyor',
+  not_found: 'Ürün artık satışta değil',
+  unavailable: 'Şu an satın alınamıyor',
+};
 
 const Cart = () => {
 
@@ -15,7 +22,7 @@ const Cart = () => {
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [couponError, setCouponError] = useState('');
 
-  const { carts } = useSelector(state => state.cart);
+  const { carts, validating } = useSelector(state => state.cart);
   const { isAuth } = useSelector(state => state.user);
 
   const COUPONS = { 'AKILLIEV20': 20, 'SMART10': 10, 'SMARTHOME15': 15 };
@@ -23,13 +30,25 @@ const Cart = () => {
   const SHIPPING_FEE = 200;
   const TAX_RATE = 0.20;
 
-  const subtotal = carts.reduce((acc, item) => acc + item.price * item.quantity, 0);
+  // Sayfa açılınca güncel fiyat ve stok
+  useEffect(() => {
+    dispatch(validateCart());
+  }, [dispatch]);
+
+  const activeItems = carts.filter((item) => !item.unavailable);
+  const unavailableItems = carts.filter((item) => item.unavailable);
+  const changedItems = carts.filter((item) => item.priceChanged || item.quantityAdjusted);
+
+  // Fiyatlar KDV dahil: toplam = ara toplam - indirim + kargo
+  const subtotal = activeItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
   const discountAmount = appliedCoupon ? Math.round(subtotal * COUPONS[appliedCoupon] / 100) : 0;
   const shipping = subtotal >= FREE_SHIPPING_THRESHOLD || subtotal === 0 ? 0 : SHIPPING_FEE;
-  const tax = subtotal * TAX_RATE;
-  const total = subtotal - discountAmount + shipping + tax;
-  const totalQty = carts.reduce((acc, item) => acc + item.quantity, 0);
+  const total = subtotal - discountAmount + shipping;
+  const includedTax = total - total / (1 + TAX_RATE);
+  const totalQty = activeItems.reduce((acc, item) => acc + item.quantity, 0);
   const shippingProgress = Math.min((subtotal / FREE_SHIPPING_THRESHOLD) * 100, 100);
+
+  const canCheckout = activeItems.length > 0 && unavailableItems.length === 0 && !validating;
 
   const handleApplyCoupon = (e) => {
 
@@ -53,7 +72,18 @@ const Cart = () => {
     setCouponError('');
   };
 
+  const handleClearCart = () => {
+
+    if (window.confirm('Sepetteki tüm ürünler silinsin mi?')) dispatch(clearCart());
+  };
+
+  const handleRemoveUnavailable = () => {
+
+    unavailableItems.forEach((item) => dispatch(removeFromCart(item.cartKey)));
+  };
+
   const getImage = (item) => item.images?.[0]?.file || item.images?.[0]?.preview || item.image || '';
+  const formatTL = (value, decimals = 0) => `₺${Number(value || 0).toLocaleString('tr-TR', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
 
   if (carts.length === 0) return (
 
@@ -105,11 +135,51 @@ const Cart = () => {
 
           </h1>
 
-          <button onClick={() => dispatch(clearCart())} className="self-start sm:self-auto flex items-center gap-2 text-sm text-red-400 hover:text-red-500 border border-red-400/20 hover:border-red-400/40 px-4 py-2 rounded-xl transition-colors">
+          <button onClick={handleClearCart} className="self-start sm:self-auto flex items-center gap-2 text-sm text-red-400 hover:text-red-500 border border-red-400/20 hover:border-red-400/40 px-4 py-2 rounded-xl transition-colors">
             <Trash2 size={15} /> Sepeti Temizle
           </button>
 
         </div>
+
+        {/* Fiyat / adet değişikliği */}
+        {changedItems.length > 0 && (
+
+          <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 rounded-2xl p-4 mb-4 flex items-start gap-3">
+
+            <AlertTriangle size={20} className="text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+
+            <div className="flex-1 min-w-0 text-sm">
+
+              <p className="font-semibold text-amber-800 dark:text-amber-300 mb-1">Sepetindeki bazı ürünler güncellendi</p>
+
+              <ul className="space-y-0.5 text-amber-700 dark:text-amber-400">
+                {changedItems.map((item) => (
+                  <li key={item.cartKey}>
+                    {item.name}
+                    {item.priceChanged && <> · fiyat {formatTL(item.priceChanged.from)} → <strong>{formatTL(item.priceChanged.to)}</strong></>}
+                    {item.quantityAdjusted && <> · adet stoğa göre {item.quantity}'e düşürüldü</>}
+                  </li>
+                ))}
+              </ul>
+
+            </div>
+
+            <button onClick={() => dispatch(acknowledgeCartChanges())} aria-label="Kapat" className="text-amber-600 hover:text-amber-800 dark:hover:text-amber-200 flex-shrink-0"><X size={16} /></button>
+
+          </div>
+        )}
+
+        {/* Satın alınamayan ürünler */}
+        {unavailableItems.length > 0 && (
+
+          <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/40 rounded-2xl p-4 mb-4 flex items-center gap-3">
+
+            <AlertTriangle size={20} className="text-red-600 dark:text-red-400 flex-shrink-0" />
+            <p className="flex-1 text-sm font-semibold text-red-700 dark:text-red-400">{unavailableItems.length} ürün şu an satın alınamıyor. Devam etmek için sepetten çıkar.</p>
+            <button onClick={handleRemoveUnavailable} className="flex-shrink-0 text-sm font-semibold text-red-700 dark:text-red-300 bg-white dark:bg-red-900/30 border border-red-200 dark:border-red-800 px-3 py-1.5 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors">Hepsini çıkar</button>
+
+          </div>
+        )}
 
         {subtotal < FREE_SHIPPING_THRESHOLD && ( <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-2xl p-4 mb-6 flex items-center gap-4 shadow-sm">
 
@@ -142,78 +212,95 @@ const Cart = () => {
 
           <div className="lg:col-span-2 space-y-4">
 
-            {carts.map(item => ( <div key={item._id} className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm hover:border-gray-300 dark:hover:border-slate-700 transition-all">
+            {carts.map(item => {
 
-              <div className="flex gap-4">
+              const unavailable = !!item.unavailable;
+              const maxQty = Number(item.stock) > 0 ? Number(item.stock) : 99;
+              const showOld = Number(item.oldPrice) > Number(item.price);
 
-                <Link to={`/productdetail/${item.slug}`} className="flex-shrink-0">
+              return (
 
-                  <div className="w-24 h-24 rounded-xl overflow-hidden bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700">
+                <div key={item.cartKey} className={`bg-white dark:bg-slate-900 border rounded-2xl p-5 shadow-sm transition-all ${unavailable ? 'border-red-200 dark:border-red-900/50' : 'border-gray-200 dark:border-slate-800 hover:border-gray-300 dark:hover:border-slate-700'}`}>
 
-                    <img src={getImage(item)} alt={item.name} className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"/>
+                  <div className="flex gap-4">
 
-                  </div>
+                    <Link to={`/productdetail/${item.slug}`} className="flex-shrink-0">
 
-                </Link>
+                      <div className="w-24 h-24 rounded-xl overflow-hidden bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700">
 
-                <div className="flex-1 min-w-0">
-
-                  <div className="flex items-start justify-between gap-2">
-
-                    <div className="min-w-0">
-
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-blue-500 bg-blue-500/10 px-2 py-0.5 rounded-md">{item.category}</span>
-
-                      <Link to={`/productdetail/${item.slug}`}>
-                        <h3 className="font-bold text-gray-900 dark:text-white mt-1 line-clamp-2 hover:text-blue-500 transition-colors leading-snug">{item.name}</h3>
-                      </Link>
-
-                      <div className="flex flex-wrap gap-2 mt-1">
-
-                        {item.selectedModel && ( <span className="text-xs text-gray-400 dark:text-slate-500 bg-gray-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">Model: {item.selectedModel}</span> )}
-                        {item.selectedColor && ( <span className="text-xs text-gray-400 dark:text-slate-500 bg-gray-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">Renk: {item.selectedColor}</span> )}
+                        <img src={getImage(item)} alt={item.name} className={`w-full h-full object-cover hover:scale-105 transition-transform duration-300 ${unavailable ? 'opacity-40 grayscale' : ''}`}/>
 
                       </div>
 
-                    </div>
+                    </Link>
 
-                    <button onClick={() => dispatch(clearCart(item._id))} className="p-1.5 text-gray-300 dark:text-slate-600 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-all flex-shrink-0">
-                      <X size={16} />
-                    </button>
+                    <div className="flex-1 min-w-0">
 
-                  </div>
+                      <div className="flex items-start justify-between gap-2">
 
-                  <div className="flex items-center justify-between mt-4">
+                        <div className="min-w-0">
 
-                    <div className="flex items-center gap-1 bg-gray-100 dark:bg-slate-800 rounded-xl p-1">
+                          {item.category && <span className="text-[10px] font-bold uppercase tracking-widest text-blue-500 bg-blue-500/10 px-2 py-0.5 rounded-md">{item.category}</span>}
 
-                      <button onClick={() => dispatch(updateQuantity({ id: item.id, quantity: item.quantity - 1 }))} disabled={item.quantity <= 1} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white dark:hover:bg-slate-700 disabled:opacity-30 transition-colors">
-                        <Minus size={13} />
-                      </button>
+                          <Link to={`/productdetail/${item.slug}`}>
+                            <h3 className={`font-bold mt-1 line-clamp-2 hover:text-blue-500 transition-colors leading-snug ${unavailable ? 'text-gray-400 dark:text-slate-500' : 'text-gray-900 dark:text-white'}`}>{item.name}</h3>
+                          </Link>
 
-                      <span className="w-8 text-center text-sm font-bold">{item.quantity}</span>
+                          <div className="flex flex-wrap gap-2 mt-1">
 
-                      <button onClick={() => dispatch(updateQuantity({ id: item.id, quantity: item.quantity + 1 }))} disabled={item.quantity >= (item.stock || 99)} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white dark:hover:bg-slate-700 disabled:opacity-30 transition-colors">
-                        <Plus size={13} />
-                      </button>
+                            {item.selectedModel && ( <span className="text-xs text-gray-400 dark:text-slate-500 bg-gray-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">Model: {item.selectedModel}</span> )}
+                            {item.selectedColor && ( <span className="text-xs text-gray-400 dark:text-slate-500 bg-gray-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">Renk: {item.selectedColor}</span> )}
 
-                    </div>
+                          </div>
 
-                    <div className="text-right">
+                          {unavailable && (
+                            <p className="text-xs font-semibold text-red-600 dark:text-red-400 mt-2 flex items-center gap-1"><AlertTriangle size={12} /> {UNAVAILABLE_TEXT[item.unavailable] ?? UNAVAILABLE_TEXT.unavailable}</p>
+                          )}
 
-                      <p className="text-xs text-gray-400 dark:text-slate-500">{item.quantity} × ₺{item.price.toLocaleString('tr-TR')}</p>
-                      {item.oldPrice && ( <p className="text-xs text-gray-400 dark:text-slate-500 line-through">₺{(item.oldPrice * item.quantity).toLocaleString('tr-TR')}</p> )}
-                      <p className="text-lg font-black text-gray-900 dark:text-white">₺{(item.price * item.quantity).toLocaleString('tr-TR')}</p>
+                        </div>
+
+                        <button onClick={() => dispatch(removeFromCart(item.cartKey))} aria-label="Ürünü sepetten çıkar" className="p-1.5 text-gray-300 dark:text-slate-600 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-all flex-shrink-0">
+                          <X size={16} />
+                        </button>
+
+                      </div>
+
+                      {!unavailable && (
+
+                        <div className="flex items-center justify-between mt-4">
+
+                          <div className="flex items-center gap-1 bg-gray-100 dark:bg-slate-800 rounded-xl p-1">
+
+                            <button onClick={() => dispatch(updateQuantity({ key: item.cartKey, quantity: item.quantity - 1 }))} disabled={item.quantity <= 1} aria-label="Azalt" className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white dark:hover:bg-slate-700 disabled:opacity-30 transition-colors">
+                              <Minus size={13} />
+                            </button>
+
+                            <span className="w-8 text-center text-sm font-bold">{item.quantity}</span>
+
+                            <button onClick={() => dispatch(updateQuantity({ key: item.cartKey, quantity: item.quantity + 1 }))} disabled={item.quantity >= maxQty} aria-label="Artır" className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white dark:hover:bg-slate-700 disabled:opacity-30 transition-colors">
+                              <Plus size={13} />
+                            </button>
+
+                          </div>
+
+                          <div className="text-right">
+
+                            <p className="text-xs text-gray-400 dark:text-slate-500">{item.quantity} × {formatTL(item.price)}</p>
+                            {showOld && ( <p className="text-xs text-gray-400 dark:text-slate-500 line-through">{formatTL(item.oldPrice * item.quantity)}</p> )}
+                            <p className="text-lg font-black text-gray-900 dark:text-white">{formatTL(item.price * item.quantity)}</p>
+
+                          </div>
+
+                        </div>
+                      )}
 
                     </div>
 
                   </div>
 
                 </div>
-
-              </div>
-
-            </div> ))}
+              );
+            })}
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-2">
 
@@ -275,51 +362,53 @@ const Cart = () => {
 
             <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm sticky top-6">
 
-              <h3 className="font-bold text-lg text-gray-900 dark:text-white mb-4 pb-3 border-b border-gray-100 dark:border-slate-800">Sipariş Özeti</h3>
+              <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-100 dark:border-slate-800">
+                <h3 className="font-bold text-lg text-gray-900 dark:text-white">Sipariş Özeti</h3>
+                {validating && <span className="flex items-center gap-1.5 text-xs text-gray-400"><RefreshCw size={12} className="animate-spin" /> Fiyatlar kontrol ediliyor</span>}
+              </div>
 
               <div className="space-y-3 text-sm">
 
                 <div className="flex justify-between text-gray-600 dark:text-slate-400">
 
                   <span>Ara Toplam ({totalQty} ürün)</span>
-                  <span>₺{subtotal.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span>
-
-                </div>
-
-                <div className="flex justify-between text-gray-600 dark:text-slate-400">
-
-                  <span>KDV (%20)</span>
-                  <span>₺{tax.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span>
+                  <span>{formatTL(subtotal, 2)}</span>
 
                 </div>
 
                 <div className="flex justify-between text-gray-600 dark:text-slate-400">
 
                   <span>Kargo</span>
-                  {shipping === 0 ? <span className="text-green-600 dark:text-green-400 font-semibold">Ücretsiz</span> : <span>₺{shipping.toFixed(2)}</span> }
+                  {shipping === 0 ? <span className="text-green-600 dark:text-green-400 font-semibold">Ücretsiz</span> : <span>{formatTL(shipping, 2)}</span> }
 
                 </div>
 
                 {discountAmount > 0 && ( <div className="flex justify-between text-green-600 dark:text-green-400 font-semibold bg-green-50 dark:bg-green-950/30 px-3 py-2 rounded-xl">
 
                   <span>Kupon İndirimi</span>
-                  <span>-₺{discountAmount.toLocaleString('tr-TR')}</span>
+                  <span>-{formatTL(discountAmount)}</span>
 
                 </div> )}
 
-                <div className="border-t border-gray-100 dark:border-slate-800 pt-3 flex justify-between items-baseline">
+                <div className="border-t border-gray-100 dark:border-slate-800 pt-3">
 
-                  <span className="font-bold text-gray-900 dark:text-white">Toplam</span>
-                  <span className="text-2xl font-black text-blue-600 dark:text-blue-400">₺{total.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span>
+                  <div className="flex justify-between items-baseline">
+                    <span className="font-bold text-gray-900 dark:text-white">Toplam</span>
+                    <span className="text-2xl font-black text-blue-600 dark:text-blue-400">{formatTL(total, 2)}</span>
+                  </div>
+
+                  <p className="text-xs text-gray-400 dark:text-slate-500 text-right mt-1">KDV dahil (içindeki KDV: {formatTL(includedTax, 2)})</p>
 
                 </div>
 
               </div>
 
-              <button onClick={() => navigate(isAuth ? '/payment' : '/auth')} className="w-full mt-5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-500/20 hover:scale-[1.02]">
+              <button onClick={() => navigate(isAuth ? '/payment' : '/auth')} disabled={!canCheckout} className="w-full mt-5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-500/20 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100">
                 <CreditCard size={18} />
-                {isAuth ? 'Siparişi Tamamla' : 'Giriş Yap ve Devam Et'}
+                {validating ? 'Kontrol ediliyor…' : isAuth ? 'Siparişi Tamamla' : 'Giriş Yap ve Devam Et'}
               </button>
+
+              {unavailableItems.length > 0 && <p className="text-xs text-red-500 text-center mt-2">Satın alınamayan ürünleri çıkarman gerekiyor.</p>}
 
               <div className="flex items-center justify-center gap-2 text-xs text-gray-400 dark:text-slate-500 mt-4">
                 <Lock size={13} className="text-green-500" />
