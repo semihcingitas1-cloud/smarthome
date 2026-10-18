@@ -1,10 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { ShieldCheck, Mail, KeyRound, Smartphone, AlertCircle, ArrowLeft, CheckCircle2 } from 'lucide-react-native';
+import { ShieldCheck, Mail, KeyRound, Smartphone, AlertCircle, ArrowLeft, CheckCircle2, Loader2 } from 'lucide-react';
 
-import CodeInput from './CodeInput';
 import { verifyLogin2FA, sendLogin2FAEmail, cancelTwoFactor } from '../../redux/userSlice';
 
 const METHOD_INFO = {
@@ -30,9 +27,10 @@ const TwoFactorLoginStep = () => {
   const [cooldown, setCooldown] = useState(0);
   const [error, setError] = useState(null);
   const [info, setInfo] = useState(null);
+  const [notice, setNotice] = useState(null);
 
+  const inputRef = useRef(null);
   const mountedRef = useRef(true);
-  const codeRef = useRef(null);
 
   useEffect(() => () => { mountedRef.current = false; }, []);
 
@@ -41,6 +39,8 @@ const TwoFactorLoginStep = () => {
     const t = setTimeout(() => setCooldown((c) => c - 1), 1000);
     return () => clearTimeout(t);
   }, [cooldown]);
+
+  useEffect(() => { inputRef.current?.focus(); }, [method]);
 
   if (!challenge) return null;
 
@@ -54,7 +54,6 @@ const TwoFactorLoginStep = () => {
     setCode('');
     setError(null);
     if (next !== 'email') setInfo(null);
-    setTimeout(() => codeRef.current?.focus(), 50);
   };
 
   const submit = async (value = cleanCode) => {
@@ -69,20 +68,34 @@ const TwoFactorLoginStep = () => {
       const data = await dispatch(verifyLogin2FA({ challengeToken: challenge.challengeToken, code: value, method })).unwrap();
 
       if (data.backupCodesRemaining != null && data.backupCodesRemaining <= 2) {
-        Alert.alert('Yedek kodların azalıyor', `${data.backupCodesRemaining} yedek kodun kaldı. Profil > Güvenlik bölümünden yenilerini oluştur.`);
+        // Yönlendirmeden önce kısa bir uyarı (Auth sayfası 1.5 sn bekleyip yönlendiriyor)
+        setNotice(`${data.backupCodesRemaining} yedek kodun kaldı. Hesap ayarlarından yenilerini oluştur.`);
       }
     } catch (e) {
 
-      // Süre dolduysa slice giriş formuna döndürüyor
-      if (mountedRef.current && e?.code !== 'CHALLENGE_EXPIRED' && e?.code !== 'TOO_MANY_ATTEMPTS') {
+      if (mountedRef.current && !['CHALLENGE_EXPIRED', 'TOO_MANY_ATTEMPTS'].includes(e?.code)) {
         setError(e?.message || 'Kod doğrulanamadı.');
         setCode('');
-        setTimeout(() => codeRef.current?.focus(), 50);
+        inputRef.current?.focus();
       }
     } finally {
 
       if (mountedRef.current) setVerifying(false);
     }
+  };
+
+  const handleCodeChange = (e) => {
+
+    setError(null);
+
+    if (isBackup) {
+      setCode(formatBackup(e.target.value));
+      return;
+    }
+
+    const next = e.target.value.replace(/\D/g, '').slice(0, 6);
+    setCode(next);
+    if (next.length === 6) submit(next);
   };
 
   const sendEmailCode = async () => {
@@ -101,7 +114,6 @@ const TwoFactorLoginStep = () => {
       setCode('');
       setInfo(data.message);
       setCooldown(data.cooldown ?? 60);
-      setTimeout(() => codeRef.current?.focus(), 50);
     } catch (e) {
 
       if (!mountedRef.current) return;
@@ -113,106 +125,85 @@ const TwoFactorLoginStep = () => {
     }
   };
 
+  const linkClass = 'w-full flex items-center justify-center gap-2 py-2 text-sm font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed';
+
   return (
 
-    <View>
+    <form onSubmit={(e) => { e.preventDefault(); submit(); }} className="p-8 pt-4 space-y-5">
 
-      <View className="items-center mb-6">
-        <View className="w-16 h-16 rounded-2xl bg-blue-50 items-center justify-center mb-3">
-          <ShieldCheck size={30} color="#2563eb" />
-        </View>
-        <Text className="text-xl font-black text-gray-900">İki aşamalı doğrulama</Text>
-        <Text className="text-sm text-gray-500 text-center mt-1 px-4">Hesabını korumak için kimliğini bir kez daha doğrula.</Text>
-      </View>
-
-      <View className="flex-row items-center gap-2 mb-2">
-        <Icon size={16} color="#2563eb" />
-        <Text className="text-sm font-bold text-gray-900">{title}</Text>
-      </View>
-      <Text className="text-sm text-gray-500 mb-4">{desc(challenge.emailHint)}</Text>
+      <div className="flex items-start gap-3">
+        <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center flex-shrink-0">
+          <Icon size={20} className="text-blue-600 dark:text-blue-400" />
+        </div>
+        <div>
+          <p className="font-bold text-gray-900 dark:text-white">{title}</p>
+          <p className="text-sm text-gray-600 dark:text-slate-400">{desc(challenge.emailHint)}</p>
+        </div>
+      </div>
 
       {info && method === 'email' && (
-        <View className="flex-row items-center gap-2 bg-green-50 rounded-xl p-3 mb-4">
-          <CheckCircle2 size={15} color="#16a34a" />
-          <Text className="text-green-700 text-xs flex-1">{info}</Text>
-        </View>
+        <div role="status" className="flex items-center gap-2 bg-green-50 dark:bg-green-500/10 border border-green-200 dark:border-green-500/20 rounded-xl px-3 py-2.5">
+          <CheckCircle2 size={16} className="text-green-600 dark:text-green-400 flex-shrink-0" />
+          <p className="text-xs text-green-700 dark:text-green-400">{info}</p>
+        </div>
       )}
 
-      {isBackup ? (
-        <View className={`bg-gray-50 rounded-xl px-4 py-3 border-2 ${error ? 'border-red-300' : 'border-gray-200'}`}>
-          <TextInput
-            ref={codeRef}
-            value={code}
-            onChangeText={(t) => { setCode(formatBackup(t)); setError(null); }}
-            placeholder="ABCD-EF23"
-            placeholderTextColor="#9ca3af"
-            autoCapitalize="characters"
-            autoCorrect={false}
-            autoFocus
-            maxLength={9}
-            editable={!verifying}
-            returnKeyType="done"
-            onSubmitEditing={() => submit()}
-            className="text-gray-900 text-xl font-bold text-center tracking-widest"
-          />
-        </View>
-      ) : (
-        <CodeInput ref={codeRef} value={code} onChange={(v) => { setCode(v); setError(null); }} onComplete={(v) => submit(v)} autoFocus disabled={verifying} error={!!error} light />
+      <input
+        ref={inputRef}
+        value={code}
+        onChange={handleCodeChange}
+        disabled={verifying}
+        inputMode={isBackup ? 'text' : 'numeric'}
+        autoComplete="one-time-code"
+        autoCapitalize={isBackup ? 'characters' : 'off'}
+        spellCheck={false}
+        maxLength={isBackup ? 9 : 6}
+        placeholder={isBackup ? 'ABCD-EF23' : '••••••'}
+        aria-label={title}
+        className={`w-full bg-white dark:bg-slate-800 border rounded-xl py-4 px-4 text-center text-2xl font-bold tracking-[0.5em] text-gray-900 dark:text-white focus:outline-none transition-all ${error ? 'border-red-500 focus:ring-1 focus:ring-red-500' : 'border-gray-300 dark:border-slate-700 focus:border-blue-500 focus:ring-1 focus:ring-blue-500'}`}
+      />
+
+      {error && (
+        <p role="alert" className="text-red-500 text-sm flex items-center gap-1.5"><AlertCircle size={14} />{error}</p>
       )}
 
-      {!!error && (
-        <View className="flex-row items-center gap-2 mt-3">
-          <AlertCircle size={14} color="#ef4444" />
-          <Text className="text-red-500 text-sm flex-1">{error}</Text>
-        </View>
+      {notice && (
+        <p role="status" className="text-amber-600 dark:text-amber-400 text-sm">{notice}</p>
       )}
 
-      <TouchableOpacity onPress={() => submit()} disabled={!ready || verifying} activeOpacity={0.85} style={{ borderRadius: 14, overflow: 'hidden', marginTop: 20, opacity: !ready || verifying ? 0.6 : 1 }}>
-        <LinearGradient colors={['#2563eb', '#7c3aed']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ paddingVertical: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
-          {verifying ? <ActivityIndicator color="#fff" /> : <ShieldCheck size={20} color="#fff" />}
-          <Text style={{ color: '#fff', fontWeight: '800', fontSize: 16 }}>Doğrula</Text>
-        </LinearGradient>
-      </TouchableOpacity>
+      <button type="submit" disabled={!ready || verifying} className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-blue-900/40 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed">
+        {verifying ? <Loader2 size={20} className="animate-spin" /> : <ShieldCheck size={20} />}
+        {verifying ? 'Doğrulanıyor...' : 'Doğrula'}
+      </button>
 
-      {/* Diğer yöntemler */}
-      <View className="mt-5 gap-1">
+      <div className="space-y-1 pt-1">
 
-        {method !== 'email' && (
-          <TouchableOpacity onPress={sendEmailCode} disabled={sending || cooldown > 0} className="flex-row items-center justify-center gap-2 py-2.5" style={{ opacity: sending || cooldown > 0 ? 0.5 : 1 }}>
-            {sending ? <ActivityIndicator size="small" color="#2563eb" /> : <Mail size={15} color="#2563eb" />}
-            <Text className="text-blue-600 text-sm font-semibold">{cooldown > 0 ? `Kodu e-postama gönder (${cooldown} sn)` : 'Kodu e-postama gönder'}</Text>
-          </TouchableOpacity>
-        )}
-
-        {method === 'email' && (
-          <TouchableOpacity onPress={sendEmailCode} disabled={sending || cooldown > 0} className="flex-row items-center justify-center gap-2 py-2.5" style={{ opacity: sending || cooldown > 0 ? 0.5 : 1 }}>
-            <Mail size={15} color="#2563eb" />
-            <Text className="text-blue-600 text-sm font-semibold">{cooldown > 0 ? `Tekrar gönder (${cooldown} sn)` : 'Kodu tekrar gönder'}</Text>
-          </TouchableOpacity>
-        )}
+        <button type="button" onClick={sendEmailCode} disabled={sending || cooldown > 0} className={linkClass}>
+          {sending ? <Loader2 size={15} className="animate-spin" /> : <Mail size={15} />}
+          {cooldown > 0
+            ? `${method === 'email' ? 'Tekrar gönder' : 'Kodu e-postama gönder'} (${cooldown} sn)`
+            : method === 'email' ? 'Kodu tekrar gönder' : 'Kodu e-postama gönder'}
+        </button>
 
         {method !== 'totp' && (
-          <TouchableOpacity onPress={() => switchMethod('totp')} className="flex-row items-center justify-center gap-2 py-2.5">
-            <Smartphone size={15} color="#2563eb" />
-            <Text className="text-blue-600 text-sm font-semibold">Doğrulayıcı uygulamayı kullan</Text>
-          </TouchableOpacity>
+          <button type="button" onClick={() => switchMethod('totp')} className={linkClass}>
+            <Smartphone size={15} /> Doğrulayıcı uygulamayı kullan
+          </button>
         )}
 
         {method !== 'backup' && (
-          <TouchableOpacity onPress={() => switchMethod('backup')} className="flex-row items-center justify-center gap-2 py-2.5">
-            <KeyRound size={15} color="#2563eb" />
-            <Text className="text-blue-600 text-sm font-semibold">Yedek kod kullan</Text>
-          </TouchableOpacity>
+          <button type="button" onClick={() => switchMethod('backup')} className={linkClass}>
+            <KeyRound size={15} /> Yedek kod kullan
+          </button>
         )}
 
-        <TouchableOpacity onPress={() => dispatch(cancelTwoFactor())} className="flex-row items-center justify-center gap-2 py-2.5 mt-2">
-          <ArrowLeft size={15} color="#94a3b8" />
-          <Text className="text-gray-400 text-sm">Farklı bir hesapla giriş yap</Text>
-        </TouchableOpacity>
+        <button type="button" onClick={() => dispatch(cancelTwoFactor())} className="w-full flex items-center justify-center gap-2 py-2 mt-2 text-sm text-gray-500 dark:text-slate-500 hover:text-gray-700 dark:hover:text-slate-300 transition-colors">
+          <ArrowLeft size={15} /> Farklı bir hesapla giriş yap
+        </button>
 
-      </View>
+      </div>
 
-    </View>
+    </form>
   );
 };
 
