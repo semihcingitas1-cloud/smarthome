@@ -1035,8 +1035,8 @@ const Home = () => {
 
         <div className="relative max-w-4xl w-full bg-slate-900 rounded-3xl overflow-hidden" onClick={e => e.stopPropagation()}>
 
-          <button onClick={() => setIsVideoModalOpen(false)} className="absolute top-4 right-4 z-10 bg-slate-800 hover:bg-slate-700 text-white w-10 h-10 rounded-full flex items-center justify-center transition-all">
-            <X size={20} />
+         <button onClick={() => setIsVideoModalOpen(false)} aria-label="Videoyu kapat" className="absolute top-0 right-0 z-30 flex items-center gap-2 bg-slate-900/90 hover:bg-slate-800 text-white text-sm font-semibold pl-3 pr-4 py-2 rounded-full shadow-lg backdrop-blur transition-colors">
+            <X size={16} /> Kapat
           </button>
 
           <div className="aspect-video bg-slate-800 flex items-center justify-center">
