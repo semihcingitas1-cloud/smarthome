@@ -8,12 +8,21 @@ const getAuthConfig = () => {
     const token = localStorage.getItem("token");
 
     return {
-        headers: { 
+        headers: {
             'Content-Type': 'application/json', 'authorization': `Bearer ${token?.trim()}`
         },
         withCredentials: true
     };
 };
+
+const publicConfig = { headers: { 'Content-Type': 'application/json' }, withCredentials: true };
+
+// Yeni token geldiyse kaydet (giriş, 2FA doğrulama, açma ve kapatma sonrası)
+const saveToken = (data) => {
+    if (data?.token) localStorage.setItem("token", data.token);
+};
+
+const apiError = (error, fallback) => error.response?.data || { message: fallback };
 
 const initialState = {
 
@@ -21,8 +30,10 @@ const initialState = {
     isAuth: false,
     loading: true,
     error: null,
-    twoFactorChallenge: null,
+    twoFactorChallenge: null, // { challengeToken, methods, emailHint, expiresAt }
 };
+
+// ───────────────────────── KAYIT / GİRİŞ ─────────────────────────
 
 export const register = createAsyncThunk(
 
@@ -38,7 +49,7 @@ export const register = createAsyncThunk(
         }
 
         const response = await fetch(`${BASE_URL}/register`, requestOptions);
-        
+
         if (!response.ok) {
 
             let error = await response.json();
@@ -50,148 +61,178 @@ export const register = createAsyncThunk(
 );
 
 export const login = createAsyncThunk(
+
     'login',
+
     async (userData, { rejectWithValue }) => {
+
         try {
-            const config = {
-                headers: { 'Content-Type': 'application/json' },
-                withCredentials: true
-            };
 
             const { data } = await axios.post(
                 `${BASE_URL}/login`,
                 { email: userData.email, password: userData.password },
-                config
+                publicConfig
             );
 
             // 2FA adımında token yok; "undefined" yazılmasın
-            if (data?.token) localStorage.setItem("token", data.token);
+            saveToken(data);
             return data;
         } catch (error) {
 
-            return rejectWithValue(error.response?.data || { message: "Giriş başarısız." });
+            return rejectWithValue(apiError(error, "Giriş başarısız."));
         }
     }
 );
 
-// Yeni token geldiyse kaydet (2FA doğrulama, açma ve kapatma sonrası)
-const saveToken = async (data) => {
-  if (data?.token) await AsyncStorage.setItem('token', data.token);
-};
-
-const apiError = (error, fallback) => error.response?.data || { message: fallback };
-
-// ───────────── 2FA: giriş adımı ─────────────
+// ───────────────────────── 2FA: GİRİŞ ADIMI ─────────────────────────
 
 export const verifyLogin2FA = createAsyncThunk(
-  'user/verifyLogin2FA',
-  async ({ challengeToken, code, method }, { rejectWithValue }) => {
-    try {
-      const { data } = await api.post('/login/2fa/verify', { challengeToken, code, method });
-      await saveToken(data);
-      return data;
-    } catch (error) {
-      return rejectWithValue(apiError(error, 'Kod doğrulanamadı'));
+
+    'verifyLogin2FA',
+
+    async ({ challengeToken, code, method }, { rejectWithValue }) => {
+
+        try {
+
+            const { data } = await axios.post(`${BASE_URL}/login/2fa/verify`, { challengeToken, code, method }, publicConfig);
+            saveToken(data);
+            return data;
+        } catch (error) {
+
+            return rejectWithValue(apiError(error, 'Kod doğrulanamadı.'));
+        }
     }
-  }
 );
 
 export const sendLogin2FAEmail = createAsyncThunk(
-  'user/sendLogin2FAEmail',
-  async ({ challengeToken }, { rejectWithValue }) => {
-    try {
-      const { data } = await api.post('/login/2fa/email', { challengeToken });
-      return data;
-    } catch (error) {
-      return rejectWithValue(apiError(error, 'Kod gönderilemedi'));
+
+    'sendLogin2FAEmail',
+
+    async ({ challengeToken }, { rejectWithValue }) => {
+
+        try {
+
+            const { data } = await axios.post(`${BASE_URL}/login/2fa/email`, { challengeToken }, publicConfig);
+            return data;
+        } catch (error) {
+
+            return rejectWithValue(apiError(error, 'Kod gönderilemedi.'));
+        }
     }
-  }
 );
 
-// ───────────── 2FA: ayarlar ─────────────
+// ───────────────────────── 2FA: AYARLAR ─────────────────────────
 
 export const get2FAStatus = createAsyncThunk(
-  'user/get2FAStatus',
-  async (_, { rejectWithValue }) => {
-    try {
-      const { data } = await api.get('/2fa/status');
-      return data;
-    } catch (error) {
-      return rejectWithValue(apiError(error, 'Durum alınamadı'));
+
+    'get2FAStatus',
+
+    async (_, { rejectWithValue }) => {
+
+        try {
+
+            const { data } = await axios.get(`${BASE_URL}/2fa/status`, getAuthConfig());
+            return data;
+        } catch (error) {
+
+            return rejectWithValue(apiError(error, 'Durum alınamadı.'));
+        }
     }
-  }
 );
 
 export const setup2FA = createAsyncThunk(
-  'user/setup2FA',
-  async (_, { rejectWithValue }) => {
-    try {
-      const { data } = await api.post('/2fa/setup');
-      return data;
-    } catch (error) {
-      return rejectWithValue(apiError(error, 'Kurulum başlatılamadı'));
+
+    'setup2FA',
+
+    async (_, { rejectWithValue }) => {
+
+        try {
+
+            const { data } = await axios.post(`${BASE_URL}/2fa/setup`, {}, getAuthConfig());
+            return data;
+        } catch (error) {
+
+            return rejectWithValue(apiError(error, 'Kurulum başlatılamadı.'));
+        }
     }
-  }
 );
 
 export const enable2FA = createAsyncThunk(
-  'user/enable2FA',
-  async ({ code }, { rejectWithValue }) => {
-    try {
-      const { data } = await api.post('/2fa/enable', { code });
-      await saveToken(data);
-      return data;
-    } catch (error) {
-      return rejectWithValue(apiError(error, 'Doğrulama açılamadı'));
+
+    'enable2FA',
+
+    async ({ code }, { rejectWithValue }) => {
+
+        try {
+
+            const { data } = await axios.post(`${BASE_URL}/2fa/enable`, { code }, getAuthConfig());
+            saveToken(data);
+            return data;
+        } catch (error) {
+
+            return rejectWithValue(apiError(error, 'Doğrulama açılamadı.'));
+        }
     }
-  }
 );
 
 export const disable2FA = createAsyncThunk(
-  'user/disable2FA',
-  async ({ password, code }, { rejectWithValue }) => {
-    try {
-      const { data } = await api.post('/2fa/disable', { password, code });
-      await saveToken(data);
-      return data;
-    } catch (error) {
-      return rejectWithValue(apiError(error, 'Doğrulama kapatılamadı'));
+
+    'disable2FA',
+
+    async ({ password, code }, { rejectWithValue }) => {
+
+        try {
+
+            const { data } = await axios.post(`${BASE_URL}/2fa/disable`, { password, code }, getAuthConfig());
+            saveToken(data);
+            return data;
+        } catch (error) {
+
+            return rejectWithValue(apiError(error, 'Doğrulama kapatılamadı.'));
+        }
     }
-  }
 );
 
 export const regenerateBackupCodes = createAsyncThunk(
-  'user/regenerateBackupCodes',
-  async ({ password, code }, { rejectWithValue }) => {
-    try {
-      const { data } = await api.post('/2fa/backup-codes', { password, code });
-      return data;
-    } catch (error) {
-      return rejectWithValue(apiError(error, 'Yedek kodlar oluşturulamadı'));
+
+    'regenerateBackupCodes',
+
+    async ({ password, code }, { rejectWithValue }) => {
+
+        try {
+
+            const { data } = await axios.post(`${BASE_URL}/2fa/backup-codes`, { password, code }, getAuthConfig());
+            return data;
+        } catch (error) {
+
+            return rejectWithValue(apiError(error, 'Yedek kodlar oluşturulamadı.'));
+        }
     }
-  }
 );
+
+// ───────────────────────── ŞİFRE / E-POSTA ─────────────────────────
 
 export const forgotPassword = createAsyncThunk(
 
     'forgot',
+
     async (email, { rejectWithValue }) => {
 
         const requestOptions = {
 
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({email})
+            body: JSON.stringify({ email })
         }
 
         const response = await fetch(`${BASE_URL}/forgotPassword`, requestOptions);
-        
+
         if (!response.ok) {
 
             let error = await response.json();
             return rejectWithValue(error);
         }
-        
+
         return (await response.json());
     }
 );
@@ -206,12 +247,13 @@ export const resetPassword = createAsyncThunk(
 
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({password: params.password})
+            body: JSON.stringify({ password: params.password })
         }
 
         const response = await fetch(`${BASE_URL}/reset/${params.token}`, requestOptions);
 
         if (!response.ok) {
+
             let error = await response.json();
             return rejectWithValue(error);
         }
@@ -219,104 +261,8 @@ export const resetPassword = createAsyncThunk(
         return (await response.json());
     }
 );
-// ───────────── 2FA ─────────────
 
-const saveToken = (data) => {
-    if (data?.token) localStorage.setItem("token", data.token);
-};
-
-const apiError = (error, fallback) => error.response?.data || { message: fallback };
-
-const publicConfig = { headers: { 'Content-Type': 'application/json' }, withCredentials: true };
-
-export const verifyLogin2FA = createAsyncThunk(
-    'verifyLogin2FA',
-    async ({ challengeToken, code, method }, { rejectWithValue }) => {
-        try {
-            const { data } = await axios.post(`${BASE_URL}/login/2fa/verify`, { challengeToken, code, method }, publicConfig);
-            saveToken(data);
-            return data;
-        } catch (error) {
-            return rejectWithValue(apiError(error, 'Kod doğrulanamadı.'));
-        }
-    }
-);
-
-export const sendLogin2FAEmail = createAsyncThunk(
-    'sendLogin2FAEmail',
-    async ({ challengeToken }, { rejectWithValue }) => {
-        try {
-            const { data } = await axios.post(`${BASE_URL}/login/2fa/email`, { challengeToken }, publicConfig);
-            return data;
-        } catch (error) {
-            return rejectWithValue(apiError(error, 'Kod gönderilemedi.'));
-        }
-    }
-);
-
-export const get2FAStatus = createAsyncThunk(
-    'get2FAStatus',
-    async (_, { rejectWithValue }) => {
-        try {
-            const { data } = await axios.get(`${BASE_URL}/2fa/status`, getAuthConfig());
-            return data;
-        } catch (error) {
-            return rejectWithValue(apiError(error, 'Durum alınamadı.'));
-        }
-    }
-);
-
-export const setup2FA = createAsyncThunk(
-    'setup2FA',
-    async (_, { rejectWithValue }) => {
-        try {
-            const { data } = await axios.post(`${BASE_URL}/2fa/setup`, {}, getAuthConfig());
-            return data;
-        } catch (error) {
-            return rejectWithValue(apiError(error, 'Kurulum başlatılamadı.'));
-        }
-    }
-);
-
-export const enable2FA = createAsyncThunk(
-    'enable2FA',
-    async ({ code }, { rejectWithValue }) => {
-        try {
-            const { data } = await axios.post(`${BASE_URL}/2fa/enable`, { code }, getAuthConfig());
-            saveToken(data);
-            return data;
-        } catch (error) {
-            return rejectWithValue(apiError(error, 'Doğrulama açılamadı.'));
-        }
-    }
-);
-
-export const disable2FA = createAsyncThunk(
-    'disable2FA',
-    async ({ password, code }, { rejectWithValue }) => {
-        try {
-            const { data } = await axios.post(`${BASE_URL}/2fa/disable`, { password, code }, getAuthConfig());
-            saveToken(data);
-            return data;
-        } catch (error) {
-            return rejectWithValue(apiError(error, 'Doğrulama kapatılamadı.'));
-        }
-    }
-);
-
-export const regenerateBackupCodes = createAsyncThunk(
-    'regenerateBackupCodes',
-    async ({ password, code }, { rejectWithValue }) => {
-        try {
-            const { data } = await axios.post(`${BASE_URL}/2fa/backup-codes`, { password, code }, getAuthConfig());
-            return data;
-        } catch (error) {
-            return rejectWithValue(apiError(error, 'Yedek kodlar oluşturulamadı.'));
-        }
-    }
-);
-
-// [YENİ] Doğrulama mailini yeniden gönderir (reducer'ı yok, global loading/error'a dokunmaz)
+// Doğrulama mailini yeniden gönderir (reducer'ı yok, global loading/error'a dokunmaz)
 export const resendVerification = createAsyncThunk(
 
     'resendVerification',
@@ -327,7 +273,7 @@ export const resendVerification = createAsyncThunk(
 
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({email})
+            body: JSON.stringify({ email })
         }
 
         const response = await fetch(`${BASE_URL}/resend-verification`, requestOptions);
@@ -342,7 +288,7 @@ export const resendVerification = createAsyncThunk(
     }
 );
 
-// [YENİ] Maildeki linkteki token ile e-postayı doğrular (reducer'ı yok)
+// Maildeki linkteki token ile e-postayı doğrular (reducer'ı yok)
 export const verifyEmail = createAsyncThunk(
 
     'verifyEmail',
@@ -367,22 +313,24 @@ export const verifyEmail = createAsyncThunk(
     }
 );
 
+// ───────────────────────── PROFİL ─────────────────────────
+
 export const profile = createAsyncThunk(
 
     'profile',
 
     async (_, { rejectWithValue }) => {
 
-        const token = localStorage.getItem("token"); 
-        
-        if(!token){
+        const token = localStorage.getItem("token");
+
+        if (!token) {
 
             return rejectWithValue({ message: "Oturum açılmamış. Token bulunamadı." });
         }
 
         const response = await fetch(`${BASE_URL}/profile`, { headers: {
 
-            authorization: `Bearer ${token.trim()}` 
+            authorization: `Bearer ${token.trim()}`
         }});
 
         if (!response.ok) {
@@ -400,6 +348,8 @@ export const profile = createAsyncThunk(
         return (await response.json());
     }
 );
+
+// ───────────────────────── EV / ODA ─────────────────────────
 
 export const addHome = createAsyncThunk(
 
@@ -469,6 +419,8 @@ export const deleteRoom = createAsyncThunk(
     }
 );
 
+// ───────────────────────── SLICE ─────────────────────────
+
 export const userSlice = createSlice({
 
     name: 'user',
@@ -481,14 +433,14 @@ export const userSlice = createSlice({
             state.loading = false;
             state.user = {};
             state.error = null;
-            localStorage.removeItem("token");
             state.twoFactorChallenge = null;
+            localStorage.removeItem("token");
         },
         setLoading: (state, action) => {
 
             state.loading = action.payload;
         },
-        // [YENİ] Giriş/Kayıt sekmesi değişince eski hatayı temizler
+        // Giriş/Kayıt sekmesi değişince eski hatayı temizler
         clearError: (state) => {
 
             state.error = null;
@@ -501,29 +453,43 @@ export const userSlice = createSlice({
     },
     extraReducers: (builder) => {
 
-        builder.addCase(forgotPassword.pending, (state) => { 
+        // ── Şifre ──
+        builder.addCase(forgotPassword.pending, (state) => {
 
-            state.loading = true; 
-            state.error = null; 
+            state.loading = true;
+            state.error = null;
         });
-        builder.addCase(resetPassword.pending, (state) => { 
+        builder.addCase(resetPassword.pending, (state) => {
 
-            state.loading = true; 
-            state.error = null; 
+            state.loading = true;
+            state.error = null;
         });
+        builder.addCase(forgotPassword.fulfilled, (state) => {
+
+            state.loading = false;
+            state.error = null;
+        });
+        builder.addCase(resetPassword.fulfilled, (state) => {
+
+            state.loading = false;
+            state.error = null;
+        });
+
+        // ── Kayıt ──
         builder.addCase(register.pending, (state) => {
 
             state.loading = true;
             state.isAuth = false;
             state.error = null;
         });
-        // [DEĞİŞTİ] Kayıt sonrası artık giriş yapılmıyor (backend user/token dönmüyor, e-posta doğrulaması bekleniyor)
+        // Kayıt sonrası giriş yapılmıyor (backend user/token dönmüyor, e-posta doğrulaması bekleniyor)
         builder.addCase(register.fulfilled, (state) => {
 
             state.loading = false;
             state.error = null;
         });
 
+        // ── Giriş ──
         builder.addCase(login.pending, (state) => {
 
             state.loading = true;
@@ -552,36 +518,40 @@ export const userSlice = createSlice({
             state.twoFactorChallenge = null;
         });
 
-            // 2FA giriş
-    builder
-      .addCase(verifyLogin2FA.fulfilled, (state, action) => {
-        const { success, user, token } = action.payload;
-        state.isAuth = true;
-        state.user = { success, user, token };
-        state.twoFactorChallenge = null;
-        state.error = null;
-      })
-      .addCase(verifyLogin2FA.rejected, (state, action) => {
+        // ── 2FA giriş ──
+        builder.addCase(verifyLogin2FA.fulfilled, (state, action) => {
+
+            const { success, user, token } = action.payload;
+            state.isAuth = true;
+            state.loading = false;
+            state.user = { success, user, token };
+            state.twoFactorChallenge = null;
+            state.error = null;
+        });
+
         // Süre doldu / hak bitti: giriş formuna dön ve sebebi göster
-        if (action.payload?.code === 'CHALLENGE_EXPIRED' || action.payload?.code === 'TOO_MANY_ATTEMPTS') {
-          state.twoFactorChallenge = null;
-          state.error = action.payload;
-        }
-      })
-      .addCase(sendLogin2FAEmail.rejected, (state, action) => {
-        if (action.payload?.code === 'CHALLENGE_EXPIRED' || action.payload?.code === 'TOO_MANY_EMAILS') {
-          state.twoFactorChallenge = null;
-          state.error = action.payload;
-        }
-      });
+        [verifyLogin2FA.rejected, sendLogin2FAEmail.rejected].forEach((thunk) => {
 
-    // 2FA aç/kapat: yeni token ve güncel kullanıcı
-    [enable2FA, disable2FA].forEach((thunk) => {
-      builder.addCase(thunk.fulfilled, (state, action) => {
-        state.user = { ...state.user, user: action.payload.user, token: action.payload.token };
-      });
-    });
+            builder.addCase(thunk, (state, action) => {
 
+                if (['CHALLENGE_EXPIRED', 'TOO_MANY_ATTEMPTS', 'TOO_MANY_EMAILS'].includes(action.payload?.code)) {
+
+                    state.twoFactorChallenge = null;
+                    state.error = action.payload;
+                }
+            });
+        });
+
+        // ── 2FA aç/kapat: yeni token ve güncel kullanıcı ──
+        [enable2FA.fulfilled, disable2FA.fulfilled].forEach((thunk) => {
+
+            builder.addCase(thunk, (state, action) => {
+
+                state.user = { ...state.user, user: action.payload.user, token: action.payload.token };
+            });
+        });
+
+        // ── Profil ──
         builder.addCase(profile.pending, (state) => {
 
             state.loading = true;
@@ -594,15 +564,8 @@ export const userSlice = createSlice({
             state.user = action.payload;
             state.error = null;
         });
-        builder.addCase(forgotPassword.fulfilled, (state) => {
 
-            state.loading = false; state.error = null;
-        });
-        builder.addCase(resetPassword.fulfilled, (state) => {
-
-            state.loading = false; state.error = null;
-        });
-
+        // ── Ev / oda ──
         const managementActions = [addHome, deleteHome, addRoom, deleteRoom];
 
         managementActions.forEach(action => {
@@ -625,13 +588,14 @@ export const userSlice = createSlice({
             });
         });
 
+        // ── Hatalar ──
         [register.rejected, login.rejected, profile.rejected].forEach(action => {
 
             builder.addCase(action, (state, action) => {
 
                 state.loading = false;
                 state.isAuth = false;
-                state.error = action.payload; 
+                state.error = action.payload;
 
                 if (action.type === profile.rejected.type) {
 
