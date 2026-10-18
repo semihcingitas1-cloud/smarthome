@@ -3,6 +3,12 @@ import { Link, useNavigate } from 'react-router-dom';
 
 import { ShieldCheck, Zap, Smartphone, Cpu, ArrowRight, ArrowDown, CheckCircle, Layers, MousePointerClick, Code2, Wifi, Lock, Thermometer, Lightbulb, Camera, Bell,TrendingUp, Users, Award, Star, Play, X } from 'lucide-react';
 
+// Telefon ölçüleri: çerçeve 3px + 2px kenarlık → ekran genişliği 280 - 10 = 270
+const PHONE_WIDTH = 280;
+const SCREEN_WIDTH = 270;
+const SCREEN_HEIGHT = 580;
+const DEMO_VIDEO_URL = 'https://www.youtube.com/embed/pRTeSIznQ1E?autoplay=1&rel=0&modestbranding=1&playsinline=1';
+
 const Home = () => {
 
   const navigate = useNavigate();
@@ -31,6 +37,14 @@ const Home = () => {
     const t = setInterval(() => setPhoneScreen(s => (s + 1) % 3), 2500);
     return () => clearInterval(t);
   }, [isPlaying]);
+
+  useEffect(() => {
+
+    if (!isVideoModalOpen) return;
+    const onKey = (e) => { if (e.key === 'Escape') setIsVideoModalOpen(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isVideoModalOpen]);
 
   const stats = [
 
@@ -165,8 +179,8 @@ const Home = () => {
 
   return (
 
-    <div className="bg-gray-50 dark:bg-slate-950 text-gray-900 dark:text-white overflow-hiddentransition-colors duration-300">
-      
+    <div className="bg-gray-50 dark:bg-slate-950 text-gray-900 dark:text-white overflow-hidden transition-colors duration-300">
+
       <section className="relative pt-20 pb-16 lg:pt-32 lg:pb-32 px-6 overflow-hidden">
 
         <div className="absolute inset-0 overflow-hidden">
@@ -258,13 +272,13 @@ const Home = () => {
 
             {!isVideoModalOpen && ( <div className="absolute -inset-1 bg-gradient-to-r from-blue-400 to-indigo-400 rounded-full blur-3xl opacity-20 animate-pulse" /> )}
 
-            <div className={`relative transition ${isVideoModalOpen && 'rotate-90 scale-150 -translate-x-1/2'}`} style={{ width: '280px' }}>
+              <div className={`relative transition-transform duration-700 ease-out ${isVideoModalOpen ? 'rotate-90 scale-[0.6] sm:scale-90 lg:scale-110' : ''}`} style={{ width: PHONE_WIDTH }}>
 
               <div className="relative rounded-[52px] p-[3px]" style={{ background: 'linear-gradient(145deg, #d4d0cb, #a8a49e, #c8c4be, #8a8680)' }}>
 
                 <div className="rounded-[50px] p-[2px] bg-gradient-to-b from-[#b0aca6] to-[#787470]">
 
-                  <div className="bg-[#0f0f0f] rounded-[48px] overflow-hidden relative z-0" style={{ height: '580px' }}>
+                  <div className="bg-[#0f0f0f] rounded-[48px] overflow-hidden relative z-0" style={{ height: SCREEN_HEIGHT }}>
 
                     <div className="absolute top-4 left-1/2 -translate-x-1/2 w-20 h-8 bg-black rounded-full z-20 flex items-center justify-center gap-2">
 
@@ -308,14 +322,21 @@ const Home = () => {
 
                       </div>)}
 
-                      {isVideoModalOpen ? ( <div className="relative inset-0 bg-slate-900 rounded-3xl overflow-hidden border border-red-800 -rotate-90" onClick={e => e.stopPropagation()}>
+                      {isVideoModalOpen ? ( <div className="absolute inset-0 bg-black">
 
-                        <button onClick={() => setIsVideoModalOpen(false)} className="absolute top-4 left-4 z-10 bg-slate-800 hover:bg-slate-700 text-white w-10 h-10 rounded-full flex items-center justify-center transition-all">
-                          <X size={20} />
-                        </button>
+                        {/* Telefon 90° döndüğü için video -90° geri çevrilir; genişlik ve yükseklik yer değiştirir ki yatay ekranı tam doldursun */}
+                        <div className="absolute top-1/2 left-1/2" style={{ width: SCREEN_HEIGHT, height: SCREEN_WIDTH, transform: 'translate(-50%, -50%) rotate(-90deg)' }}>
 
-                        <div className="bg-slate-800 flex items-center justify-center">
-                          <iframe src='https://www.youtube.com/embed/pRTeSIznQ1E' title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" className="" />
+                          <iframe
+                            src={DEMO_VIDEO_URL}
+                            title="TypusHOME tanıtım videosu"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                            referrerPolicy="strict-origin-when-cross-origin"
+                            allowFullScreen
+                            className="w-full h-full"
+                            style={{ border: 0 }}
+                          />
+
                         </div>
 
                       </div> ) : ( <>
