@@ -214,7 +214,6 @@ const Products = () => {
   const [discountedOnly, setDiscountedOnly] = useState(false);
   const [wishlist, setWishlist] = useState(readWishlist);
   const [toast, setToast] = useState(null);
-  const [activeCategory, setActiveCategory] = useState(urlCategory);
 
 
   const toastTimer = useRef(null);
