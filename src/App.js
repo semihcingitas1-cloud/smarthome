@@ -8,6 +8,7 @@ import { profile, setLoading } from './redux/userSlice';
 
 import ProtectedRoute from "./components/ProtectedRoute";
 import CookieConsent from "./components/CookieConsent";
+import SiteNotice from './components/SiteNotice';
 
 import Header from './layout/Header';
 import Footer from './layout/Footer';
@@ -98,6 +99,7 @@ function App() {
 
     <Router>
 
+      <SiteNotice />
       <Header />
 
       <Routes>
