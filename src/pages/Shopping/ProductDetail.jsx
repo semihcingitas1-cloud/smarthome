@@ -380,6 +380,7 @@ const ProductDetail = () => {
     <div className="bg-gray-50 dark:bg-slate-950 text-gray-900 dark:text-white min-h-screen py-8 px-4 md:px-6 pb-28 md:pb-8 transition-colors duration-300">
 
       <Helmet>
+
         <title>{`${seoTitle} | ${SITE_NAME}`}</title>
         <meta name="description" content={seoDescription} />
         <meta name="keywords" content={seoKeywords} />
@@ -391,6 +392,7 @@ const ProductDetail = () => {
         <meta property="og:description" content={seoDescription} />
         <meta property="og:image" content={getImage(product)} />
         <meta property="og:url" content={productUrl} />
+
         <meta property="product:price:amount" content={String(currentPrice)} />
         <meta property="product:price:currency" content="TRY" />
 
@@ -400,6 +402,7 @@ const ProductDetail = () => {
         <meta name="twitter:image" content={getImage(product)} />
 
         <script type="application/ld+json">{JSON.stringify(structuredData)}</script>
+
       </Helmet>
 
       <div className="max-w-7xl mx-auto">
