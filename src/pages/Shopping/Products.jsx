@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useSelector, useDispatch } from "react-redux";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { getProducts, getProductCategories, getHomeProducts } from "../../redux/productSlice";
 import { addToCart } from "../../redux/cartSlice";
@@ -198,6 +198,10 @@ const Products = () => {
 
   const { products, productCount, page, hasMore, listLoading, error, categories, categoriesTotal, home } = useSelector((state) => state.products);
 
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlCategory = searchParams.get("category") || "Tümü";
+  const urlSubcategory = searchParams.get("subcategory") || "";
+  
   const [activeCategory, setActiveCategory] = useState("Tümü");
   const [viewMode, setViewMode] = useState("grid");
   const [sortBy, setSortBy] = useState("new");
@@ -210,6 +214,8 @@ const Products = () => {
   const [discountedOnly, setDiscountedOnly] = useState(false);
   const [wishlist, setWishlist] = useState(readWishlist);
   const [toast, setToast] = useState(null);
+  const [activeCategory, setActiveCategory] = useState(urlCategory);
+
 
   const toastTimer = useRef(null);
 
@@ -245,7 +251,11 @@ const Products = () => {
 
   useEffect(() => () => clearTimeout(toastTimer.current), []);
 
-  const hasActiveFilters = !!(query.search || query.category || query.minPrice || query.maxPrice || query.minRating || query.inStock || query.discounted);
+  useEffect(() => {
+    setActiveCategory(urlCategory);
+  }, [urlCategory]);
+
+  const hasActiveFilters = !!(query.search || query.category || query.subcategory || query.minPrice || query.maxPrice || query.minRating || query.inStock || query.discounted);
   const filterCount = [query.minPrice || query.maxPrice, query.minRating, query.inStock, query.discounted].filter(Boolean).length;
 
   // ── İşlemler ──
@@ -311,6 +321,25 @@ const Products = () => {
     { label: "Fırsat ürünü", value: home.discounted.length, icon: Tag },
     { label: "Yeni ürün", value: home.newest.length, icon: Zap },
   ];
+
+  const selectCategory = (name) => {
+    setActiveCategory(name);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (name === "Tümü") next.delete("category");
+      else next.set("category", name);
+      next.delete("subcategory");
+      return next;
+    }, { replace: true });
+  };
+
+  const clearSubcategory = () => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete("subcategory");
+      return next;
+    }, { replace: true });
+  };
 
   const initialLoading = listLoading && products.length === 0;
   const showDeals = !hasActiveFilters && home.discounted.length > 0;
