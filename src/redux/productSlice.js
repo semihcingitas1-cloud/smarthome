@@ -92,6 +92,18 @@ export const getProductCategories = createAsyncThunk(
   }
 );
 
+export const getRelatedProducts = createAsyncThunk(
+  "products/getRelatedProducts",
+  async ({ id, limit = 4 }, { rejectWithValue }) => {
+    try {
+      const { data } = await axios.get(`${BASE_URL}/product/${id}/related${buildQuery({ limit })}`);
+      return data;
+    } catch (error) {
+      return rejectWithValue(errMsg(error, "Benzer ürünler yüklenemedi"));
+    }
+  }
+);
+
 export const getProductDetail = createAsyncThunk(
   "products/getProductDetail",
   async (id, { rejectWithValue }) => {
@@ -294,6 +306,8 @@ const initialState = {
   // Detay
   product: null,
   detailLoading: false,
+  related: [],
+  relatedLoading: false,
 
   // Admin
   adminProducts: [],
@@ -337,6 +351,7 @@ const productSlice = createSlice({
     },
     clearProduct: (state) => {
       state.product = null;
+      state.related = [];
     },
   },
   extraReducers: (builder) => {
@@ -427,6 +442,20 @@ const productSlice = createSlice({
           state.error = action.payload;
         });
     });
+
+        // ── Benzer ürünler (hata sayfayı etkilemez) ──
+    builder
+      .addCase(getRelatedProducts.pending, (state) => {
+        state.relatedLoading = true;
+      })
+      .addCase(getRelatedProducts.fulfilled, (state, action) => {
+        state.relatedLoading = false;
+        state.related = action.payload.products ?? [];
+      })
+      .addCase(getRelatedProducts.rejected, (state) => {
+        state.relatedLoading = false;
+        state.related = [];
+      });
 
     // ── Admin liste ──
     builder
@@ -525,14 +554,25 @@ const productSlice = createSlice({
         state.reviewStatus = "loading";
         state.reviewError = null;
       })
-      .addCase(createReview.fulfilled, (state, action) => {
+            .addCase(createReview.fulfilled, (state, action) => {
         state.reviewStatus = "succeeded";
         state.success = true;
         state.message = action.payload.message;
 
         if (isCurrentProduct(state, action.payload.productId)) {
+
           state.product.ratingsAverage = action.payload.ratingsAverage ?? state.product.ratingsAverage;
           state.product.ratingsQuantity = action.payload.ratingsQuantity ?? state.product.ratingsQuantity;
+
+          const review = action.payload.review;
+
+          if (review) {
+            const reviews = state.product.reviews ?? [];
+            const index = reviews.findIndex((r) => String(r._id) === String(review._id));
+            if (index >= 0) reviews[index] = { ...reviews[index], ...review, user: reviews[index].user ?? review.user };
+            else reviews.unshift(review);
+            state.product.reviews = reviews;
+          }
         }
       })
       .addCase(createReview.rejected, (state, action) => {
