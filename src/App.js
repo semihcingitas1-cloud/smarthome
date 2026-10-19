@@ -46,6 +46,7 @@ import PaymentPage from './pages/Payment/PaymentPage';
 import PaymentSuccess from './pages/Payment/PaymentSuccess';
 
 import EditorDashboard from './pages/Editor/EditorDashboard';
+import EditorCustomers from './pages/Editor/EditorCustomers';
 import EditorMessage from './pages/Editor/EditorMessage';
 import EditorOrders from './pages/Editor/EditorOrders';
 import EditorSupport from './pages/Editor/EditorSupport';
@@ -144,6 +145,7 @@ function App() {
         <Route element={<ProtectedRoute {...routeProps} minRole="moderator" /> }>
 
           <Route path="/editor/dashboard" element={<EditorDashboard />} />
+          <Route path="/editor/customers" element={<EditorCustomers />} />
           <Route path="/editor/message" element={<EditorMessage />} />
           <Route path="/editor/orders" element={<EditorOrders />} />
           <Route path="/editor/support" element={<EditorSupport />} />
