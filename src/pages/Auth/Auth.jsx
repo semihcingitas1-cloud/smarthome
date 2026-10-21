@@ -228,7 +228,7 @@ const Auth = () => {
   const socialLogin = (provider) => {
 
     setSocialError('');
-    window.location.href = `${API_URL}/${provider}`;
+    window.location.href = `${API_URL}/auth/${provider}`;
   };
 
   const singInWithGoogle = () => socialLogin('google');
