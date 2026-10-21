@@ -27,6 +27,7 @@ import VerifyEmail from './pages/Auth/Verifyemail';
 import AuthSuccess from './pages/Auth/AuthSuccess';
 import ForgotPassword from './pages/Auth/ForgotPassword';
 import ResetPassword from './pages/Auth/ResetPassword';
+import AuthCallback from './pages/auth/AuthCallback';
 
 import FAQ from './pages/FAQ';
 import Contact from './pages/Contact';
@@ -115,6 +116,7 @@ function App() {
         <Route exact path='/favorite' element={<Favorite />} />
 
         <Route exact path='/auth' element={<Auth />} />
+        <Route path="/auth/callback" element={<AuthCallback />} />
         <Route path="/verify-email/:token" element={<VerifyEmail />} />
         <Route exact path="/auth/success" element={<AuthSuccess />} />
         <Route exact path='/forgot' element={<ForgotPassword />} />
