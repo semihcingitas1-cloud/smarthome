@@ -84,6 +84,24 @@ export const login = createAsyncThunk(
     }
 );
 
+export const socialExchange = createAsyncThunk(
+
+    'socialExchange',
+
+    async (code, { rejectWithValue }) => {
+
+        try {
+
+            const { data } = await axios.post(`${BASE_URL}/auth/social/exchange`, { code }, publicConfig);
+            saveToken(data);
+            return data;
+        } catch (error) {
+
+            return rejectWithValue(apiError(error, 'Sosyal giriş tamamlanamadı.'));
+        }
+    }
+);
+
 // ───────────────────────── 2FA: GİRİŞ ADIMI ─────────────────────────
 
 export const verifyLogin2FA = createAsyncThunk(
@@ -419,6 +437,29 @@ export const deleteRoom = createAsyncThunk(
     }
 );
 
+// Normal giriş ve sosyal giriş aynı cevabı döner
+const applyLoginResult = (state, action) => {
+
+    state.loading = false;
+    state.error = null;
+
+    if (action.payload?.requires2FA) {
+
+        state.isAuth = false;
+        state.twoFactorChallenge = {
+            challengeToken: action.payload.challengeToken,
+            methods: action.payload.methods ?? ['totp', 'email', 'backup'],
+            emailHint: action.payload.emailHint,
+            expiresAt: Date.now() + (action.payload.expiresIn ?? 600) * 1000,
+        };
+        return;
+    }
+
+    state.isAuth = true;
+    state.user = action.payload;
+    state.twoFactorChallenge = null;
+};
+
 // ───────────────────────── SLICE ─────────────────────────
 
 export const userSlice = createSlice({
@@ -495,27 +536,12 @@ export const userSlice = createSlice({
             state.loading = true;
             state.error = null;
         });
-        builder.addCase(login.fulfilled, (state, action) => {
+        builder.addCase(login.fulfilled, applyLoginResult);
+        builder.addCase(socialExchange.fulfilled, applyLoginResult);
+        builder.addCase(socialExchange.pending, (state) => {
 
-            state.loading = false;
+            state.loading = true;
             state.error = null;
-
-            // 2FA açık: henüz giriş yapılmadı, kod adımına geç
-            if (action.payload?.requires2FA) {
-
-                state.isAuth = false;
-                state.twoFactorChallenge = {
-                    challengeToken: action.payload.challengeToken,
-                    methods: action.payload.methods ?? ['totp', 'email', 'backup'],
-                    emailHint: action.payload.emailHint,
-                    expiresAt: Date.now() + (action.payload.expiresIn ?? 600) * 1000,
-                };
-                return;
-            }
-
-            state.isAuth = true;
-            state.user = action.payload;
-            state.twoFactorChallenge = null;
         });
 
         // ── 2FA giriş ──
@@ -589,7 +615,7 @@ export const userSlice = createSlice({
         });
 
         // ── Hatalar ──
-        [register.rejected, login.rejected, profile.rejected].forEach(action => {
+        [register.rejected, login.rejected, profile.rejected, socialExchange.rejected].forEach(action => {
 
             builder.addCase(action, (state, action) => {
 
