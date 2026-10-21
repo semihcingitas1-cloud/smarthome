@@ -27,7 +27,7 @@ import VerifyEmail from './pages/Auth/Verifyemail';
 import AuthSuccess from './pages/Auth/AuthSuccess';
 import ForgotPassword from './pages/Auth/ForgotPassword';
 import ResetPassword from './pages/Auth/ResetPassword';
-import AuthCallback from './pages/auth/AuthCallback';
+import AuthCallback from './pages/Auth/AuthCallback';
 
 import FAQ from './pages/FAQ';
 import Contact from './pages/Contact';
