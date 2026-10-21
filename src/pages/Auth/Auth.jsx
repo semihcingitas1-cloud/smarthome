@@ -17,7 +17,14 @@ const SOCIAL_ERRORS = {
 
   google_auth_failed: 'Google ile giriş yapılamadı. Lütfen tekrar deneyin.',
   facebook_auth_failed: 'Facebook ile giriş yapılamadı. Lütfen tekrar deneyin.',
-  github_auth_failed: 'GitHub ile giriş yapılamadı. GitHub hesabında doğrulanmış bir e-posta olduğundan emin olup tekrar deneyin.',
+  github_auth_failed: 'GitHub ile giriş yapılamadı. Lütfen tekrar deneyin.',
+  access_denied: 'Giriş iptal edildi.',
+  no_email: 'Hesabınızda paylaşılan doğrulanmış bir e-posta yok. E-posta izni vererek tekrar deneyin.',
+  email_unverified: 'Bu hesabın e-posta adresi doğrulanmamış. Önce sağlayıcıda e-postanızı doğrulayın.',
+  account_conflict: 'Bu e-posta adresi başka bir sosyal hesaba bağlı.',
+  account_disabled: 'Hesabınız devre dışı. Destek ekibiyle iletişime geçin.',
+  provider_disabled: 'Bu giriş yöntemi şu an kullanılamıyor.',
+  exchange_expired: 'Giriş bağlantısının süresi doldu. Lütfen tekrar deneyin.',
 };
 
 const Auth = () => {
