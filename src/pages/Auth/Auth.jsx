@@ -11,7 +11,7 @@ import { Mail, Lock, User, Phone, LogIn, UserPlus, ShieldCheck, Home, Eye, EyeOf
 const emptyForm = { name: '', email: '', phone: '', password: '', confirmPassword: '', acceptTerms: false };
 
 const RESEND_COOLDOWN_SECONDS = 60;
-const API_URL = import.meta.env.API_URL;
+const API_URL = 'https://ornekciceksitesi.com';
 
 const SOCIAL_ERRORS = {
 
