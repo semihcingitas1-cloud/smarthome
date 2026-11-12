@@ -84,7 +84,7 @@ const NEW_CONDITION = {
 
 const NEW_ACTION = {
   DEVICE_COMMAND: () => ({ kind: 'DEVICE_COMMAND', command: 'on' }),
-  NOTIFY: (name) => ({ kind: 'NOTIFY', notification: { title: (name || '').trim().slice(0, NOTIFY_LIMITS.title), body: '', severity: 'info' } }),
+  NOTIFY: (name) => ({ kind: 'NOTIFY', notification: { title: (name || '').trim(), body: '', severity: 'info' } }),
   ASK_APPROVAL: (name) => ({
     kind: 'ASK_APPROVAL',
     approval: { title: `${(name || '').trim() || 'Otomasyon'} çalışsın mı?`.slice(0, 120), body: '', timeoutSeconds: 600, onTimeout: 'STOP', snoozeMinutes: 60 },
