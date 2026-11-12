@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 import { createAutomation, updateAutomation, getAutomation } from '../../redux/automationSlice';
 
 import { Modal, Chip, IconBox, Hint, DurationPicker, Spinner } from './AutomationUI';
-import { TimeTriggerEditor, SunTriggerEditor, TariffTriggerEditor, DeviceCheckEditor, CountTriggerEditor, SequenceTriggerEditor, AnomalyTriggerEditor, GeofenceTriggerEditor, HomeModeTriggerEditor, TimeRangeEditor, SunConditionEditor, TariffConditionEditor, HomeModeConditionEditor, PresenceConditionEditor, RelayActionEditor, SceneActionEditor, NotifyActionEditor, ApprovalActionEditor, SetHomeModeActionEditor, PresenceActionEditor, ActionOptions, SimulationPanel, NOTIFY_LIMITS } from './AutomationEditors';
+import { TimeTriggerEditor, SunTriggerEditor, TariffTriggerEditor, DeviceCheckEditor, CountTriggerEditor, SequenceTriggerEditor, AnomalyTriggerEditor, GeofenceTriggerEditor, HomeModeTriggerEditor, TimeRangeEditor, SunConditionEditor, TariffConditionEditor, HomeModeConditionEditor, PresenceConditionEditor, RelayActionEditor, SceneActionEditor, NotifyActionEditor, ApprovalActionEditor, SetHomeModeActionEditor, PresenceActionEditor, ActionOptions, SimulationPanel } from './AutomationEditors';
 import { describeTrigger, describeCondition, describeAction, findDevice, needsChannel, getId, hasValue, uid, gradientStyle, useHomeExtras, GRADIENT_PRESETS, RELAY_COMMANDS, HHMM } from './automationShared';
 
 import { X, Check, ChevronDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, Plus, Trash2, AlertTriangle, Clock, Sunset, Gauge, Zap, Repeat, Workflow, Activity, MapPin, Home, Hand, Moon, Users, Power, Sparkles, Bell, Hourglass } from 'lucide-react';
