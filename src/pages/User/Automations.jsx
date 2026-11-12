@@ -8,7 +8,7 @@ import { setHomeModeApi, getPendingApprovalsApi, respondToApprovalApi, apiError 
 
 import Sidebar from '../../layout/Sidebar';
 
-import AutomationEditor from './AutomationEditors';
+import AutomationEditorsfrom './AutomationEditors';
 import { DetailModal, ShareModal, ImportTemplateModal, ApprovalCard } from './AutomationDetail';
 import { Toggle, SectionLabel, Spinner } from './AutomationUI';
 import { toView, groupOf, isSameDay, hhmm, formatLastRun, formatNextRun, formatNextRunDay, gradientStyle, buildDuplicatePayload, selectDevices, useHomeId, useHomeExtras, HOME_MODE_LABELS, MEMBER_PRESENCE_LABELS } from './automationShared';
@@ -643,7 +643,7 @@ const Automation = () => {
           )}
 
           {editor && (
-            <AutomationEditor
+            <AutomationEditors
               automationId={editor.id}
               homeId={homeId}
               devices={devices}
