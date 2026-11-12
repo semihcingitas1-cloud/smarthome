@@ -1,856 +1,1127 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import toast from 'react-hot-toast';
 
-import { createAutomation, updateAutomation, getAutomation } from '../../redux/automationSlice';
+import { simulateAutomation, testAutomation, getAnomalyBaseline } from '../../redux/automationSlice';
 
-import { Modal, Chip, IconBox, Hint, DurationPicker, Spinner } from './AutomationUI';
-import { TimeTriggerEditor, SunTriggerEditor, TariffTriggerEditor, DeviceCheckEditor, CountTriggerEditor, SequenceTriggerEditor, AnomalyTriggerEditor, GeofenceTriggerEditor, HomeModeTriggerEditor, TimeRangeEditor, SunConditionEditor, TariffConditionEditor, HomeModeConditionEditor, PresenceConditionEditor, RelayActionEditor, SceneActionEditor, NotifyActionEditor, ApprovalActionEditor, SetHomeModeActionEditor, PresenceActionEditor, ActionOptions, SimulationPanel, NOTIFY_LIMITS } from './AutomationEditor';
-import { describeTrigger, describeCondition, describeAction, findDevice, needsChannel, getId, hasValue, uid, gradientStyle, useHomeExtras, GRADIENT_PRESETS, RELAY_COMMANDS, HHMM } from './automationShared';
+import { Chip, FieldLabel, Hint, TextInput, ValueInput, ToggleRow, DurationPicker, TimeInput, DaysSelector, Bars, Spinner, parseNumber } from './AutomationUI';
+import { findDevice, relayChannels, deviceFields, presetsFor, matchPreset, fieldName, formatValue, formatDuration, describeTrigger, traceLine, getId, hasValue, lastSegment, sceneIcon, isRelay, ANOMALY_MODES, TARIFF_LABELS, HOME_MODE_LABELS, RELAY_COMMANDS, RELAY_PROPERTY, SHORT_DAYS } from './automationShared';
 
-import { X, Check, ChevronDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, Plus, Trash2, AlertTriangle, Clock, Sunset, Gauge, Zap, Repeat, Workflow, Activity, MapPin, Home, Hand, Moon, Users, Power, Sparkles, Bell, Hourglass } from 'lucide-react';
+import { Plus, Trash2, Activity, FlaskConical, Play, Power } from 'lucide-react';
 
 // ───────────────────────── SEÇENEKLER ─────────────────────────
 
-const RUN_MODES = [
-  { id: 'SINGLE', label: 'Tek seferde bir', desc: 'Çalışırken gelen yeni tetiklenmeler yok sayılır.' },
-  { id: 'RESTART', label: 'Baştan başlat', desc: 'Çalışırken yeniden tetiklenirse en baştan başlar. Hareketle yanan ışık için ideal.' },
-  { id: 'QUEUED', label: 'Sıraya al', desc: 'Yeni tetiklenmeler sıraya girer, öncekiler bitince çalışır.' },
-  { id: 'PARALLEL', label: 'Paralel', desc: 'Her tetiklenme ayrı ayrı, aynı anda çalışır.' },
+const OPERATORS = [
+  { id: 'GT', label: '>' },
+  { id: 'GTE', label: '≥' },
+  { id: 'LT', label: '<' },
+  { id: 'LTE', label: '≤' },
+  { id: 'EQ', label: '=' },
+  { id: 'NEQ', label: '≠' },
+  { id: 'BETWEEN', label: 'Arasında' },
+  { id: 'CHANGE', label: 'Değişince' },
 ];
 
-const TRIGGER_OPTIONS = [
-  { id: 'TIME', label: 'Saat', icon: Clock, color: '#3b82f6' },
-  { id: 'SUN', label: 'Güneş', icon: Sunset, color: '#f97316' },
-  { id: 'TARIFF', label: 'Tarife', icon: Gauge, color: '#14b8a6' },
-  { id: 'DEVICE', label: 'Cihaz', icon: Zap, color: '#f59e0b' },
-  { id: 'COUNT', label: 'Sayı', icon: Repeat, color: '#f59e0b' },
-  { id: 'SEQUENCE', label: 'Sıra', icon: Workflow, color: '#0ea5e9' },
-  { id: 'ANOMALY', label: 'Olağan dışı', icon: Activity, color: '#ef4444' },
-  { id: 'GEOFENCE', label: 'Eve gelme / çıkma', icon: MapPin, color: '#22c55e' },
-  { id: 'HOME_MODE', label: 'Ev modu', icon: Home, color: '#14b8a6' },
-  { id: 'MANUAL', label: 'Manuel', icon: Hand, color: '#6366f1' },
+const NUMERIC_OPS = new Set(['GT', 'GTE', 'LT', 'LTE']);
+const SUN_OFFSETS = [-60, -30, -15, 0, 15, 30, 60];
+const NUMERIC_SUGGESTIONS = ['data.temperature', 'data.humidity', 'data.gas', 'data.power'];
+const SENSITIVITIES = [{ id: 'LOW', label: 'Düşük' }, { id: 'MEDIUM', label: 'Orta' }, { id: 'HIGH', label: 'Yüksek' }];
+const DIRECTIONS = [{ id: 'HIGH', label: 'Yükselince' }, { id: 'LOW', label: 'Düşünce' }, { id: 'BOTH', label: 'İkisi de' }];
+const APPROVAL_SNOOZES = [0, 15, 60, 180];
+
+export const NOTIFY_LIMITS = { title: 120, body: 500 };
+
+// 'critical' bilerek yok: sessiz saatleri ve kullanıcı tercihlerini deler
+const NOTIFY_SEVERITIES = [
+  { id: 'info', label: 'Bilgi', color: '#3b82f6' },
+  { id: 'warning', label: 'Uyarı', color: '#f59e0b' },
 ];
 
-const CONDITION_OPTIONS = [
-  { id: 'TIME_RANGE', label: 'Saat aralığı', icon: Clock, color: '#0ea5e9' },
-  { id: 'SUN', label: 'Gündüz / gece', icon: Moon, color: '#0ea5e9' },
-  { id: 'TARIFF', label: 'Tarife dönemi', icon: Gauge, color: '#0ea5e9' },
-  { id: 'HOME_MODE', label: 'Ev modu', icon: Home, color: '#0ea5e9' },
-  { id: 'PRESENCE', label: 'Evde kim var', icon: Users, color: '#0ea5e9' },
-  { id: 'DEVICE', label: 'Cihaz durumu', icon: Zap, color: '#0ea5e9' },
-];
+const SELECT_CLASS = 'w-full p-3 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50';
 
-const ACTION_OPTIONS = [
-  { id: 'DEVICE_COMMAND', label: 'Röle komutu', icon: Power, color: '#10b981' },
-  { id: 'SCENE', label: 'Sahne', icon: Sparkles, color: '#ec4899' },
-  { id: 'NOTIFY', label: 'Bildirim', icon: Bell, color: '#8b5cf6' },
-  { id: 'ASK_APPROVAL', label: 'Onay iste', icon: Hand, color: '#0ea5e9' },
-  { id: 'DELAY', label: 'Bekle', icon: Hourglass, color: '#f59e0b' },
-  { id: 'SET_HOME_MODE', label: 'Ev modu', icon: Home, color: '#14b8a6' },
-  { id: 'SET_PRESENCE', label: 'Evde varmış gibi', icon: Moon, color: '#6366f1' },
-];
+// ───────────────────────── SAAT, GÜNEŞ, TARİFE ─────────────────────────
 
-// Sunucu bildirim gönderirken bunları gerçek değerlerle değiştirir
-const NOTIFY_TEMPLATE_VARS = [
-  { key: '{{device.name}}', label: 'Cihaz adı', deviceOnly: true },
-  { key: '{{value}}', label: 'Yeni değer', deviceOnly: true },
-  { key: '{{oldValue}}', label: 'Önceki değer', deviceOnly: true },
-  { key: '{{person.name}}', label: 'Gelen/çıkan kişi', geofenceOnly: true },
-  { key: '{{automation.name}}', label: 'Otomasyon adı' },
-];
+export const TimeTriggerEditor = ({ value, onChange }) => (
 
-const NEW_TRIGGER = {
-  TIME: () => ({ source: 'TIME', time: '07:00', days: [] }),
-  SUN: () => ({ source: 'SUN', sunEvent: 'SUNSET', offsetMinutes: 0, days: [] }),
-  TARIFF: () => ({ source: 'TARIFF', tariffPeriod: 'NIGHT', days: [] }),
-  DEVICE: () => ({ source: 'DEVICE' }),
-  COUNT: () => ({ source: 'COUNT', event: {}, count: 3, windowSeconds: 600 }),
-  SEQUENCE: () => ({ source: 'SEQUENCE', steps: [{ mode: 'OCCURS' }, { mode: 'OCCURS', withinSeconds: 120 }] }),
-  ANOMALY: () => ({ source: 'ANOMALY', anomalyMode: 'VALUE', sensitivity: 'MEDIUM', direction: 'BOTH' }),
-  GEOFENCE: () => ({ source: 'GEOFENCE', geofenceEvent: 'ENTER', userIds: [] }),
-  HOME_MODE: () => ({ source: 'HOME_MODE', homeMode: 'AWAY' }),
-  MANUAL: () => ({ source: 'MANUAL' }),
-};
+  <div>
+    <FieldLabel first>Saat</FieldLabel>
+    <TimeInput value={value.time} onChange={(time) => onChange({ ...value, time })} />
+    <FieldLabel>Tekrar</FieldLabel>
+    <DaysSelector value={value.days ?? []} onChange={(days) => onChange({ ...value, days })} />
+  </div>
+);
 
-const NEW_CONDITION = {
-  TIME_RANGE: () => ({ kind: 'TIME_RANGE', after: '22:00', before: '06:00', days: [] }),
-  SUN: () => ({ kind: 'SUN', sunState: 'NIGHT' }),
-  TARIFF: () => ({ kind: 'TARIFF', tariffPeriods: ['NIGHT'] }),
-  HOME_MODE: () => ({ kind: 'HOME_MODE', homeModes: ['AWAY'] }),
-  PRESENCE: () => ({ kind: 'PRESENCE', presence: 'NOBODY_HOME' }),
-  DEVICE: () => ({ kind: 'DEVICE' }),
-};
+export const SunTriggerEditor = ({ value, onChange }) => (
 
-const NEW_ACTION = {
-  DEVICE_COMMAND: () => ({ kind: 'DEVICE_COMMAND', command: 'on' }),
-  NOTIFY: (name) => ({ kind: 'NOTIFY', notification: { title: (name || '').trim().slice(0, NOTIFY_LIMITS.title), body: '', severity: 'info' } }),
-  ASK_APPROVAL: (name) => ({
-    kind: 'ASK_APPROVAL',
-    approval: { title: `${(name || '').trim() || 'Otomasyon'} çalışsın mı?`.slice(0, 120), body: '', timeoutSeconds: 600, onTimeout: 'STOP', snoozeMinutes: 60 },
-  }),
-  DELAY: () => ({ kind: 'DELAY', delaySeconds: 60 }),
-  SCENE: () => ({ kind: 'SCENE' }),
-  SET_HOME_MODE: () => ({ kind: 'SET_HOME_MODE', homeMode: 'AWAY' }),
-  SET_PRESENCE: () => ({ kind: 'SET_PRESENCE', enable: true }),
-};
+  <div>
 
-// ───────────────────────── DÜZENLENEMEYENLER ─────────────────────────
-// Burada düzenlenemeyen öğeler kilitli kart olarak gösterilir, olduğu gibi geri gönderilir
-
-const EDITABLE_TRIGGERS = new Set(['TIME', 'SUN', 'TARIFF', 'DEVICE', 'COUNT', 'SEQUENCE', 'ANOMALY', 'GEOFENCE', 'HOME_MODE', 'MANUAL']);
-const EDITABLE_CONDITIONS = new Set(['TIME_RANGE', 'SUN', 'TARIFF', 'HOME_MODE', 'PRESENCE', 'DEVICE']);
-const EDITABLE_ACTIONS = new Set(['NOTIFY', 'DELAY', 'SET_PRESENCE', 'ASK_APPROVAL', 'SET_HOME_MODE', 'SCENE']);
-
-const isTriggerLocked = (t) => !EDITABLE_TRIGGERS.has(t.source);
-const isConditionLocked = (c) => !EDITABLE_CONDITIONS.has(c.kind);
-
-const isActionLocked = (a) => {
-  const kind = a.kind || 'DEVICE_COMMAND';
-  if (kind === 'DEVICE_COMMAND') return !!a.command && !RELAY_COMMANDS.some(c => c.id === a.command);
-  return !EDITABLE_ACTIONS.has(kind);
-};
-
-// ───────────────────────── DOĞRULAMA ─────────────────────────
-
-const isCheckValid = (x, devices, allowChange) => {
-
-  if (!x.deviceId || !x.property || !x.operator) return false;
-  if (needsChannel(findDevice(devices, x.deviceId)) && x.channel == null) return false;
-  if (x.operator === 'CHANGE') return allowChange;
-  if (x.operator === 'BETWEEN') return hasValue(x.value) && hasValue(x.valueTo);
-  return hasValue(x.value);
-};
-
-const isTriggerValid = (t, devices) => {
-
-  if (isTriggerLocked(t)) return true;
-  if (t.source === 'TIME') return HHMM.test(t.time || '');
-  if (t.source === 'SUN') return !!t.sunEvent;
-  if (t.source === 'TARIFF') return !!t.tariffPeriod;
-  if (t.source === 'HOME_MODE') return !!t.homeMode;
-  if (t.source === 'GEOFENCE') return !!t.geofenceEvent;
-  if (t.source === 'DEVICE') return isCheckValid(t, devices, true);
-  if (t.source === 'COUNT') return isCheckValid(t.event ?? {}, devices, true) && t.count >= 2 && t.windowSeconds >= 10;
-
-  if (t.source === 'SEQUENCE') {
-    const steps = t.steps ?? [];
-    return steps.length >= 2
-      && steps.every(s => isCheckValid(s, devices, true))
-      && steps.slice(1).every(s => s.withinSeconds >= 1)
-      && steps.every((s, i) => s.mode !== 'ABSENT' || (i > 0 && i === steps.length - 1));
-  }
-
-  if (t.source === 'ANOMALY') {
-    if (!t.deviceId || !t.property) return false;
-    if (t.anomalyMode === 'ACTIVITY') return isCheckValid(t, devices, true);
-    if (t.anomalyMode === 'DURATION') return !needsChannel(findDevice(devices, t.deviceId)) || t.channel != null;
-    return true;
-  }
-
-  return true;
-};
-
-const isConditionValid = (c, devices) => {
-
-  if (isConditionLocked(c)) return true;
-  if (c.kind === 'TIME_RANGE') return HHMM.test(c.after || '') && HHMM.test(c.before || '') && c.after !== c.before;
-  if (c.kind === 'SUN') return !!c.sunState;
-  if (c.kind === 'TARIFF') return (c.tariffPeriods?.length ?? 0) > 0;
-  if (c.kind === 'HOME_MODE') return (c.homeModes?.length ?? 0) > 0;
-  if (c.kind === 'PRESENCE') return !!c.presence;
-  return isCheckValid(c, devices, false);
-};
-
-const isActionValid = (a) => {
-
-  if (isActionLocked(a)) return true;
-
-  const kind = a.kind || 'DEVICE_COMMAND';
-  if (kind === 'DEVICE_COMMAND') return !!a.deviceId && !!a.command;
-  if (kind === 'NOTIFY') return !!a.notification?.title?.trim() && (a.notification?.recipients !== 'USERS' || (a.notification?.userIds?.length ?? 0) > 0);
-  if (kind === 'ASK_APPROVAL') return !!a.approval?.title?.trim() && Number(a.approval?.timeoutSeconds ?? 600) >= 60 && (a.approval?.recipients !== 'USERS' || (a.approval?.userIds?.length ?? 0) > 0);
-  if (kind === 'DELAY') return Number(a.delaySeconds) >= 1;
-  if (kind === 'SCENE') return !!a.sceneId;
-  if (kind === 'SET_HOME_MODE') return !!a.homeMode;
-  if (kind === 'SET_PRESENCE') return typeof a.enable === 'boolean';
-  return true;
-};
-
-// ───────────────────────── GÖNDERİLECEK VERİ ─────────────────────────
-// Tür değişince eski alanlar sunucuya gitmesin
-
-const TRIGGER_FIELDS = {
-  TIME: ['time', 'days'],
-  SUN: ['sunEvent', 'offsetMinutes', 'days'],
-  TARIFF: ['tariffPeriod', 'days'],
-  DEVICE: ['deviceId', 'property', 'channel', 'operator', 'value', 'valueTo', 'forSeconds', 'hysteresis'],
-  COUNT: ['event', 'count', 'windowSeconds'],
-  SEQUENCE: ['steps'],
-  ANOMALY: ['anomalyMode', 'sensitivity', 'direction', 'deviceId', 'property', 'channel', 'operator', 'value', 'valueTo'],
-  GEOFENCE: ['geofenceEvent', 'userIds'],
-  HOME_MODE: ['homeMode'],
-  MANUAL: [],
-};
-
-const CONDITION_FIELDS = {
-  TIME_RANGE: ['after', 'before', 'days'],
-  SUN: ['sunState'],
-  TARIFF: ['tariffPeriods'],
-  HOME_MODE: ['homeModes'],
-  PRESENCE: ['presence', 'userIds'],
-  DEVICE: ['deviceId', 'property', 'channel', 'operator', 'value', 'valueTo', 'forSeconds'],
-};
-
-const ACTION_FIELDS = {
-  DEVICE_COMMAND: ['deviceId', 'command', 'channel'],
-  NOTIFY: ['notification'],
-  ASK_APPROVAL: ['approval'],
-  DELAY: ['delaySeconds'],
-  SCENE: ['sceneId'],
-  SET_HOME_MODE: ['homeMode'],
-  SET_PRESENCE: ['enable'],
-};
-
-const pickDefined = (obj, keys) => Object.fromEntries(keys.filter(k => hasValue(obj[k])).map(k => [k, obj[k]]));
-const stripKey = ({ _key, ...rest }) => rest;
-
-const cleanTrigger = (t) => (isTriggerLocked(t)
-  ? stripKey(t)
-  : { ...pickDefined(t, ['_id', ...TRIGGER_FIELDS[t.source]]), source: t.source });
-
-const cleanCondition = (c) => (isConditionLocked(c)
-  ? stripKey(c)
-  : { ...pickDefined(c, CONDITION_FIELDS[c.kind]), kind: c.kind });
-
-const cleanAction = (a) => {
-
-  if (isActionLocked(a)) return stripKey(a);
-
-  const kind = a.kind || 'DEVICE_COMMAND';
-  const out = { ...pickDefined(a, ['_id', 'enabled', 'continueOnError', ...ACTION_FIELDS[kind]]), kind };
-
-  // Kanalsız cihaz komutlarında ek veri varsa korunur
-  if (kind === 'DEVICE_COMMAND' && a.channel == null && a.payload) out.payload = a.payload;
-  return out;
-};
-
-const browserTimezone = () => {
-  try {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Istanbul';
-  } catch {
-    return 'Europe/Istanbul';
-  }
-};
-
-// ───────────────────────── LİSTE DURUMU ─────────────────────────
-
-const useItemList = (initial = []) => {
-
-  const [items, setItems] = useState(() => initial.map(i => ({ ...i, _key: uid() })));
-
-  const add = (item) => {
-    const key = uid();
-    setItems(prev => [...prev, { ...item, _key: key }]);
-    return key;
-  };
-
-  const update = (key, next) => setItems(prev => prev.map(i => (i._key === key ? { ...next, _key: key } : i)));
-  const remove = (key) => setItems(prev => prev.filter(i => i._key !== key));
-
-  const move = (key, dir) => setItems(prev => {
-    const i = prev.findIndex(x => x._key === key);
-    const j = i + dir;
-    if (i < 0 || j < 0 || j >= prev.length) return prev;
-    const next = [...prev];
-    [next[i], next[j]] = [next[j], next[i]];
-    return next;
-  });
-
-  const reset = (list) => setItems(list.map(i => ({ ...i, _key: uid() })));
-
-  return { items, add, update, remove, move, reset };
-};
-
-// ───────────────────────── KART VE EKLEME DÜĞMELERİ ─────────────────────────
-
-const ItemCard = ({ icon, color, title, subtitle, locked, invalid, muted, expanded, onToggle, onDelete, onMoveUp, onMoveDown, children }) => (
-
-  <div className={`rounded-2xl border bg-slate-800/50 transition-all ${invalid && !expanded ? 'border-red-500/70' : expanded ? 'border-slate-600' : 'border-slate-700'}`}>
-
-    <div className="flex items-center gap-1 p-4">
-
-      <button type="button" onClick={locked ? undefined : onToggle} className={`flex-1 flex items-center gap-3 text-left min-w-0 ${locked ? 'cursor-default' : ''}`} style={{ opacity: muted ? 0.5 : 1 }}>
-
-        <IconBox icon={icon} color={color} size="w-10 h-10" iconSize={18} />
-
-        <div className="min-w-0">
-          <p className="font-bold text-white break-words">{title}</p>
-          {subtitle ? <p className="text-xs text-slate-500 mt-0.5 truncate">{subtitle}</p> : null}
-          {locked ? <p className="text-[11px] text-amber-400 mt-0.5">Burada düzenlenemiyor · olduğu gibi korunur</p> : null}
-          {invalid && !locked ? <p className="text-[11px] text-red-400 mt-0.5">Eksik bilgi var</p> : null}
-        </div>
-
-      </button>
-
-      {!locked && (
-        <button type="button" onClick={onToggle} className="p-2 text-slate-500 hover:text-white rounded-lg">
-          <ChevronDown size={16} className={`transition-transform ${expanded ? 'rotate-180' : ''}`} />
-        </button>
-      )}
-
-      {onMoveUp && <button type="button" onClick={onMoveUp} title="Yukarı taşı" className="p-2 text-slate-500 hover:text-white rounded-lg"><ArrowUp size={16} /></button>}
-      {onMoveDown && <button type="button" onClick={onMoveDown} title="Aşağı taşı" className="p-2 text-slate-500 hover:text-white rounded-lg"><ArrowDown size={16} /></button>}
-
-      <button type="button" onClick={onDelete} title="Sil" className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all">
-        <Trash2 size={16} />
-      </button>
-
+    <FieldLabel first>Olay</FieldLabel>
+    <div className="flex gap-2">
+      <Chip grow label="Gün doğumu" color="#f97316" active={value.sunEvent === 'SUNRISE'} onClick={() => onChange({ ...value, sunEvent: 'SUNRISE' })} />
+      <Chip grow label="Gün batımı" color="#f97316" active={value.sunEvent === 'SUNSET'} onClick={() => onChange({ ...value, sunEvent: 'SUNSET' })} />
     </div>
 
-    {expanded && !locked ? <div className="px-5 pb-5 pt-4 border-t border-slate-700/60">{children}</div> : null}
+    <FieldLabel>Zaman farkı</FieldLabel>
+    <div className="flex flex-wrap gap-2">
+      {SUN_OFFSETS.map(m => (
+        <Chip key={m} color="#f97316" label={m === 0 ? 'Tam zamanında' : `${Math.abs(m)} dk ${m < 0 ? 'önce' : 'sonra'}`} active={(value.offsetMinutes ?? 0) === m} onClick={() => onChange({ ...value, offsetMinutes: m })} />
+      ))}
+    </div>
+
+    <FieldLabel>Günler</FieldLabel>
+    <DaysSelector color="#f97316" value={value.days ?? []} onChange={(days) => onChange({ ...value, days })} />
+
+    <Hint>Gün doğumu ve batımı evin kayıtlı konumuna göre hesaplanır. Konum mobil uygulamada Otomasyonlar › Evde kim var bölümünden kaydedilir.</Hint>
 
   </div>
 );
 
-const AddButtons = ({ options, onAdd }) => (
+export const TimeRangeEditor = ({ value, onChange }) => (
 
-  <div className="flex flex-wrap gap-2 pt-1">
-    {options.map(({ id, label, icon: Icon, color, disabled }) => (
-      <button
-        key={id}
-        type="button"
-        onClick={() => onAdd(id)}
-        disabled={disabled}
-        className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-dashed text-sm font-bold hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-        style={{ borderColor: color, color }}
-      >
-        <Plus size={14} />
-        <Icon size={14} />
-        {label}
-      </button>
-    ))}
+  <div>
+
+    <div className="flex flex-wrap gap-6">
+      <div>
+        <FieldLabel first>Başlangıç</FieldLabel>
+        <TimeInput value={value.after} onChange={(after) => onChange({ ...value, after })} />
+      </div>
+      <div>
+        <FieldLabel first>Bitiş</FieldLabel>
+        <TimeInput value={value.before} onChange={(before) => onChange({ ...value, before })} />
+      </div>
+    </div>
+
+    <FieldLabel>Günler</FieldLabel>
+    <DaysSelector color="#0ea5e9" value={value.days ?? []} onChange={(days) => onChange({ ...value, days })} />
+
+    <Hint>Bitiş başlangıçtan önceyse aralık gece yarısını geçer (ör. 22:00–06:00).</Hint>
+
   </div>
 );
 
-// ───────────────────────── ANA PENCERE ─────────────────────────
+export const SunConditionEditor = ({ value, onChange }) => (
 
-const STEP_TITLES = ['', 'Ad ve görünüm', 'Tetikleyiciler', 'Koşullar', 'Aksiyonlar', 'Ayarlar ve özet'];
-const LAST_STEP = 5;
+  <div className="flex gap-2">
+    <Chip grow label="Hava aydınlıkken" color="#0ea5e9" active={value.sunState === 'DAY'} onClick={() => onChange({ ...value, sunState: 'DAY' })} />
+    <Chip grow label="Hava karanlıkken" color="#0ea5e9" active={value.sunState === 'NIGHT'} onClick={() => onChange({ ...value, sunState: 'NIGHT' })} />
+  </div>
+);
 
-const AutomationEditor = ({ automationId, homeId, devices, members: homeMembers, scenes: homeScenes, onClose }) => {
+const DEFAULT_TARIFF_STARTS = { DAY: '06:00', PEAK: '17:00', NIGHT: '22:00' };
 
-  const dispatch = useDispatch();
-  const isEdit = !!automationId;
+const tariffRange = (period, starts) => {
+  const order = ['DAY', 'PEAK', 'NIGHT'].sort((a, b) => (starts[a] < starts[b] ? -1 : 1));
+  const i = order.indexOf(period);
+  return `${starts[period]}–${starts[order[(i + 1) % 3]]}`;
+};
 
-  const { createLoading, updateLoading } = useSelector((state) => state.automation);
-  const existing = useSelector((state) => (automationId ? state.automation.automations.find(a => a._id === automationId) : null));
+const useTariffStarts = () => {
+  const saved = useSelector((state) => state.energy?.settings?.periodStarts);
+  return { ...DEFAULT_TARIFF_STARTS, ...(saved ?? {}) };
+};
 
-  const [hydrated, setHydrated] = useState(!isEdit);
-  const [step, setStep] = useState(1);
-  const [maxStep, setMaxStep] = useState(isEdit ? LAST_STEP : 1);
-  const [expandedKey, setExpandedKey] = useState(null);
+export const TariffTriggerEditor = ({ value, onChange }) => {
 
-  const [name, setName] = useState('');
-  const [color, setColor] = useState(GRADIENT_PRESETS[0]);
-  const triggers = useItemList(isEdit ? [] : [NEW_TRIGGER.TIME()]);
-  const conditions = useItemList([]);
-  const actions = useItemList([]);
-  const [logic, setLogic] = useState('AND');
-  const [runMode, setRunMode] = useState('SINGLE');
-  const [cooldown, setCooldown] = useState(0);
-
-  // Başka bir eve bağlı otomasyon düzenleniyorsa o evin üyeleri ve sahneleri kullanılır
-  const automationHomeId = getId(existing?.homeId) ?? null;
-  const otherHomeId = automationHomeId && String(automationHomeId) !== String(homeId) ? automationHomeId : null;
-  const other = useHomeExtras(otherHomeId);
-  const members = otherHomeId ? other.members : homeMembers;
-  const scenes = otherHomeId ? other.scenes : homeScenes;
-
-  // ── Sunucudan gelen kaydı düzenleme durumuna aktarma ──
-
-  const hydrate = (a) => {
-
-    setName(a.name ?? '');
-    setColor(Array.isArray(a.color) && a.color.length >= 2 ? a.color : GRADIENT_PRESETS[0]);
-
-    triggers.reset(a.triggers?.length
-      ? a.triggers
-      : a.trigger ? [{ ...a.trigger, operator: a.trigger.operator ?? a.trigger.condition }] : []);
-
-    const root = a.conditions;
-
-    if (Array.isArray(root)) {
-      conditions.reset(root.map(c => ({ kind: 'DEVICE', deviceId: c.deviceId, property: c.property, operator: c.operator, value: c.value })));
-      setLogic('AND');
-    } else if (root?.logic === 'NOT') {
-      conditions.reset([root]); // kök NOT grubu bütün olarak korunur
-      setLogic('AND');
-    } else {
-      conditions.reset(root?.items ?? []);
-      setLogic(root?.logic === 'OR' ? 'OR' : 'AND');
-    }
-
-    actions.reset((a.actions ?? []).map(x => ((x.kind ?? 'DEVICE_COMMAND') === 'DEVICE_COMMAND'
-      ? { ...x, kind: 'DEVICE_COMMAND', deviceId: getId(x.deviceId), channel: x.channel ?? x.payload?.channel }
-      : x)));
-
-    setRunMode(a.runMode || 'SINGLE');
-    setCooldown(a.cooldownSeconds || 0);
-  };
-
-  useEffect(() => {
-
-    if (!isEdit || existing) return;
-
-    dispatch(getAutomation(automationId)).unwrap().catch((message) => {
-      toast.error(message || 'Otomasyon yüklenemedi.');
-      onClose();
-    });
-  }, [automationId]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-
-    if (!isEdit || hydrated || !existing) return;
-    hydrate(existing);
-    setHydrated(true);
-  }, [existing, hydrated]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ── Türetilmiş durum ──
-
-  const ctx = { devices, members, scenes };
-
-  const hasDeviceTrigger = triggers.items.some(t => t.source === 'DEVICE');
-  const hasGeofenceTrigger = triggers.items.some(t => t.source === 'GEOFENCE');
-  const templateVars = NOTIFY_TEMPLATE_VARS.filter(v => (!v.deviceOnly || hasDeviceTrigger) && (!v.geofenceOnly || hasGeofenceTrigger));
-
-  const nameOk = name.trim().length > 0;
-  const triggersOk = triggers.items.length > 0 && triggers.items.every(t => isTriggerValid(t, devices));
-  const conditionsOk = conditions.items.every(c => isConditionValid(c, devices));
-  const actionsOk = actions.items.length > 0 && actions.items.every(isActionValid);
-  const allValid = nameOk && triggersOk && conditionsOk && actionsOk;
-  const canNext = [null, nameOk, triggersOk, conditionsOk, actionsOk, allValid][step];
-  const saving = createLoading || updateLoading;
-
-  const lockedCount =
-    triggers.items.filter(isTriggerLocked).length
-    + conditions.items.filter(isConditionLocked).length
-    + actions.items.filter(isActionLocked).length;
-
-  // Kapatırken kaydedilmemiş değişiklik var mı
-  const snapshot = () => JSON.stringify([name, color, triggers.items, conditions.items, actions.items, logic, runMode, cooldown]);
-  const initialSnapshot = useRef(null);
-
-  useEffect(() => {
-    if (hydrated && initialSnapshot.current === null) initialSnapshot.current = snapshot();
-  });
-
-  const requestClose = () => {
-    const dirty = initialSnapshot.current !== null && snapshot() !== initialSnapshot.current;
-    if (dirty && !window.confirm('Kaydedilmemiş değişiklikler kaybolacak. Kapatılsın mı?')) return;
-    onClose();
-  };
-
-  // ── Gezinme ──
-
-  const goTo = (s) => {
-    setStep(s);
-    setMaxStep(m => Math.max(m, s));
-    setExpandedKey(null);
-  };
-
-  const addItem = (list, item) => setExpandedKey(list.add(item));
-
-  // ── Kaydetme ──
-
-  const buildPayload = () => {
-
-    const payload = {
-      name: name.trim(),
-      color,
-      triggers: triggers.items.map(cleanTrigger),
-      conditions: { kind: 'GROUP', logic, items: conditions.items.map(cleanCondition) },
-      actions: actions.items.map(cleanAction),
-      runMode,
-      cooldownSeconds: cooldown,
-    };
-
-    // Düzenlemede ev ve saat dilimi olduğu gibi kalır
-    if (!isEdit) Object.assign(payload, { homeId, timezone: browserTimezone(), isActive: true });
-
-    // Eve bağlı olmayan eski otomasyonlar düzenlenince seçili eve bağlansın (ev modu ve aile bildirimi için)
-    if (isEdit && !existing?.homeId && homeId) payload.homeId = homeId;
-
-    return payload;
-  };
-
-  // Prova ve test için: düzenlemede de otomasyonun evi gönderilsin (ev modu koşulları buna bakar)
-  const buildDraft = () => ({ ...buildPayload(), homeId: automationHomeId ?? homeId });
-
-  const handleSave = async () => {
-
-    if (!allValid || saving) return;
-
-    try {
-      if (isEdit) {
-        await dispatch(updateAutomation({ id: automationId, data: { ...buildPayload(), baseVersion: existing?.version } })).unwrap();
-        toast.success('Değişiklikler kaydedildi.');
-      } else {
-        await dispatch(createAutomation(buildPayload())).unwrap();
-        toast.success('Otomasyon oluşturuldu.');
-      }
-      onClose();
-    } catch {
-      // Hata mesajı otomasyon sayfasında toast ile gösteriliyor
-    }
-  };
-
-  // ── Liste çizimi ──
-
-  const renderItems = (list, { summarize, renderEditor, isValid, isLocked, movable, isMuted }) => (
-
-    <div className="space-y-3 mb-4">
-      {list.items.map((item, idx) => {
-
-        const s = summarize(item);
-        const key = item._key;
-
-        return (
-          <ItemCard
-            key={key}
-            icon={s.icon}
-            color={s.color}
-            title={s.title}
-            subtitle={s.subtitle}
-            locked={isLocked(item)}
-            invalid={!isValid(item)}
-            muted={isMuted?.(item)}
-            expanded={expandedKey === key}
-            onToggle={() => setExpandedKey(expandedKey === key ? null : key)}
-            onDelete={() => { list.remove(key); if (expandedKey === key) setExpandedKey(null); }}
-            onMoveUp={movable && idx > 0 ? () => list.move(key, -1) : undefined}
-            onMoveDown={movable && idx < list.items.length - 1 ? () => list.move(key, 1) : undefined}
-          >
-            {renderEditor(item, (next) => list.update(key, next))}
-          </ItemCard>
-        );
-      })}
-    </div>
-  );
-
-  const summarizeTrigger = (t) => {
-    const d = describeTrigger(t, ctx);
-    return { icon: d.icon, color: d.color, title: d.label, subtitle: d.subtitle };
-  };
-
-  const summarizeCondition = (c) => {
-    const d = describeCondition(c, ctx);
-    return { icon: d.icon, color: d.color, title: d.label };
-  };
-
-  const summarizeAction = (a) => describeAction(a, ctx);
-
-  const renderTriggerEditor = (t, onChange) => {
-    if (t.source === 'TIME') return <TimeTriggerEditor value={t} onChange={onChange} />;
-    if (t.source === 'SUN') return <SunTriggerEditor value={t} onChange={onChange} />;
-    if (t.source === 'TARIFF') return <TariffTriggerEditor value={t} onChange={onChange} />;
-    if (t.source === 'HOME_MODE') return <HomeModeTriggerEditor value={t} onChange={onChange} />;
-    if (t.source === 'GEOFENCE') return <GeofenceTriggerEditor value={t} onChange={onChange} members={members} />;
-    if (t.source === 'DEVICE') return <DeviceCheckEditor value={t} onChange={onChange} devices={devices} />;
-    if (t.source === 'COUNT') return <CountTriggerEditor value={t} onChange={onChange} devices={devices} />;
-    if (t.source === 'SEQUENCE') return <SequenceTriggerEditor value={t} onChange={onChange} devices={devices} />;
-    if (t.source === 'ANOMALY') return <AnomalyTriggerEditor value={t} onChange={onChange} devices={devices} />;
-    return <Hint>Bu tetikleyicinin ayarı yok. Otomasyon yalnızca elle ya da başka bir otomasyondan çalıştırılır.</Hint>;
-  };
-
-  const renderConditionEditor = (c, onChange) => {
-    if (c.kind === 'TIME_RANGE') return <TimeRangeEditor value={c} onChange={onChange} />;
-    if (c.kind === 'SUN') return <SunConditionEditor value={c} onChange={onChange} />;
-    if (c.kind === 'TARIFF') return <TariffConditionEditor value={c} onChange={onChange} />;
-    if (c.kind === 'HOME_MODE') return <HomeModeConditionEditor value={c} onChange={onChange} />;
-    if (c.kind === 'PRESENCE') return <PresenceConditionEditor value={c} onChange={onChange} members={members} />;
-    return <DeviceCheckEditor value={c} onChange={onChange} devices={devices} forCondition />;
-  };
-
-  const renderActionEditor = (a, onChange) => (
-    <>
-      {a.kind === 'DEVICE_COMMAND' && <RelayActionEditor value={a} onChange={onChange} devices={devices} />}
-      {a.kind === 'SCENE' && <SceneActionEditor value={a} onChange={onChange} scenes={scenes} />}
-      {a.kind === 'NOTIFY' && <NotifyActionEditor value={a} onChange={onChange} templateVars={templateVars} members={members} />}
-      {a.kind === 'ASK_APPROVAL' && <ApprovalActionEditor value={a} onChange={onChange} members={members} />}
-      {a.kind === 'DELAY' && <DurationPicker color="#f59e0b" value={a.delaySeconds ?? 60} onChange={(s) => onChange({ ...a, delaySeconds: s })} presets={[10, 30, 60, 300, 900, 1800]} />}
-      {a.kind === 'SET_HOME_MODE' && <SetHomeModeActionEditor value={a} onChange={onChange} />}
-      {a.kind === 'SET_PRESENCE' && <PresenceActionEditor value={a} onChange={onChange} />}
-      <ActionOptions value={a} onChange={onChange} />
-    </>
-  );
+  const starts = useTariffStarts();
 
   return (
 
-    <Modal onClose={requestClose} maxWidth="max-w-4xl" closeOnBackdrop={false}>
+    <div>
 
-      {/* BAŞLIK */}
-      <div className="flex justify-between items-center px-8 pt-7 pb-4">
-
-        <div>
-          <h3 className="text-2xl font-bold text-white">{isEdit ? 'Otomasyonu düzenle' : 'Yeni Otomasyon'}</h3>
-          <p className="text-sm text-slate-400 mt-1">Adım {step}/{LAST_STEP} · {STEP_TITLES[step]}</p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {isEdit && hydrated && (
-            <button type="button" onClick={handleSave} disabled={!allValid || saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold disabled:opacity-40 disabled:cursor-not-allowed transition-all">
-              {saving ? <Spinner size={16} /> : <Check size={16} />} Kaydet
-            </button>
-          )}
-          <button type="button" onClick={requestClose} className="p-2 hover:bg-slate-800 rounded-xl transition-all text-slate-400 hover:text-white">
-            <X size={20} />
-          </button>
-        </div>
-
+      <FieldLabel first>Hangi dönem başlayınca?</FieldLabel>
+      <div className="flex gap-2">
+        {Object.entries(TARIFF_LABELS).map(([id, label]) => (
+          <Chip key={id} grow label={label} color="#14b8a6" active={value.tariffPeriod === id} onClick={() => onChange({ ...value, tariffPeriod: id })} />
+        ))}
       </div>
 
-      {/* İLERLEME (ziyaret edilen adımlara tıklanarak geçilir) */}
-      <div className="grid grid-cols-5 gap-2 px-8 pb-4 border-b border-slate-800">
-        {[1, 2, 3, 4, 5].map(i => (
-          <button key={i} type="button" onClick={() => i <= maxStep && goTo(i)} disabled={i > maxStep} className="text-left disabled:cursor-not-allowed group">
-            <div className={`h-2 rounded-full transition-all ${i <= step ? 'bg-blue-500' : i <= maxStep ? 'bg-blue-500/30' : 'bg-slate-800'}`} />
-            <p className={`hidden md:block text-[11px] font-bold mt-1.5 truncate ${i === step ? 'text-blue-400' : i <= maxStep ? 'text-slate-400 group-hover:text-slate-200' : 'text-slate-600'}`}>{STEP_TITLES[i]}</p>
+      {value.tariffPeriod && (
+        <Hint>{TARIFF_LABELS[value.tariffPeriod]} dönemi: {tariffRange(value.tariffPeriod, starts)}. Otomasyon {starts[value.tariffPeriod]} olunca çalışır.</Hint>
+      )}
+
+      <FieldLabel>Günler</FieldLabel>
+      <DaysSelector color="#14b8a6" value={value.days ?? []} onChange={(days) => onChange({ ...value, days })} />
+
+      <Hint>Dönem saatleri Enerji ve tarife ekranından değiştirilebilir.</Hint>
+
+    </div>
+  );
+};
+
+export const TariffConditionEditor = ({ value, onChange }) => {
+
+  const starts = useTariffStarts();
+  const selected = value.tariffPeriods ?? [];
+
+  const toggle = (id) => {
+    const next = selected.includes(id) ? selected.filter(p => p !== id) : [...selected, id];
+    if (next.length) onChange({ ...value, tariffPeriods: next }); // en az biri seçili kalsın
+  };
+
+  return (
+
+    <div>
+
+      <div className="flex gap-2">
+        {Object.entries(TARIFF_LABELS).map(([id, label]) => (
+          <Chip key={id} grow label={label} color="#0ea5e9" active={selected.includes(id)} onClick={() => toggle(id)} />
+        ))}
+      </div>
+
+      <Hint>{selected.map(p => `${TARIFF_LABELS[p]} ${tariffRange(p, starts)}`).join(' · ')}</Hint>
+
+    </div>
+  );
+};
+
+// ───────────────────────── CİHAZ KONTROLÜ ─────────────────────────
+
+const DeviceSelect = ({ devices, value, onChange, filter }) => (
+
+  <select value={getId(value) ?? ''} onChange={(e) => onChange(e.target.value || undefined)} className={SELECT_CLASS}>
+    <option value="">Cihaz seçin...</option>
+    {(filter ? devices.filter(filter) : devices).map(d => (
+      <option key={d._id} value={d._id}>{d.name}{d.type ? ` · ${d.type}` : ''}</option>
+    ))}
+  </select>
+);
+
+// Cihaz tetikleyicisi, cihaz koşulu ve desen adımları için ortak editör
+export const DeviceCheckEditor = ({ value, onChange, devices, forCondition, simple }) => {
+
+  const device = findDevice(devices, value.deviceId);
+  const presets = presetsFor(device, forCondition);
+  const channels = relayChannels(device);
+  const fields = deviceFields(device);
+  const color = forCondition ? '#0ea5e9' : '#f59e0b';
+
+  const [custom, setCustom] = useState(() => !!value.property && !matchPreset(presets, value));
+  const set = (patch) => onChange({ ...value, ...patch });
+
+  if (devices.length === 0) return <Hint>Kullanılabilecek bir cihaz bulunamadı.</Hint>;
+
+  const selectDevice = (id) => {
+
+    // Hazır seçeneği olmayan sensörlerde doğrudan özel koşul açılır
+    setCustom(!!id && presetsFor(findDevice(devices, id), forCondition).length === 0);
+    onChange({ ...value, deviceId: id, property: undefined, operator: undefined, value: undefined, valueTo: undefined, channel: undefined, hysteresis: undefined });
+  };
+
+  const operators = forCondition ? OPERATORS.filter(o => o.id !== 'CHANGE') : OPERATORS;
+
+  return (
+
+    <div>
+
+      <FieldLabel first>Cihaz</FieldLabel>
+      <DeviceSelect devices={devices} value={value.deviceId} onChange={selectDevice} />
+
+      {channels.length > 0 && (
+        <>
+          <FieldLabel>Kanal</FieldLabel>
+          <div className="flex flex-wrap gap-2">
+            {channels.map(ch => (
+              <Chip key={ch.index} label={ch.label || `Kanal ${ch.index}`} color={color} active={value.channel != null && Number(value.channel) === Number(ch.index)} onClick={() => set({ channel: ch.index })} />
+            ))}
+          </div>
+        </>
+      )}
+
+      {device && (
+        <>
+          <FieldLabel>Durum</FieldLabel>
+          <div className="flex flex-wrap gap-2">
+            {presets.map(p => (
+              <Chip
+                key={`${p.property}-${p.operator}-${String(p.value)}`}
+                label={p.label}
+                color={color}
+                active={!custom && !!matchPreset([p], value)}
+                onClick={() => { setCustom(false); set({ property: p.property, operator: p.operator, value: p.value, valueTo: undefined }); }}
+              />
+            ))}
+            <Chip label="Özel koşul" color={color} active={custom} onClick={() => setCustom(true)} />
+          </div>
+        </>
+      )}
+
+      {device && custom && (
+        <>
+
+          <FieldLabel>Alan</FieldLabel>
+
+          {fields.length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-2">
+              {fields.map(f => (
+                <Chip
+                  key={f.path}
+                  label={`${fieldName(f.path)} · şu an ${formatValue(f.path, f.path === 'online' ? device.online : device.data?.[lastSegment(f.path)])}`}
+                  color={color}
+                  active={value.property === f.path}
+                  onClick={() => set({ property: f.path, value: undefined, valueTo: undefined })}
+                />
+              ))}
+            </div>
+          )}
+
+          <TextInput value={value.property ?? ''} onChange={(e) => set({ property: e.target.value.trim() || undefined })} placeholder="Ya da alan yolu: data.temperature" />
+
+          <FieldLabel>Karşılaştırma</FieldLabel>
+          <div className="flex flex-wrap gap-2">
+            {operators.map(o => (
+              <Chip key={o.id} label={o.label} color={color} active={value.operator === o.id} onClick={() => set({ operator: o.id })} />
+            ))}
+          </div>
+
+          {value.operator && value.operator !== 'CHANGE' && (
+            <>
+              <FieldLabel>{value.operator === 'BETWEEN' ? 'Alt ve üst değer' : 'Değer'}</FieldLabel>
+              <div className="flex gap-2 max-w-md" key={`${value.deviceId}-${value.property}`}>
+                <ValueInput value={value.value} onChange={(v) => set({ value: v })} placeholder="Örn: 28" />
+                {value.operator === 'BETWEEN' && <ValueInput value={value.valueTo} onChange={(v) => set({ valueTo: v })} placeholder="Örn: 30" />}
+              </div>
+              <Hint>Sayı, true / false ya da on / off yazabilirsin.</Hint>
+            </>
+          )}
+
+        </>
+      )}
+
+      {!simple && device && value.operator && value.operator !== 'CHANGE' && (
+        <>
+          <FieldLabel>Bu durum en az ne kadar sürsün?</FieldLabel>
+          <DurationPicker color={color} value={value.forSeconds ?? 0} onChange={(s) => set({ forSeconds: s || undefined })} presets={[0, 30, 60, 300, 600]} zeroLabel="Hemen" />
+        </>
+      )}
+
+      {!simple && !forCondition && NUMERIC_OPS.has(value.operator) && (
+        <>
+          <FieldLabel>Histerezis (opsiyonel)</FieldLabel>
+          <div className="max-w-[200px]">
+            <ValueInput value={value.hysteresis} parse={parseNumber} onChange={(h) => set({ hysteresis: h })} placeholder="Örn: 0.5" inputMode="decimal" />
+          </div>
+          <Hint>Değer eşiğin bu kadar gerisine dönmeden otomasyon yeniden tetiklenmez. Eşik çevresinde titreyen sensörlerde tekrarı önler.</Hint>
+        </>
+      )}
+
+    </div>
+  );
+};
+
+// ───────────────────────── SAYI, SIRA, OLAĞAN DIŞI ─────────────────────────
+
+export const CountTriggerEditor = ({ value, onChange, devices }) => (
+
+  <div>
+
+    <DeviceCheckEditor value={value.event ?? {}} onChange={(event) => onChange({ ...value, event })} devices={devices} simple />
+
+    <FieldLabel>Kaç kez?</FieldLabel>
+    <div className="flex gap-2">
+      {[2, 3, 5, 10].map(n => (
+        <Chip key={n} grow label={`${n} kez`} color="#f59e0b" active={value.count === n} onClick={() => onChange({ ...value, count: n })} />
+      ))}
+    </div>
+
+    <FieldLabel>Ne kadar süre içinde?</FieldLabel>
+    <DurationPicker color="#f59e0b" value={value.windowSeconds ?? 600} onChange={(s) => onChange({ ...value, windowSeconds: s })} presets={[60, 300, 600, 1800, 3600]} />
+
+    <Hint>Örnek: kapı 10 dakika içinde 3 kez açılırsa.</Hint>
+
+  </div>
+);
+
+export const SequenceTriggerEditor = ({ value, onChange, devices }) => {
+
+  const steps = value.steps ?? [];
+
+  const replaceStep = (i, next) => onChange({ ...value, steps: steps.map((s, j) => (j === i ? next : s)) });
+  const removeStep = (i) => onChange({ ...value, steps: steps.filter((_, j) => j !== i) });
+
+  // Yeni adım eklenince önceki "olmazsa" adımı "olursa"ya döner (yalnızca son adım "olmazsa" olabilir)
+  const addStep = () => onChange({ ...value, steps: [...steps.map(s => ({ ...s, mode: 'OCCURS' })), { mode: 'OCCURS', withinSeconds: 120 }] });
+
+  return (
+
+    <div className="space-y-3">
+
+      {steps.map((step, i) => (
+
+        <div key={i} className="border border-slate-700 rounded-xl p-4">
+
+          <div className="flex items-center justify-between mb-2">
+            <p className="font-bold text-white text-sm">{i + 1}. adım</p>
+            {steps.length > 2 && (
+              <button type="button" onClick={() => removeStep(i)} className="p-1.5 text-red-400 hover:bg-red-500/10 rounded-lg"><Trash2 size={14} /></button>
+            )}
+          </div>
+
+          {i > 0 && (
+            <div className="mb-4">
+              <div className="flex gap-2">
+                <Chip grow label="Şu olursa" color="#0ea5e9" active={step.mode !== 'ABSENT'} onClick={() => replaceStep(i, { ...step, mode: 'OCCURS' })} />
+                {i === steps.length - 1 && (
+                  <Chip grow label="Şu olmazsa" color="#0ea5e9" active={step.mode === 'ABSENT'} onClick={() => replaceStep(i, { ...step, mode: 'ABSENT' })} />
+                )}
+              </div>
+              <FieldLabel>{step.mode === 'ABSENT' ? 'Önceki adımdan sonra bu süre boyunca' : 'Önceki adımdan sonra en geç'}</FieldLabel>
+              <DurationPicker color="#0ea5e9" value={step.withinSeconds ?? 120} onChange={(s) => replaceStep(i, { ...step, withinSeconds: s })} presets={[30, 60, 120, 300, 600]} />
+            </div>
+          )}
+
+          <DeviceCheckEditor key={`step-${i}`} value={step} onChange={(next) => replaceStep(i, next)} devices={devices} simple />
+
+        </div>
+      ))}
+
+      {steps.length < 6 && (
+        <button type="button" onClick={addStep} className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-dashed border-sky-500 text-sky-400 text-sm font-bold hover:bg-sky-500/10 transition-all">
+          <Plus size={14} /> Adım ekle
+        </button>
+      )}
+
+      <Hint>Örnek: 1. adım kapı açıldı; 2. adım 2 dakika boyunca hareket olmazsa → kapı açık kaldı ama kimse girmedi.</Hint>
+
+    </div>
+  );
+};
+
+export const AnomalyTriggerEditor = ({ value, onChange, devices }) => {
+
+  const dispatch = useDispatch();
+  const [baseline, setBaseline] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  const mode = value.anomalyMode ?? 'VALUE';
+  const device = findDevice(devices, value.deviceId);
+  const channels = relayChannels(device);
+
+  const set = (patch) => {
+    setBaseline(null);
+    onChange({ ...value, ...patch });
+  };
+
+  const changeMode = (id) => set({
+    anomalyMode: id,
+    deviceId: undefined,
+    property: id === 'DURATION' ? RELAY_PROPERTY : undefined,
+    channel: undefined,
+    operator: undefined,
+    value: undefined,
+    valueTo: undefined,
+  });
+
+  const loadBaseline = async () => {
+
+    setLoading(true);
+
+    try {
+      setBaseline(await dispatch(getAnomalyBaseline({ trigger: { ...value, anomalyMode: mode } })).unwrap());
+    } catch (e) {
+      toast.error(String(e));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const canPreview = !!value.deviceId && !!value.property && (mode !== 'ACTIVITY' || !!value.operator);
+
+  return (
+
+    <div>
+
+      <FieldLabel first>Ne olağan dışı sayılsın?</FieldLabel>
+
+      <div className="grid sm:grid-cols-3 gap-2">
+        {ANOMALY_MODES.map(m => (
+          <button
+            key={m.id}
+            type="button"
+            onClick={() => changeMode(m.id)}
+            className={`text-left rounded-xl p-3 border transition-all ${mode === m.id ? 'border-red-500 bg-red-500/10' : 'border-slate-700 bg-slate-800/60 hover:border-slate-600'}`}
+          >
+            <p className={`text-sm font-bold ${mode === m.id ? 'text-red-400' : 'text-slate-200'}`}>{m.label}</p>
+            <p className="text-xs text-slate-500 mt-0.5">{m.desc}</p>
           </button>
         ))}
       </div>
 
-      {/* İÇERİK */}
-      <div className="flex-1 overflow-y-auto px-8 py-6">
+      {mode === 'VALUE' && (
+        <>
+          <FieldLabel>Cihaz</FieldLabel>
+          <DeviceSelect devices={devices} value={value.deviceId} onChange={(id) => set({ deviceId: id })} />
 
-        {!hydrated ? (
+          <FieldLabel>Sayısal alan</FieldLabel>
+          <div className="flex flex-wrap gap-2 mb-2">
+            {[...new Set([...deviceFields(device).filter(f => f.kind === 'number').map(f => f.path), ...NUMERIC_SUGGESTIONS])].map(p => (
+              <Chip key={p} label={fieldName(p)} color="#ef4444" active={value.property === p} onClick={() => set({ property: p })} />
+            ))}
+          </div>
+          <TextInput value={value.property ?? ''} onChange={(e) => set({ property: e.target.value.trim() || undefined })} placeholder="Ya da alan yolu: data.temperature" />
 
-          <div className="flex justify-center py-20 text-blue-500"><Spinner size={28} /></div>
+          <FieldLabel>Yön</FieldLabel>
+          <div className="flex gap-2">
+            {DIRECTIONS.map(d => (
+              <Chip key={d.id} grow label={d.label} color="#ef4444" active={(value.direction ?? 'BOTH') === d.id} onClick={() => set({ direction: d.id })} />
+            ))}
+          </div>
+        </>
+      )}
 
-        ) : (
+      {mode === 'ACTIVITY' && (
+        <div className="mt-4">
+          <DeviceCheckEditor value={value} onChange={(next) => set(next)} devices={devices} simple />
+        </div>
+      )}
 
-          <>
+      {mode === 'DURATION' && (
+        <>
+          <FieldLabel>Röle</FieldLabel>
+          <DeviceSelect devices={devices} filter={isRelay} value={value.deviceId} onChange={(id) => set({ deviceId: id, channel: undefined, property: RELAY_PROPERTY })} />
 
-            {/* 1 · Ad ve görünüm */}
-            {step === 1 && (
-
-              <div className="space-y-6">
-
-                <div>
-                  <label className="block text-sm font-bold text-slate-300 mb-2">Otomasyon Adı *</label>
-                  <input
-                    autoFocus={!isEdit}
-                    placeholder="örn: Sabah Rutini"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === 'Enter' && nameOk) goTo(2); }}
-                    className="w-full p-4 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-bold text-slate-300 mb-3">Renk</label>
-                  <div className="flex gap-3 flex-wrap">
-                    {GRADIENT_PRESETS.map((preset, i) => {
-                      const active = Array.isArray(color) && color.join() === preset.join();
-                      return (
-                        <button key={i} type="button" onClick={() => setColor(preset)} className={`w-12 h-12 rounded-xl flex items-center justify-center text-white transition-all ${active ? 'ring-2 ring-white ring-offset-2 ring-offset-slate-900' : 'hover:scale-105'}`} style={gradientStyle(preset)}>
-                          {active && <Check size={18} strokeWidth={3} />}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
+          {channels.length > 0 && (
+            <>
+              <FieldLabel>Kanal</FieldLabel>
+              <div className="flex flex-wrap gap-2">
+                {channels.map(ch => (
+                  <Chip key={ch.index} label={ch.label || `Kanal ${ch.index}`} color="#ef4444" active={value.channel != null && Number(value.channel) === Number(ch.index)} onClick={() => set({ channel: ch.index })} />
+                ))}
               </div>
-            )}
+            </>
+          )}
+        </>
+      )}
 
-            {/* 2 · Tetikleyiciler */}
-            {step === 2 && (
+      <FieldLabel>Hassasiyet</FieldLabel>
+      <div className="flex gap-2">
+        {SENSITIVITIES.map(s => (
+          <Chip key={s.id} grow label={s.label} color="#ef4444" active={(value.sensitivity ?? 'MEDIUM') === s.id} onClick={() => set({ sensitivity: s.id })} />
+        ))}
+      </div>
+      <Hint>Yüksek hassasiyet daha küçük sapmalarda da tetikler; yanlış alarm ihtimali artar.</Hint>
 
-              <div>
+      <button
+        type="button"
+        onClick={loadBaseline}
+        disabled={!canPreview || loading}
+        className="mt-4 w-full py-2.5 rounded-xl border border-red-500/60 text-red-400 text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-red-500/10 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+      >
+        {loading ? <Spinner size={14} /> : <Activity size={14} />} Bu sensörün normalini gör
+      </button>
 
-                <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 mb-5">
-                  <p className="text-sm text-blue-400 font-bold">Tetikleyiciler</p>
-                  <p className="text-xs text-slate-400 mt-1">Otomasyon ne zaman çalışsın?{triggers.items.length > 1 ? ' Bunlardan herhangi biri gerçekleşince çalışır.' : ''}</p>
-                </div>
+      {baseline && (
+        <div className="mt-3 bg-slate-950/60 border border-slate-800 rounded-xl p-4">
 
-                {renderItems(triggers, {
-                  summarize: summarizeTrigger,
-                  renderEditor: renderTriggerEditor,
-                  isValid: (t) => isTriggerValid(t, devices),
-                  isLocked: isTriggerLocked,
-                })}
+          {!baseline.ready ? (
+            <p className="text-xs text-amber-400">
+              Henüz yeterli veri yok ({baseline.days} gün{baseline.samples != null ? `, ${baseline.samples} örnek` : ''}). Tetikleyici veri biriktikçe kendiliğinden devreye girer.
+            </p>
+          ) : baseline.mode === 'VALUE' ? (
+            <>
+              <p className="text-xs text-slate-300 mb-2">Normal: {baseline.mean} ± {baseline.std} · son {baseline.days} günde {baseline.samples} ölçüm</p>
+              <Bars values={baseline.hourly.map(v => v ?? 0)} labels={['00', '06', '12', '18', '23']} color="#ef4444" />
+            </>
+          ) : baseline.mode === 'ACTIVITY' ? (
+            <>
+              <p className="text-xs text-slate-300 mb-2">Son {baseline.days} günde {baseline.events} olay. Saat başına günde {baseline.rareBelow} altı olan saatler alışılmadık sayılır.</p>
+              <Bars values={baseline.rates} labels={['00', '06', '12', '18', '23']} color="#ef4444" />
+            </>
+          ) : (
+            <p className="text-xs text-slate-300">Genelde en fazla {baseline.usualMinutes} dk açık kalıyor; {baseline.limitMinutes} dakikayı geçerse tetiklenir.</p>
+          )}
 
-                <AddButtons
-                  options={TRIGGER_OPTIONS.map(o => ({ ...o, disabled: o.id === 'MANUAL' && triggers.items.some(t => t.source === 'MANUAL') }))}
-                  onAdd={(id) => addItem(triggers, NEW_TRIGGER[id]())}
-                />
+        </div>
+      )}
 
-              </div>
-            )}
+    </div>
+  );
+};
 
-            {/* 3 · Koşullar */}
-            {step === 3 && (
+// ───────────────────────── EV MODU VE KİŞİLER ─────────────────────────
 
-              <div>
+const HomeModeChips = ({ selected, onPick, color, multi }) => (
 
-                <div className="bg-sky-500/10 border border-sky-500/20 rounded-xl p-4 mb-5">
-                  <p className="text-sm text-sky-400 font-bold">Koşullar (opsiyonel)</p>
-                  <p className="text-xs text-slate-400 mt-1">Tetiklendiğinde otomasyonun gerçekten çalışması için sağlanması gerekenler. Koşul yoksa her tetiklendiğinde çalışır.</p>
-                </div>
+  <div className="flex flex-wrap gap-2">
+    {Object.entries(HOME_MODE_LABELS).map(([id, label]) => (
+      <Chip key={id} label={label} color={color} active={multi ? selected.includes(id) : selected === id} onClick={() => onPick(id)} />
+    ))}
+  </div>
+);
 
-                {conditions.items.length > 1 && (
-                  <div className="flex gap-2 mb-4 max-w-md">
-                    <Chip grow label="Hepsi sağlansın" color="#0ea5e9" active={logic === 'AND'} onClick={() => setLogic('AND')} />
-                    <Chip grow label="Biri yeterli" color="#0ea5e9" active={logic === 'OR'} onClick={() => setLogic('OR')} />
-                  </div>
-                )}
+export const HomeModeTriggerEditor = ({ value, onChange }) => (
 
-                {renderItems(conditions, {
-                  summarize: summarizeCondition,
-                  renderEditor: renderConditionEditor,
-                  isValid: (c) => isConditionValid(c, devices),
-                  isLocked: isConditionLocked,
-                })}
+  <div>
+    <FieldLabel first>Ev modu şuna geçince</FieldLabel>
+    <HomeModeChips selected={value.homeMode} color="#14b8a6" onPick={(m) => onChange({ ...value, homeMode: m })} />
+    <Hint>Mod, Otomasyonlar sayfasındaki seçiciden ya da başka bir otomasyondan değiştirilebilir.</Hint>
+  </div>
+);
 
-                <AddButtons options={CONDITION_OPTIONS} onAdd={(id) => addItem(conditions, NEW_CONDITION[id]())} />
+export const HomeModeConditionEditor = ({ value, onChange }) => {
 
-              </div>
-            )}
+  const selected = value.homeModes ?? [];
 
-            {/* 4 · Aksiyonlar */}
-            {step === 4 && (
+  const toggle = (m) => {
+    const next = selected.includes(m) ? selected.filter(x => x !== m) : [...selected, m];
+    if (next.length) onChange({ ...value, homeModes: next }); // en az biri seçili kalsın
+  };
 
-              <div>
+  return (
+    <div>
+      <FieldLabel first>Ev modu bunlardan biriyse</FieldLabel>
+      <HomeModeChips selected={selected} color="#0ea5e9" multi onPick={toggle} />
+    </div>
+  );
+};
 
-                <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-4 mb-5">
-                  <p className="text-sm text-green-400 font-bold">Aksiyonlar</p>
-                  <p className="text-xs text-slate-400 mt-1">Otomasyon çalışınca ne olsun? Aksiyonlar yukarıdan aşağıya sırayla çalışır; araya bekleme ekleyebilirsin.</p>
-                </div>
+export const SetHomeModeActionEditor = ({ value, onChange }) => (
 
-                {renderItems(actions, {
-                  summarize: summarizeAction,
-                  renderEditor: renderActionEditor,
-                  isValid: isActionValid,
-                  isLocked: isActionLocked,
-                  isMuted: (a) => a.enabled === false,
-                  movable: true,
-                })}
+  <div>
+    <FieldLabel first>Ev modunu şuna çevir</FieldLabel>
+    <HomeModeChips selected={value.homeMode} color="#14b8a6" onPick={(m) => onChange({ ...value, homeMode: m })} />
+    <Hint>Bu değişiklik, ev modu tetikleyicili diğer otomasyonları da çalıştırabilir.</Hint>
+  </div>
+);
 
-                <AddButtons options={ACTION_OPTIONS} onAdd={(id) => addItem(actions, NEW_ACTION[id](name))} />
+export const PresenceActionEditor = ({ value, onChange }) => (
 
-              </div>
-            )}
+  <div>
+    <div className="flex gap-2">
+      <Chip grow label="Başlat" color="#6366f1" active={value.enable !== false} onClick={() => onChange({ ...value, enable: true })} />
+      <Chip grow label="Durdur" color="#6366f1" active={value.enable === false} onClick={() => onChange({ ...value, enable: false })} />
+    </div>
+    <Hint>Işıklar, "Evde varmış gibi" ayarlarına göre yanar. Örneğin elle çalıştırdığın bir "Dışarı çıkıyorum" otomasyonuna ekleyebilirsin.</Hint>
+  </div>
+);
 
-            {/* 5 · Ayarlar ve özet */}
-            {step === 5 && (
+// Ev üyelerinden seçim. emptyMeansMe: boş liste = yalnızca otomasyonun sahibi (sen)
+const PeoplePicker = ({ value = [], onChange, members, color, emptyMeansMe = true }) => {
 
-              <div className="space-y-6">
+  if (!members.length) return <Hint>Ev üyeleri yüklenemedi; kural yalnızca senin için kurulur.</Hint>;
 
-                <div className="rounded-2xl p-6 text-white" style={gradientStyle(color)}>
+  const me = members.find((m) => m.isMe);
+  const myId = me ? String(me.userId) : null;
+  const selected = value.length ? value.map(String) : (emptyMeansMe && myId ? [myId] : []);
 
-                  <p className="text-xs font-bold uppercase tracking-wider text-white/70">Otomasyon</p>
-                  <p className="text-2xl font-black mb-4">{name}</p>
+  const toggle = (id) => {
 
-                  <div className="grid md:grid-cols-3 gap-5 text-sm">
+    const next = selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id];
+    if (!next.length && emptyMeansMe) return; // en az bir kişi seçili kalsın
 
-                    <div>
-                      <p className="text-xs font-bold text-white/70 mb-1">{triggers.items.length > 1 ? 'Şunlardan biri olunca' : 'Ne zaman'}</p>
-                      {triggers.items.map(t => <p key={t._key} className="text-white/90">• {summarizeTrigger(t).title}</p>)}
-                    </div>
+    // Yalnızca sen seçiliysen boş kaydedilir; şablon olarak paylaşılınca alan kişiye uyar
+    onChange(emptyMeansMe && next.length === 1 && next[0] === myId ? [] : next);
+  };
 
-                    <div>
-                      <p className="text-xs font-bold text-white/70 mb-1">{conditions.items.length === 0 ? 'Koşul' : logic === 'OR' ? 'Şunlardan biri sağlanırsa' : 'Şunların hepsi sağlanırsa'}</p>
-                      {conditions.items.length === 0
-                        ? <p className="text-white/70">Koşul yok</p>
-                        : conditions.items.map(c => <p key={c._key} className="text-white/90">• {summarizeCondition(c).title}</p>)}
-                    </div>
+  return (
+    <div className="flex flex-wrap gap-2">
+      {members.map((m) => (
+        <Chip key={m.userId} label={m.isMe ? 'Ben' : m.name} color={color} active={selected.includes(String(m.userId))} onClick={() => toggle(String(m.userId))} />
+      ))}
+    </div>
+  );
+};
 
-                    <div>
-                      <p className="text-xs font-bold text-white/70 mb-1">Sırayla yap</p>
-                      {actions.items.map((a, i) => (
-                        <p key={a._key} className="text-white/90" style={{ opacity: a.enabled === false ? 0.5 : 1 }}>{i + 1}. {summarizeAction(a).title}</p>
-                      ))}
-                    </div>
+const GEOFENCE_EVENTS = [
+  { id: 'ENTER', label: 'Eve gelince' },
+  { id: 'LEAVE', label: 'Evden çıkınca' },
+  { id: 'FIRST_ARRIVED', label: 'İlk kişi gelince' },
+  { id: 'LAST_LEFT', label: 'Son kişi çıkınca' },
+];
 
-                  </div>
+export const GeofenceTriggerEditor = ({ value, onChange, members }) => {
 
-                </div>
+  const perPerson = value.geofenceEvent === 'ENTER' || value.geofenceEvent === 'LEAVE';
 
-                <div className="grid md:grid-cols-2 gap-6">
+  const pick = (id) => onChange({ ...value, geofenceEvent: id, userIds: id === 'ENTER' || id === 'LEAVE' ? value.userIds ?? [] : undefined });
 
-                  <div>
-                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Çalışma modu</p>
-                    <div className="bg-slate-800/50 border border-slate-700 rounded-2xl overflow-hidden">
-                      {RUN_MODES.map((m) => {
-                        const active = runMode === m.id;
-                        return (
-                          <button key={m.id} type="button" onClick={() => setRunMode(m.id)} className="w-full flex items-center gap-3 px-4 py-3.5 text-left border-b border-slate-700/60 last:border-b-0 hover:bg-slate-800/60 transition-all">
-                            <div className="flex-1">
-                              <p className={`text-sm font-bold ${active ? 'text-blue-400' : 'text-white'}`}>{m.label}</p>
-                              <p className="text-xs text-slate-500 mt-0.5">{m.desc}</p>
-                            </div>
-                            {active && <Check size={18} className="text-blue-400" strokeWidth={3} />}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
+  return (
 
-                  <div>
-                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Tekrar çalışmadan önce bekle</p>
-                    <div className="bg-slate-800/50 border border-slate-700 rounded-2xl p-4">
-                      <DurationPicker value={cooldown} onChange={setCooldown} presets={[0, 60, 300, 900, 3600]} />
-                      <Hint>Bu süre dolmadan gelen tetiklenmeler atlanır. Sık tetiklenen sensörlerde bildirim yağmurunu önler.</Hint>
-                    </div>
-                  </div>
+    <div>
 
-                </div>
-
-                {lockedCount > 0 && (
-                  <div className="flex gap-3 bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4">
-                    <AlertTriangle size={18} className="text-amber-400 flex-shrink-0" />
-                    <p className="text-xs text-amber-300 leading-relaxed">Bu otomasyonda burada düzenlenemeyen {lockedCount} öğe var. Kaydettiğinde olduğu gibi korunurlar.</p>
-                  </div>
-                )}
-
-                {!allValid && <p className="text-xs text-red-400">Eksik bilgi olan adımlar var. Kırmızı çerçeveli kartları tamamla.</p>}
-
-                <SimulationPanel buildDraft={buildDraft} triggerItems={triggers.items} devices={devices} enabled={allValid} />
-
-              </div>
-            )}
-
-          </>
-        )}
-
+      <FieldLabel first>Ne zaman?</FieldLabel>
+      <div className="flex flex-wrap gap-2">
+        {GEOFENCE_EVENTS.map((e) => (
+          <Chip key={e.id} label={e.label} color="#22c55e" active={value.geofenceEvent === e.id} onClick={() => pick(e.id)} />
+        ))}
       </div>
 
-      {/* ALT DÜĞMELER */}
-      <div className="flex justify-between items-center px-8 py-5 border-t border-slate-800">
+      {perPerson && (
+        <>
+          <FieldLabel>Kim?</FieldLabel>
+          <PeoplePicker value={value.userIds ?? []} onChange={(userIds) => onChange({ ...value, userIds })} members={members} color="#22c55e" />
+          <Hint>Birden fazla kişi seçersen herhangi biri gelince / çıkınca çalışır.</Hint>
+        </>
+      )}
 
-        {step > 1 ? (
-          <button type="button" onClick={() => goTo(step - 1)} className="flex items-center gap-1 px-6 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl transition-all font-bold">
-            <ChevronLeft size={18} /> Geri
-          </button>
-        ) : <span />}
+      <Hint>Mobil uygulamada konum algılamasını açmış kişiler için çalışır. Evden çıkış, yanlış algılamalara karşı 3 dakika sonra kesinleşir.</Hint>
 
-        <button
-          type="button"
-          onClick={() => (step < LAST_STEP ? goTo(step + 1) : handleSave())}
-          disabled={!hydrated || !canNext || saving}
-          className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl transition-all font-bold disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {saving ? <Spinner /> : step === LAST_STEP ? <Check size={18} /> : null}
-          {step === LAST_STEP ? (isEdit ? 'Değişiklikleri kaydet' : 'Kaydet ve aktif et') : 'Devam'}
-          {step < LAST_STEP && <ChevronRight size={18} />}
+    </div>
+  );
+};
+
+const PRESENCE_OPTIONS = [
+  { id: 'NOBODY_HOME', label: 'Evde kimse yoksa' },
+  { id: 'ANYONE_HOME', label: 'Evde biri varsa' },
+  { id: 'USERS_HOME', label: 'Seçtiklerim evdeyse' },
+  { id: 'USERS_AWAY', label: 'Seçtiklerim dışarıdaysa' },
+];
+
+export const PresenceConditionEditor = ({ value, onChange, members }) => {
+
+  const perPerson = value.presence === 'USERS_HOME' || value.presence === 'USERS_AWAY';
+
+  const pick = (id) => onChange({ ...value, presence: id, userIds: id === 'USERS_HOME' || id === 'USERS_AWAY' ? value.userIds ?? [] : undefined });
+
+  return (
+
+    <div>
+
+      <div className="flex flex-wrap gap-2">
+        {PRESENCE_OPTIONS.map((o) => (
+          <Chip key={o.id} label={o.label} color="#0ea5e9" active={value.presence === o.id} onClick={() => pick(o.id)} />
+        ))}
+      </div>
+
+      {perPerson && (
+        <>
+          <FieldLabel>Kimler?</FieldLabel>
+          <PeoplePicker value={value.userIds ?? []} onChange={(userIds) => onChange({ ...value, userIds })} members={members} color="#0ea5e9" />
+          <Hint>Seçtiğin herkes için geçerli olmalı: hepsi evde ya da hepsi dışarıda.</Hint>
+        </>
+      )}
+
+      <Hint>Konum algılaması kapalı olan kişiler "dışarıda" sayılır.</Hint>
+
+    </div>
+  );
+};
+
+// ───────────────────────── AKSİYONLAR ─────────────────────────
+
+export const RelayActionEditor = ({ value, onChange, devices }) => {
+
+  const relayDevices = devices.filter(isRelay);
+
+  if (relayDevices.length === 0) return <Hint>Sistemde kayıtlı röle cihazı bulunamadı.</Hint>;
+
+  const isSelected = (device, channelIndex) =>
+    String(getId(value.deviceId)) === String(device._id)
+    && (channelIndex == null ? value.channel == null : Number(value.channel) === Number(channelIndex));
+
+  const renderCommands = (device, channelIndex) => (
+    <div className="flex gap-2">
+      {RELAY_COMMANDS.map(cmd => (
+        <Chip
+          key={cmd.id}
+          label={cmd.label}
+          color={cmd.color}
+          active={isSelected(device, channelIndex) && value.command === cmd.id}
+          onClick={() => onChange({ ...value, deviceId: device._id, channel: channelIndex ?? undefined, command: cmd.id })}
+        />
+      ))}
+    </div>
+  );
+
+  return (
+
+    <div className="grid sm:grid-cols-2 gap-3">
+
+      {relayDevices.map(device => {
+
+        const channels = device.data?.relayChannels || [];
+
+        return (
+
+          <div key={device._id} className="border border-slate-700 rounded-xl p-4">
+
+            <p className="font-bold text-white text-sm mb-2 flex items-center gap-2"><Power size={14} className="text-emerald-400" /> {device.name}</p>
+
+            {channels.length === 0 ? renderCommands(device, null) : channels.map(ch => (
+              <div key={ch.index} className="flex items-center justify-between gap-2 mt-2">
+                <span className="text-sm text-slate-300 truncate">{ch.label || `Kanal ${ch.index}`}</span>
+                {renderCommands(device, ch.index)}
+              </div>
+            ))}
+
+          </div>
+        );
+      })}
+
+    </div>
+  );
+};
+
+export const SceneActionEditor = ({ value, onChange, scenes }) => {
+
+  if (!scenes.length) return <Hint>Henüz sahne yok. Mobil uygulamada ana ekrandaki Sahneler bölümünden oluşturabilirsin.</Hint>;
+
+  const missing = value.sceneId && !scenes.some((s) => String(s._id) === String(value.sceneId));
+
+  return (
+
+    <div>
+
+      <FieldLabel first>Hangi sahne?</FieldLabel>
+
+      <div className="flex flex-wrap gap-2">
+        {scenes.map((s) => (
+          <Chip key={s._id} icon={sceneIcon(s.icon)} label={s.name} color={s.color ?? '#ec4899'} active={String(value.sceneId) === String(s._id)} onClick={() => onChange({ ...value, sceneId: s._id })} />
+        ))}
+      </div>
+
+      {missing && <p className="text-xs text-red-400 mt-2">Seçili sahne bulunamadı; silinmiş olabilir. Başka bir sahne seç.</p>}
+
+      <Hint>Sahne senin yetkinle çalışır. Yetkin olmayan ya da silinmiş cihazlar atlanır, diğerleri çalışır. Sahneyi sonradan düzenlersen otomasyon yeni halini kullanır.</Hint>
+
+    </div>
+  );
+};
+
+const RecipientChips = ({ value, onPick, color }) => (
+
+  <div className="flex gap-2 flex-wrap">
+    <Chip grow label="Sadece bana" color={color} active={(value ?? 'OWNER') === 'OWNER'} onClick={() => onPick('OWNER')} />
+    <Chip grow label="Tüm üyelere" color={color} active={value === 'HOME_MEMBERS'} onClick={() => onPick('HOME_MEMBERS')} />
+    <Chip grow label="Seçtiklerime" color={color} active={value === 'USERS'} onClick={() => onPick('USERS')} />
+  </div>
+);
+
+export const NotifyActionEditor = ({ value, onChange, templateVars, members }) => {
+
+  const n = { title: '', body: '', severity: 'info', ...(value.notification || {}) };
+  const set = (patch) => onChange({ ...value, notification: { ...n, ...patch } });
+
+  // Değişkeni mesajın sonuna ekler
+  const insertVar = (token) => {
+    const sep = n.body && !n.body.endsWith(' ') ? ' ' : '';
+    set({ body: (n.body + sep + token).slice(0, NOTIFY_LIMITS.body) });
+  };
+
+  return (
+
+    <div>
+
+      <div className="flex justify-between mb-1">
+        <span className="text-xs font-bold text-slate-400">Başlık</span>
+        <span className="text-xs text-slate-500">{n.title.length}/{NOTIFY_LIMITS.title}</span>
+      </div>
+      <TextInput value={n.title} onChange={(e) => set({ title: e.target.value.slice(0, NOTIFY_LIMITS.title) })} placeholder="Örn: Su kaçağı!" />
+
+      <div className="flex justify-between mb-1 mt-4">
+        <span className="text-xs font-bold text-slate-400">Mesaj (opsiyonel)</span>
+        <span className="text-xs text-slate-500">{n.body.length}/{NOTIFY_LIMITS.body}</span>
+      </div>
+      <TextInput multiline value={n.body} onChange={(e) => set({ body: e.target.value.slice(0, NOTIFY_LIMITS.body) })} placeholder="Örn: {{device.name}} su algıladı." />
+
+      {templateVars.length > 0 && (
+        <div className="flex flex-wrap gap-2 mt-2">
+          {templateVars.map(v => (
+            <button key={v.key} type="button" onClick={() => insertVar(v.key)} className="px-3 py-1.5 rounded-full bg-purple-500/10 border border-purple-500/30 text-xs font-semibold text-purple-300 hover:bg-purple-500/20 transition-all">
+              + {v.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <FieldLabel>Kime</FieldLabel>
+      <RecipientChips value={n.recipients} color="#8b5cf6" onPick={(r) => set({ recipients: r, userIds: r === 'USERS' ? n.userIds ?? [] : undefined })} />
+
+      {n.recipients === 'USERS' && (
+        <div className="mt-2">
+          <PeoplePicker value={n.userIds ?? []} onChange={(userIds) => set({ userIds })} members={members} color="#8b5cf6" emptyMeansMe={false} />
+        </div>
+      )}
+
+      <FieldLabel>Önem</FieldLabel>
+      <div className="flex gap-2">
+        {NOTIFY_SEVERITIES.map(s => (
+          <Chip key={s.id} grow label={s.label} color={s.color} active={n.severity === s.id} onClick={() => set({ severity: s.id })} />
+        ))}
+      </div>
+
+    </div>
+  );
+};
+
+export const ApprovalActionEditor = ({ value, onChange, members }) => {
+
+  const ap = { title: '', body: '', timeoutSeconds: 600, onTimeout: 'STOP', snoozeMinutes: 60, ...(value.approval || {}) };
+  const set = (patch) => onChange({ ...value, approval: { ...ap, ...patch } });
+  const recipients = ap.recipients ?? 'OWNER';
+
+  return (
+
+    <div>
+
+      <FieldLabel first>Soru</FieldLabel>
+      <TextInput value={ap.title} onChange={(e) => set({ title: e.target.value.slice(0, 120) })} placeholder="Örn: Kombi açılsın mı?" />
+
+      <FieldLabel>Açıklama (opsiyonel)</FieldLabel>
+      <TextInput multiline value={ap.body} onChange={(e) => set({ body: e.target.value.slice(0, 300) })} placeholder="Örn: {{device.name}} 18 °C'nin altına düştü." />
+
+      <FieldLabel>Kime sorulsun?</FieldLabel>
+      <RecipientChips value={recipients} color="#0ea5e9" onPick={(r) => set({ recipients: r, userIds: r === 'USERS' ? ap.userIds ?? [] : undefined })} />
+
+      {recipients === 'USERS' && (
+        <div className="mt-2">
+          <PeoplePicker value={ap.userIds ?? []} onChange={(userIds) => set({ userIds })} members={members} color="#0ea5e9" emptyMeansMe={false} />
+        </div>
+      )}
+
+      {recipients !== 'OWNER' && <Hint>İlk cevap veren karar verir; diğerlerine kimin ne dediği bildirilir. "Tüm üyelere" seçilince kısıtlı üyelere sorulmaz.</Hint>}
+
+      <FieldLabel>Ne kadar beklensin?</FieldLabel>
+      <DurationPicker color="#0ea5e9" value={ap.timeoutSeconds} onChange={(s) => set({ timeoutSeconds: Math.max(60, s) })} presets={[60, 300, 600, 1800, 3600]} />
+
+      <FieldLabel>Cevap gelmezse</FieldLabel>
+      <div className="flex gap-2">
+        <Chip grow label="Durdur" color="#0ea5e9" active={ap.onTimeout !== 'CONTINUE'} onClick={() => set({ onTimeout: 'STOP' })} />
+        <Chip grow label="Devam et" color="#0ea5e9" active={ap.onTimeout === 'CONTINUE'} onClick={() => set({ onTimeout: 'CONTINUE' })} />
+      </div>
+
+      <FieldLabel>Ertele butonu</FieldLabel>
+      <div className="flex flex-wrap gap-2">
+        {APPROVAL_SNOOZES.map(m => (
+          <Chip key={m} label={m === 0 ? 'Yok' : formatDuration(m * 60)} color="#0ea5e9" active={(ap.snoozeMinutes ?? 60) === m} onClick={() => set({ snoozeMinutes: m })} />
+        ))}
+      </div>
+
+      <Hint>Telefona Evet / Hayır{ap.snoozeMinutes ? ' / Ertele' : ''} butonlu bir bildirim gider ve otomasyon cevabı bekler. "Hayır" denirse sonraki aksiyonlar çalışmaz. Bildirim kaçırılırsa Otomasyonlar sayfasındaki "Onay bekleyenler" kartından da cevaplanabilir.</Hint>
+
+    </div>
+  );
+};
+
+export const ActionOptions = ({ value, onChange }) => (
+
+  <div className="mt-5 pt-4 border-t border-slate-700 space-y-1">
+    <ToggleRow label="Bu aksiyon etkin" value={value.enabled !== false} onChange={(v) => onChange({ ...value, enabled: v })} />
+    <ToggleRow label="Hata olursa sonrakilere devam et" value={!!value.continueOnError} onChange={(v) => onChange({ ...value, continueOnError: v })} />
+  </div>
+);
+
+// ───────────────────────── PROVA VE ŞİMDİ TEST ET ─────────────────────────
+
+const SIM_SKIP_LABELS = { CONDITION_FAILED: 'koşul tutmadı', COOLDOWN: 'bekleme süresi dolmadı', OUT_OF_WINDOW: 'tarih aralığı dışında' };
+
+const formatStamp = (iso) => {
+  const d = new Date(iso);
+  return `${SHORT_DAYS[d.getDay()]} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+};
+
+const warningText = (w, devices) => {
+  if (w.code === 'NO_HISTORY') return `${findDevice(devices, w.deviceId)?.name ?? 'Bir cihaz'} için geçmiş veri yok; sonuç eksik olabilir.`;
+  if (w.code === 'NO_LOCATION') return 'Güneş tetikleyicileri için evin konumu tanımlı değil.';
+  if (w.code === 'UNSIMULATED_TRIGGER') return 'Manuel, konum ve sesli tetikleyiciler provaya dahil edilmez.';
+  if (w.code === 'TOO_MUCH_DATA') return 'Veri çok fazla olduğu için prova kısaltıldı.';
+  return w.code;
+};
+
+const ACTION_KIND_LABELS = { NOTIFY: 'Bildirim gönder', DELAY: 'Bekle', ASK_APPROVAL: 'Onay iste', SCENE: 'Sahne çalıştır', SET_HOME_MODE: 'Ev modunu değiştir', SET_PRESENCE: 'Evde varmış gibi' };
+
+const actionPreviewText = (a) => {
+  if (a.kind === 'DEVICE_COMMAND') {
+    const cmd = RELAY_COMMANDS.find(c => c.id === a.command)?.label ?? a.command;
+    return `${a.deviceName ?? 'Cihaz'} → ${cmd}${a.channelLabel ? ` · ${a.channelLabel}` : ''}`;
+  }
+  return ACTION_KIND_LABELS[a.kind] ?? a.kind;
+};
+
+export const SimulationPanel = ({ buildDraft, triggerItems, devices, enabled }) => {
+
+  const dispatch = useDispatch();
+
+  const [days, setDays] = useState(7);
+  const [sim, setSim] = useState(null);
+  const [simLoading, setSimLoading] = useState(false);
+  const [simError, setSimError] = useState(null);
+  const [showSamples, setShowSamples] = useState(false);
+
+  const [testIndex, setTestIndex] = useState(0);
+  const [testValue, setTestValue] = useState(undefined);
+  const [test, setTest] = useState(null);
+  const [testLoading, setTestLoading] = useState(false);
+  const [testError, setTestError] = useState(null);
+
+  const idx = Math.min(testIndex, Math.max(0, triggerItems.length - 1));
+  const selected = triggerItems[idx];
+
+  const runSim = async (d = days) => {
+
+    setSimLoading(true);
+    setSimError(null);
+
+    try {
+      setSim(await dispatch(simulateAutomation({ automation: buildDraft(), days: d })).unwrap());
+    } catch (e) {
+      setSimError(String(e));
+    } finally {
+      setSimLoading(false);
+    }
+  };
+
+  const runTest = async () => {
+
+    const override = selected?.source === 'DEVICE' && hasValue(testValue)
+      ? { deviceId: getId(selected.deviceId), property: selected.property, channel: selected.channel, value: testValue }
+      : undefined;
+
+    setTestLoading(true);
+    setTestError(null);
+
+    try {
+      setTest(await dispatch(testAutomation({ automation: buildDraft(), triggerIndex: idx, override })).unwrap());
+    } catch (e) {
+      setTestError(String(e));
+    } finally {
+      setTestLoading(false);
+    }
+  };
+
+  const dayLabels = sim
+    ? (sim.byDay.length <= 7
+      ? sim.byDay.map(d => SHORT_DAYS[new Date(d.date).getDay()])
+      : [sim.byDay[0].date.slice(5), sim.byDay[sim.byDay.length - 1].date.slice(5)])
+    : null;
+
+  return (
+
+    <div className="bg-purple-500/5 border border-purple-500/20 rounded-2xl p-5">
+
+      <p className="flex items-center gap-2 font-bold text-white"><FlaskConical size={16} className="text-purple-400" /> Prova</p>
+      <p className="text-xs text-slate-400 mt-1 mb-4">Kuralı kaydetmeden önce evinin geçmiş verileriyle dene. Hiçbir cihaz çalıştırılmaz.</p>
+
+      {!enabled && <p className="text-xs text-red-400 mb-3">Prova için önce eksik bilgileri tamamla.</p>}
+
+      <div className="flex flex-wrap gap-2 items-center">
+
+        {[3, 7, 14].map(d => (
+          <Chip key={d} label={`${d} gün`} color="#8b5cf6" active={days === d} onClick={() => { setDays(d); if (sim && enabled) runSim(d); }} />
+        ))}
+
+        <button type="button" onClick={() => runSim()} disabled={!enabled || simLoading} className="ml-auto flex items-center gap-2 px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-sm font-bold disabled:opacity-40 disabled:cursor-not-allowed transition-all">
+          {simLoading ? <Spinner size={14} /> : <Play size={14} />} Geçen {days} güne karşı prova et
         </button>
 
       </div>
 
-    </Modal>
+      {simError && <p className="text-xs text-red-400 mt-2">{simError}</p>}
+
+      {sim && (
+
+        <div className="mt-5">
+
+          <p className="text-3xl font-black text-white">{sim.runs} kez</p>
+          <p className="text-sm text-slate-400">çalışırdı · günde ortalama {sim.perDayAvg}{sim.nightRuns ? ` · ${sim.nightRuns} tanesi gece (00–06)` : ''}</p>
+
+          {sim.skipped > 0 && (
+            <p className="text-xs text-slate-400 mt-2">
+              {sim.skipped} tetiklenme atlanırdı: {Object.entries(sim.skipReasons).map(([k, v]) => `${v} ${SIM_SKIP_LABELS[k] ?? k}`).join(', ')}
+            </p>
+          )}
+
+          {sim.perDayAvg > 20 && <p className="text-xs text-amber-400 mt-2">Çok sık çalışıyor. Bekleme süresi ya da histerezis eklemeyi düşün.</p>}
+
+          {sim.runs === 0 && !sim.warnings.some(w => w.code === 'NO_HISTORY') && (
+            <p className="text-xs text-amber-400 mt-2">Bu dönemde hiç çalışmazdı. Eşikleri ve koşulları kontrol et.</p>
+          )}
+
+          <div className="grid md:grid-cols-2 gap-6 mt-4">
+            <div>
+              <p className="text-xs font-bold text-slate-500 mb-2">Saatlere göre</p>
+              <Bars values={sim.byHour} labels={['00', '06', '12', '18', '23']} color="#8b5cf6" />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-slate-500 mb-2">Günlere göre</p>
+              <Bars values={sim.byDay.map(d => d.runs)} labels={dayLabels} color="#8b5cf6" />
+            </div>
+          </div>
+
+          {sim.warnings.map((w, i) => <p key={i} className="text-xs text-amber-400 mt-2">• {warningText(w, devices)}</p>)}
+
+          {sim.samples.length > 0 && (
+            <>
+              <button type="button" onClick={() => setShowSamples(s => !s)} className="mt-3 text-xs font-bold text-purple-400 hover:text-purple-300">
+                {showSamples ? 'Olayları gizle' : `Son ${sim.samples.length} olayı göster`}
+              </button>
+
+              {showSamples && (
+                <div className="mt-2 max-h-64 overflow-y-auto pr-1">
+                  {sim.samples.map((s, i) => (
+                    <div key={i} className="py-1.5 border-b border-slate-800">
+                      <p className="text-xs font-semibold" style={{ color: s.status === 'RUN' ? '#10b981' : '#94a3b8' }}>
+                        {formatStamp(s.at)} · {s.status === 'RUN' ? 'Çalışırdı' : `Atlanırdı (${SIM_SKIP_LABELS[s.skipReason] ?? s.skipReason})`}
+                        {s.value !== undefined ? ` · değer: ${s.value}` : ''}
+                      </p>
+                      {s.trace?.filter(t => !t.result).map((t, j) => <p key={j} className="text-[11px] text-slate-500">{traceLine(t)}</p>)}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+
+          <p className="text-[11px] text-slate-500 mt-3">Aksiyonların süresi ve çalışma modu provada hesaba katılmaz.</p>
+
+        </div>
+      )}
+
+      {/* Şimdi test et */}
+      <div className="mt-6 pt-5 border-t border-purple-500/20">
+
+        <p className="font-bold text-white">Şimdi test et</p>
+        <p className="text-xs text-slate-400 mt-1 mb-3">Evin şu anki durumuyla koşulları ve yetkileri kontrol eder. Aksiyonlar çalışmaz.</p>
+
+        {triggerItems.length > 1 && (
+          <div className="flex flex-wrap gap-2 mb-3">
+            {triggerItems.map((t, i) => (
+              <Chip key={t._key} label={describeTrigger(t, { devices }).label} color="#8b5cf6" active={idx === i} onClick={() => { setTestIndex(i); setTestValue(undefined); setTest(null); }} />
+            ))}
+          </div>
+        )}
+
+        {selected?.source === 'DEVICE' && (
+          <div className="mb-3 max-w-md" key={idx}>
+            <p className="text-xs font-bold text-slate-400 mb-1.5">Test değeri ({fieldName(selected.property)}) · boş bırakırsan şu anki değer kullanılır</p>
+            <ValueInput value={undefined} onChange={setTestValue} placeholder="Örn: 30" />
+          </div>
+        )}
+
+        <button type="button" onClick={runTest} disabled={!enabled || testLoading} className="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-purple-500 text-purple-300 text-sm font-bold hover:bg-purple-500/10 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
+          {testLoading ? <Spinner size={14} /> : <FlaskConical size={14} />} Şimdi test et
+        </button>
+
+        {testError && <p className="text-xs text-red-400 mt-2">{testError}</p>}
+
+        {test && (
+
+          <div className="mt-4 space-y-1">
+
+            <p className={`text-base font-black ${test.wouldRun ? 'text-emerald-400' : 'text-red-400'}`}>
+              {test.wouldRun ? 'Şu an tetiklense çalışırdı' : 'Şu an tetiklense çalışmazdı'}
+            </p>
+
+            {test.trigger && (
+              <p className="text-xs text-slate-400">{test.trigger.matches ? '✓' : '✗'} Tetikleyici · değer: {String(test.trigger.actual ?? 'veri yok')}</p>
+            )}
+
+            {test.trace.map((t, i) => <p key={i} className="text-xs text-slate-400">{traceLine(t)}</p>)}
+
+            {test.actions.length > 0 && <p className="text-xs font-bold text-slate-500 pt-2">Aksiyonlar</p>}
+
+            {test.actions.map((a, i) => (
+              <p key={i} className={`text-xs ${a.allowed === false ? 'text-red-400' : a.enabled === false ? 'text-slate-500' : 'text-slate-300'}`}>
+                {a.allowed === false ? '✗' : '✓'} {actionPreviewText(a)}
+                {a.allowed === false ? ` — yetki yok${a.reason ? ` (${a.reason})` : ''}` : ''}
+                {a.enabled === false ? ' (devre dışı)' : ''}
+              </p>
+            ))}
+
+          </div>
+        )}
+
+      </div>
+
+    </div>
   );
 };
-
-export default AutomationEditor;
