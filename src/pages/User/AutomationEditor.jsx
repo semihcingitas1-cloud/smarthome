@@ -1125,3 +1125,8 @@ export const SimulationPanel = ({ buildDraft, triggerItems, devices, enabled }) 
     </div>
   );
 };
+    </Modal>
+  );
+};
+
+export default AutomationEditor;
