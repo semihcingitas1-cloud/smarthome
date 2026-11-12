@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import toast from 'react-hot-toast';
 
 import { getMyAutomations, getAutomation, getAutomationHealth, createAutomation, updateAutomation, deleteAutomation, triggerAutomation, shareAutomation, clearAutomationError } from '../../redux/automationSlice';
-import { getMyDevices } from '../../redux/deviceSlice';
+import { getMyDevices } from '../../redux/devicesSlice';
 import { setHomeModeApi, getPendingApprovalsApi, respondToApprovalApi, apiError } from '../../services/homeApi';
 
 import Sidebar from '../../layout/Sidebar';
