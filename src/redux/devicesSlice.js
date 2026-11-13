@@ -4,7 +4,7 @@ import axios from 'axios';
 const BASE_URL = "https://ornekciceksitesi.com";
 
 // Cihaz uçları web'de /api önekiyle çalışıyor; firmware ucu mobildeki adresle aynı bırakıldı
-const DEVICES_URL = `${BASE_URL}/api/devices`;
+const DEVICES_URL = `${BASE_URL}/devices`;
 const FIRMWARE_URL = `${BASE_URL}/firmware`;
 
 const authConfig = (extra = {}) => ({
