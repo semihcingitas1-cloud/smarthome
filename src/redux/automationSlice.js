@@ -3,7 +3,7 @@ import axios from 'axios';
 
 const BASE_URL = "https://ornekciceksitesi.com";
 // Web istekleri /api önekiyle gidiyor (mobil öneksiz). Web'de liste şu an yükleniyorsa böyle kalsın.
-const API_URL = `${BASE_URL}/api`;
+const API_URL = `${BASE_URL}`;
 const RUNS_PAGE_SIZE = 20;
 
 const initialState = {
