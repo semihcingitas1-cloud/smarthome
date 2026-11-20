@@ -1102,7 +1102,7 @@ const duplicateProduct = () => {
                     <h4 className="font-semibold mb-4 text-sm text-slate-500 dark:text-slate-400">Arama Motoru Önizlemesi</h4>
                     <div className="space-y-2">
                       <h3 className="text-blue-600 dark:text-blue-400 text-lg hover:underline cursor-pointer">{formData.seoTitle || formData.name || 'Ürün Başlığı'}</h3>
-                      <p className="text-green-700 dark:text-green-500 text-sm">smarthome.com › urunler › {formData.sku || 'sku'}</p>
+                      <p className="text-green-700 dark:text-green-500 text-sm">typushome.com.tr › urunler › {formData.sku || 'sku'}</p>
                       <p className="text-slate-500 dark:text-slate-400 text-sm">{formData.seoDescription || formData.shortDescription || 'Ürün açıklaması burada görünecek...'}</p>
                     </div>
                   </div>

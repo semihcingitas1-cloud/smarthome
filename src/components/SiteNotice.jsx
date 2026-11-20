@@ -5,7 +5,7 @@ import { AlertTriangle } from 'lucide-react';
 const SITE_NOTICE = {
   enabled: true,
   title: 'Site şu anda aktif değildir.',
-  message: 'TypusHOME test aşamasındadır, siparişler henüz işleme alınmamaktadır.',
+  message: 'Typus Home test aşamasındadır, siparişler henüz işleme alınmamaktadır.',
 };
 
 const SiteNotice = () => {

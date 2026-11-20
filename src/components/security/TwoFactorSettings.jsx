@@ -57,7 +57,7 @@ const BackupCodesView = ({ codes, onDone }) => {
   const [copied, setCopied] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
 
-  const text = `TypusHOME yedek kodları\n\n${codes.join('\n')}\n\nHer kod yalnızca bir kez kullanılabilir.\n`;
+  const text = `Typus Home yedek kodları\n\n${codes.join('\n')}\n\nHer kod yalnızca bir kez kullanılabilir.\n`;
 
   const copyAll = async () => {
     try {
@@ -318,7 +318,7 @@ const TwoFactorSettings = ({ onNotify }) => {
 
             <div className="flex items-start gap-3">
               <Smartphone size={18} className="text-blue-600 dark:text-blue-400 mt-0.5" />
-              <p className="text-sm text-gray-600 dark:text-slate-400">Doğrulayıcı uygulamada TypusHOME için görünen 6 haneli kodu gir.</p>
+              <p className="text-sm text-gray-600 dark:text-slate-400">Doğrulayıcı uygulamada Typus Home için görünen 6 haneli kodu gir.</p>
             </div>
 
             <input

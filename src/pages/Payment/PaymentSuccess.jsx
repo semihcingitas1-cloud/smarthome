@@ -13,7 +13,7 @@ const PaymentSuccess = () => {
     amount: "₺299",
     period: "aylık",
     date: "12 Mart 2025",
-    email: "kullanici@smarthub.com"
+    email: "kullanici@typushome.com"
   };
 
   useEffect(() => {

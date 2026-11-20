@@ -358,14 +358,14 @@ const Products = () => {
           <div className="max-w-3xl">
 
             <span className="inline-flex items-center gap-2 text-xs font-bold tracking-wider uppercase text-blue-600 dark:text-blue-400 bg-blue-500/10 px-3 py-1.5 rounded-full mb-5">
-              <Zap size={13} /> TypusHOME Store
+              <Zap size={13} /> Typus Home Store
             </span>
 
             <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight leading-[1.05] mb-4">
               Evini akıllı hale getiren <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-500">cihazlar</span>
             </h1>
 
-            <p className="text-gray-600 dark:text-slate-400 text-lg mb-8">TypusHOME uygulamasıyla tam uyumlu sensörler, röleler ve otomasyon ürünleri.</p>
+            <p className="text-gray-600 dark:text-slate-400 text-lg mb-8">Typus Home uygulamasıyla tam uyumlu sensörler, röleler ve otomasyon ürünleri.</p>
 
             <div className="relative max-w-2xl">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />

@@ -527,7 +527,7 @@ const Contact = () => {
           <div className="bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden">
 
             <div className="aspect-video bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center">
-              <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d1609214.4829516741!2d32.87132505!3d38.02384855!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x14d085a54152234b%3A0xf81f4fcd25c42c31!2sKonya!5e0!3m2!1sen!2str!4v1779722326455!5m2!1sen!2str" loading="lazy" referrerPolicy="no-referrer-when-downgrade" title="TypusHOME konum haritası" className="relative w-full h-full" />
+              <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d1609214.4829516741!2d32.87132505!3d38.02384855!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x14d085a54152234b%3A0xf81f4fcd25c42c31!2sKonya!5e0!3m2!1sen!2str!4v1779722326455!5m2!1sen!2str" loading="lazy" referrerPolicy="no-referrer-when-downgrade" title="Typus Home konum haritası" className="relative w-full h-full" />
             </div>
 
           </div>

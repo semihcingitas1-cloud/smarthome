@@ -570,7 +570,7 @@ const PaymentPage = () => {
                   {[
 
                     'Ödeme dekontunuzu kaydedin',
-                    'Dekont fotoğrafını destek@smarthub.com adresine gönderin',
+                    'Dekont fotoğrafını destek@typushome.com adresine gönderin',
                     'Açıklama kısmına sipariş numaranızı yazın',
                     'Ödemeniz 1-2 iş günü içinde onaylanacaktır'
                   ].map((step, i) => ( <li key={i} className="flex items-start gap-3 text-sm text-gray-700 dark:text-slate-300">

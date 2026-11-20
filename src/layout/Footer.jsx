@@ -104,7 +104,7 @@ const Footer = () => {
 
           <div>
 
-            <Link to="/" aria-label="TypusHome ana sayfa" className="inline-flex items-center mb-4 gap-2.5 group focus:outline-none focus-visible:ring-2 focus-visible:ring-typus rounded-lg">
+            <Link to="/" aria-label="Typus Home ana sayfa" className="inline-flex items-center mb-4 gap-2.5 group focus:outline-none focus-visible:ring-2 focus-visible:ring-typus rounded-lg">
 
               <svg viewBox="-2 -1 64 60" className="h-9 w-9 transition-transform duration-300 group-hover:scale-110" fill="none" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
 

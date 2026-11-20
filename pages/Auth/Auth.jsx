@@ -653,7 +653,7 @@ const Auth = () => {
             <div className="text-sm text-gray-700 dark:text-slate-400">
 
               <p className="font-semibold text-blue-600 dark:text-blue-400 mb-1">Demo Hesap Bilgileri</p>
-              <p className="text-xs">E-posta: demo@smarthome.com</p>
+              <p className="text-xs">E-posta: demo@typushome.com</p>
               <p className="text-xs">Şifre: demo123</p>
 
             </div>

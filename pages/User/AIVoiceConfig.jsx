@@ -339,7 +339,7 @@ const AIVoiceConfig = () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `smarthub-ai-data-${Date.now()}.json`;
+    a.download = `typushome-ai-data-${Date.now()}.json`;
     a.click();
     URL.revokeObjectURL(url);
   };

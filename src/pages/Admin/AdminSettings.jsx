@@ -111,7 +111,7 @@ const AdminSettings = () => {
 
   const [contactData, setContactData] = useState({
 
-    email: 'destek@smarthub.com',
+    email: 'destek@typushome.com',
     phone: '+90 (212) 123 45 67',
     address: 'İstanbul, Türkiye',
     socialLinks: {

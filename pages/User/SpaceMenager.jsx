@@ -183,7 +183,7 @@ const SpaceManager = () => {
                 <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 text-xs font-bold uppercase tracking-widest">
 
                   <Globe size={14} />
-                  SmartNode Hiyerarşisi
+                  Typus Home Hiyerarşisi
 
                 </div>
 

@@ -177,8 +177,8 @@ export const PAYMENT_METHOD_LABEL = {
 
 // Havale bilgileri: gerçek hesaplarla değiştir
 export const BANK_ACCOUNTS = [
-  { bank: 'Ziraat Bankası', holder: 'TypusHOME Teknoloji A.Ş.', iban: 'TR00 0000 0000 0000 0000 0000 00' },
-  { bank: 'Garanti BBVA', holder: 'TypusHOME Teknoloji A.Ş.', iban: 'TR00 0000 0000 0000 0000 0000 00' },
+  { bank: 'Ziraat Bankası', holder: 'Typus Home Teknoloji A.Ş.', iban: 'TR00 0000 0000 0000 0000 0000 00' },
+  { bank: 'Garanti BBVA', holder: 'Typus Home Teknoloji A.Ş.', iban: 'TR00 0000 0000 0000 0000 0000 00' },
 ];
 
 export const SUPPORT_EMAIL = 'destek@typushome.com.tr';

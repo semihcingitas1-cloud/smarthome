@@ -307,7 +307,7 @@ const Header = () => {
         {/* lg+: 3 kolon (logo | ortalı nav | aksiyonlar) → nav artık absolute değil, logo/aksiyonlarla çakışmaz */}
         <div className="flex items-center justify-between h-16 lg:grid lg:grid-cols-[1fr_auto_1fr]">
 
-          <Link to="/" className="flex items-center gap-2.5 group flex-shrink-0 lg:justify-self-start focus:outline-none focus-visible:ring-2 focus-visible:ring-typus rounded-lg" aria-label="TypusHome ana sayfa">
+          <Link to="/" className="flex items-center gap-2.5 group flex-shrink-0 lg:justify-self-start focus:outline-none focus-visible:ring-2 focus-visible:ring-typus rounded-lg" aria-label="Typus Home ana sayfa">
 
             <svg viewBox="-2 -1 64 60" className="h-9 w-9 transition-transform duration-300 group-hover:scale-110" fill="none" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
 

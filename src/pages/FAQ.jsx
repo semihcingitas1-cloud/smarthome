@@ -117,7 +117,7 @@ const FAQ = () => {
     {
       category: 'Başlangıç',
       question: "Mobil uygulama var mı?",
-      answer: "Evet! iOS ve Android için native uygulamalarımız mevcut. App Store ve Google Play'den 'Smart Home Controller' arayarak indirebilirsiniz. Aynı hesap ile web ve mobil senkronize çalışır.",
+      answer: "Evet! iOS ve Android için native uygulamalarımız mevcut. App Store ve Google Play'den 'Typus Home' arayarak indirebilirsiniz. Aynı hesap ile web ve mobil senkronize çalışır.",
       isPopular: true
     },
     {

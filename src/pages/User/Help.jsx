@@ -32,7 +32,7 @@ const Help = () => {
       border: 'border-blue-500/20 hover:border-blue-500/50',
       iconBg: 'bg-blue-500/10',
       articles: [
-        { title: 'SmartHub hesabı nasıl oluşturulur?', time: '2 dk' },
+        { title: 'Typus Home hesabı nasıl oluşturulur?', time: '2 dk' },
         { title: 'İlk cihazınızı nasıl bağlarsınız?', time: '5 dk' },
         { title: 'Mobil uygulamayı nasıl kurarsınız?', time: '3 dk' },
         { title: 'Dashboard\'a genel bakış', time: '4 dk' },

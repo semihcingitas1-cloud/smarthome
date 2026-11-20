@@ -548,7 +548,7 @@ export const ShareModal = ({ data, onClose }) => (
       </button>
 
       <h3 className="text-xl font-bold text-white">{data.preview?.name}</h3>
-      <p className="text-sm text-slate-400 mt-1">Karşı taraf QR'ı TypusHOME uygulamasıyla okutup kendi cihazlarını eşleştirir.</p>
+      <p className="text-sm text-slate-400 mt-1">Karşı taraf QR'ı Typus Home uygulamasıyla okutup kendi cihazlarını eşleştirir.</p>
 
       <div className="bg-white p-4 rounded-2xl mt-6">
         <QRCodeSVG value={data.link} size={200} />
@@ -564,7 +564,7 @@ export const ShareModal = ({ data, onClose }) => (
       <div className="flex gap-3 mt-6 w-full">
         <button
           type="button"
-          onClick={() => copyText(`TypusHOME otomasyon şablonu: "${data.preview?.name ?? ''}". Otomasyonlar ekranındaki QR simgesinden bu kodu gir: ${data.code}`, 'Paylaşım metni kopyalandı.')}
+          onClick={() => copyText(`Typus Home otomasyon şablonu: "${data.preview?.name ?? ''}". Otomasyonlar ekranındaki QR simgesinden bu kodu gir: ${data.code}`, 'Paylaşım metni kopyalandı.')}
           className="flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-xl font-bold transition-all"
         >
           <Copy size={16} /> Kodu kopyala

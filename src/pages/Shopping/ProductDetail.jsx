@@ -11,7 +11,7 @@ import ProductModel3D from '../../components/ProductModel3D';
 import { Star, Heart, ShoppingCart, Minus, Plus, ShieldCheck, Truck, RotateCcw, Check, ArrowRight, Share2, ZoomIn, Award, Clock, Users, TrendingUp, Package, CreditCard, Info, X, ChevronLeft, ChevronRight, Box, ThumbsUp, Pencil, Trash2, Layers } from "lucide-react";
 import { FaWhatsapp, FaLink, FaReddit, FaXTwitter } from 'react-icons/fa6';
 
-const SITE_NAME = 'TypusHOME';
+const SITE_NAME = 'Typus Home';
 const SITE_URL = 'https://typushome.com.tr';
 const WISHLIST_KEY = 'typushome_wishlist';
 

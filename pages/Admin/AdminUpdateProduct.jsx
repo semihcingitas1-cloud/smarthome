@@ -1049,7 +1049,7 @@ const AdminAddProduct = () => {
                   <div className="space-y-2">
 
                     <h3 className="dark:text-blue-400 text-lg hover:underline cursor-pointer">{formData.seoTitle || formData.name || 'Ürün Başlığı'}</h3>
-                    <p className="dark:text-green-600 text-sm">smarthome.com › urunler › {formData.sku || 'sku'}</p>
+                    <p className="dark:text-green-600 text-sm">typushome.com.tr › urunler › {formData.sku || 'sku'}</p>
                     <p className="dark:text-slate-400 text-sm">{formData.seoDescription || formData.shortDescription || 'Ürün açıklaması burada görünecek...'}</p>
 
                   </div>
