@@ -4,7 +4,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 import { logoutUser } from '../redux/userSlice'; 
 
-import { LayoutDashboard, Users, Server, Activity, Settings, LogOut, ShieldCheck, CreditCard, ShoppingBag, QrCode, Upload } from "lucide-react";
+import { LayoutDashboard, Users, Server, Activity, Settings, LogOut, CreditCard, ShoppingBag, QrCode, Upload } from "lucide-react";
 
 const AdminSidebar = () => {
 
@@ -41,14 +41,21 @@ const AdminSidebar = () => {
 
           <div className="flex items-center gap-3">
 
-            <div className="bg-gradient-to-br from-blue-600 to-blue-600 p-2 rounded-xl shadow-lg shadow-blue-600/30">
-              <ShieldCheck className="text-white" size={24} />
-            </div>
+            <svg viewBox="-2 -1 64 60" className="h-9 w-9 flex-shrink-0" fill="none" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M2 26 L30 3 L58 26" className="stroke-typus" strokeWidth="4.5" />
+              <path d="M10 20 V54 H50 V20" className="stroke-typus" strokeWidth="4.5" />
+              <path d="M23.6 39.6 A9 9 0 0 1 36.4 39.6" className="stroke-typus-light" strokeWidth="3.5" />
+              <path d="M18 34 A17 17 0 0 1 42 34" className="stroke-typus-light" strokeWidth="3.5" />
+              <circle cx="30" cy="46" r="3.2" className="fill-typus stroke-none" />
+            </svg>
 
             <div>
 
-              <span className="text-xl font-black block tracking-tight -mb-2 text-gray-900 dark:text-white">SMART<span className="text-blue-500">HUB</span></span>
-              <span className="text-red-500 dark:text-red-400 text-[10px] uppercase font-bold tracking-widest">Admin Paneli</span>
+              <span className="flex items-baseline leading-none select-none" aria-label="Typus Home">
+                <span className="text-[#5DB3EA] dark:text-[#85CBF0] text-[22px] tracking-[-0.06em]" style={{ fontFamily: "'Lexend Giga', sans-serif", fontWeight: 200 }}>Typus</span>
+                <span className="text-[#0F2A47] dark:text-white text-[27px] tracking-[-0.04em]" style={{ fontFamily: "'Outfit', sans-serif", fontWeight: 800 }}>Home</span>
+              </span>
+              <span className="text-red-500 dark:text-red-400 text-[10px] uppercase font-bold tracking-widest block mt-1.5">Admin Paneli</span>
 
             </div>
 
@@ -94,7 +101,7 @@ const AdminSidebar = () => {
 
         </nav>
 
-        <div onClick={logout} lassName="flex flex-col items-center justify-center w-20 h-full bg-gray-50 dark:bg-slate-950 border-l border-gray-200 dark:border-slate-800 text-red-500 active:bg-red-50 dark:active:bg-red-500/10 transition-colors cursor-pointer">
+        <div onClick={logout} className="flex flex-col items-center justify-center w-20 h-full bg-gray-50 dark:bg-slate-950 border-l border-gray-200 dark:border-slate-800 text-red-500 active:bg-red-50 dark:active:bg-red-500/10 transition-colors cursor-pointer">
 
           <LogOut size={24} />
           <span className="text-[10px] mt-1 font-black uppercase">Çıkış</span>

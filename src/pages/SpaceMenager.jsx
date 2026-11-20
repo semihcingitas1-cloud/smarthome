@@ -85,7 +85,7 @@ const SpaceManager = () => {
 
             <div className="space-y-2">
 
-              <div className="flex items-center gap-2 text-blue-400 text-xs font-black uppercase tracking-[0.3em]"><Globe size={14} /> SmartNode Hiyerarşisi</div>
+              <div className="flex items-center gap-2 text-blue-400 text-xs font-black uppercase tracking-[0.3em]"><Globe size={14} /> Typus Home Hiyerarşisi</div>
               <h2 className="text-4xl font-black text-white tracking-tight">Mekan Kontrolü</h2>
               <p className="text-slate-500 font-medium">Evlerinizi katmanlara ayırın ve ekosistemi yönetin.</p>
 

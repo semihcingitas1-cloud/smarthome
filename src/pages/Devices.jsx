@@ -1001,7 +1001,7 @@ const ConfirmDeleteModal = ({ device, busy, onCancel, onConfirm }) => (
 
 const ADD_STEPS = [
   'Cihazı prize tak. Üzerindeki ışık yanıp sönmüyorsa eşleme butonuna 5 saniye basılı tut.',
-  'Telefonunda TypusHOME uygulamasını aç, Ana sayfadaki + butonuna dokun.',
+  'Telefonunda Typus Home uygulamasını aç, Ana sayfadaki + butonuna dokun.',
   'Bluetooth ya da Wi-Fi yöntemini seç, evinin Wi-Fi bilgilerini gir ve cihaza oda seç.',
   'Eklenen cihaz birkaç saniye içinde bu sayfada da görünür.',
 ];

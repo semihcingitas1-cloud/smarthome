@@ -18,7 +18,7 @@ const mockHistory = [
   { id: 1, title: 'Sistem Bakımı', body: 'Gece 02:00\'de 10 dakika bakım yapılacak.', type: 'system', target: 'all', targetName: 'Tüm Kullanıcılar', sentAt: '2026-06-25T14:32:00', status: 'sent' },
   { id: 2, title: 'Cihaz Güncellemesi', body: 'Yeni firmware sürümü mevcut.', type: 'device', target: 'user', targetName: 'Semih Cingitaş', sentAt: '2026-06-24T10:15:00', status: 'sent' },
   { id: 3, title: 'Ödeme Hatırlatması', body: 'Aboneliğiniz 3 gün içinde sona erecek.', type: 'alert', target: 'user', targetName: 'Ahmet Yılmaz', sentAt: '2026-06-23T09:00:00', status: 'sent' },
-  { id: 4, title: 'Hoş Geldiniz!', body: 'SmartHome ailesine hoş geldiniz.', type: 'info', target: 'user', targetName: 'Ayşe Demir', sentAt: '2026-06-22T16:45:00', status: 'sent' },
+  { id: 4, title: 'Hoş Geldiniz!', body: 'Typus Home ailesine hoş geldiniz.', type: 'info', target: 'user', targetName: 'Ayşe Demir', sentAt: '2026-06-22T16:45:00', status: 'sent' },
 ];
 
 const TYPE_CONFIG = {
@@ -395,7 +395,7 @@ const EditorNotification = () => {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-0.5">
-                      <p className="text-xs font-bold dark:text-slate-300 text-slate-600">SmartHome</p>
+                      <p className="text-xs font-bold dark:text-slate-300 text-slate-600">Typus Home</p>
                       <p className="text-[10px] dark:text-slate-500 text-slate-400 font-mono">Şimdi</p>
                     </div>
                     <p className="text-sm font-bold dark:text-white text-slate-900 mb-0.5">

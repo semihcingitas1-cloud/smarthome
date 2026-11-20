@@ -103,7 +103,7 @@ const Home = () => {
     {
       name: "Mehmet Demir",
       role: "Mimar",
-      comment: "Müşterilerime akıllı ev sistemleri kurarken SmartHub'ı öneriyorum. Kurulumu profesyonel ve destek ekibi harika.",
+      comment: "Müşterilerime akıllı ev sistemleri kurarken Typus Home'u öneriyorum. Kurulumu profesyonel ve destek ekibi harika.",
       rating: 5,
       avatar: "https://i.pravatar.cc/150?img=33"
     }
@@ -238,7 +238,7 @@ const Home = () => {
 
 <a 
   href="https://drive.google.com/file/d/16eHaN1TxhOCEJeSLZHO4-6P6kSCcvzQh/view?usp=share_link" 
-  download="smarthome.apk" 
+  download="typushome.apk" 
   target="_blank"
   rel="noopener noreferrer"
   className="group w-full sm:w-auto bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-8 py-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all duration-300 shadow-lg shadow-blue-900/40 hover:shadow-blue-900/70 hover:scale-[1.02] active:scale-95"
@@ -329,7 +329,7 @@ const Home = () => {
 
                           <iframe
                             src={DEMO_VIDEO_URL}
-                            title="TypusHOME tanıtım videosu"
+                            title="Typus Home tanıtım videosu"
                             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                             referrerPolicy="strict-origin-when-cross-origin"
                             allowFullScreen
@@ -946,12 +946,12 @@ const Home = () => {
 
             {[
               {
-                q: "SmartHub kurulumu ne kadar sürer?",
+                q: "Typus Home kurulumu ne kadar sürer?",
                 a: "Ortalama bir ev için kurulum 2-3 saat sürmektedir. Uzman ekibimiz tüm cihazlarınızı kurar ve test eder."
               },
               {
                 q: "Mevcut cihazlarımı kullanabilir miyim?",
-                a: "Evet! SmartHub 500'den fazla marka ve modelle uyumludur. Çoğu Wi-Fi özellikli cihaz entegre edilebilir."
+                a: "Evet! Typus Home 500'den fazla marka ve modelle uyumludur. Çoğu Wi-Fi özellikli cihaz entegre edilebilir."
               },
               {
                 q: "İnternet bağlantısı olmadan çalışır mı?",
