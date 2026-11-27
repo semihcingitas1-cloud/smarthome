@@ -14,6 +14,7 @@ import automationSlice from "./automationSlice";
 import productSlice from "./productSlice";
 import orderSlice from "./orderSlice";
 import aiSlice from "./aiSlice";
+import guidesSlice from "./guidesSlice";
 
 
 export const  store = configureStore({
@@ -33,5 +34,6 @@ export const  store = configureStore({
         products: productSlice,
         orders: orderSlice,
         ai: aiSlice,
+        guides: guidesSlice,
     },
 });

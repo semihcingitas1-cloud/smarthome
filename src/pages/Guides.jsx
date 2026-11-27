@@ -1,99 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { BookOpen, Search, Download, FileText, Clock, ChevronDown, CheckCircle2, AlertTriangle, Wrench, Plug, Droplets, Wind, Eye, Smartphone, Wifi, ArrowRight, Package, MessageCircle, Sparkles, ShieldCheck, PlayCircle, Video } from 'lucide-react';
+import { BookOpen, Search, Download, FileText, Clock, ChevronDown, CheckCircle2, AlertTriangle, Wrench, Smartphone, Wifi, ArrowRight, Package, MessageCircle, Sparkles, ShieldCheck, PlayCircle, Video } from 'lucide-react';
 
 import { getHomeProducts } from '../redux/productSlice';
+import { fetchGuides } from '../redux/guidesSlice';
+import { iconFor, CATALOG_COLORS, sortByOrder } from '../data/guidesContent';
 
-// ── Kataloglar ──
-// PDF hazır olduğunda `file` alanına adresini yazın (ör. '/catalogs/urun-katalogu-2026.pdf', public/ klasörüne koyabilirsiniz).
-// `file` boş olan kataloglar "Yakında" olarak görünür.
-const CATALOGS = [
-  { title: 'Ürün Kataloğu 2026', description: 'Tüm akıllı ev ürünlerimiz, özellikleri ve teknik bilgileri tek dosyada.', pages: 32, size: 'PDF', file: null, color: 'from-blue-500 to-cyan-500' },
-  { title: 'Akıllı Ev Paketleri', description: 'Daire tipine göre (1+1, 2+1, 3+1) hazırlanmış paket önerileri.', pages: 12, size: 'PDF', file: null, color: 'from-purple-500 to-pink-500' },
-  { title: 'Kurulum Kılavuzu', description: 'Tüm ürünler için adım adım kurulum talimatları, yazdırılabilir.', pages: 24, size: 'PDF', file: null, color: 'from-emerald-500 to-teal-500' },
-];
-
-// ── Videolar ──
-// Video eklemek için YouTube adresindeki kimliği `youtubeId` alanına yazın
-// (ör. https://www.youtube.com/watch?v=pRTeSIznQ1E → 'pRTeSIznQ1E'). Kimliği boş olanlar "Yakında" görünür.
-const VIDEOS = [
-  { title: 'Typus Home Tanıtım', type: 'Tanıtım', duration: '', youtubeId: 'pRTeSIznQ1E' },
-  { title: 'Akıllı Kontrol Rölesi Kurulumu', type: 'Kurulum', duration: '', youtubeId: null },
-  { title: 'Akıllı Perde Motoru Kurulumu', type: 'Kurulum', duration: '', youtubeId: null },
-  { title: 'Sensörleri Uygulamaya Ekleme', type: 'Kurulum', duration: '', youtubeId: null },
-];
-
-// ── Kurulum rehberleri ──
-const INSTALL_GUIDES = [
-  {
-    id: 'relay',
-    icon: Plug,
-    title: 'Akıllı Kontrol Rölesi',
-    category: 'Aydınlatma',
-    duration: '20 dk',
-    difficulty: 'Elektrik bilgisi gerekir',
-    tools: ['Düz ve yıldız tornavida', 'Kontrol kalemi', 'Telefonunuzda uygulama'],
-    steps: [
-      'Sigorta kutusundan ilgili hattın sigortasını kapatın ve kontrol kalemiyle elektrik olmadığından emin olun.',
-      'Anahtarın kapağını sökün, rölenin L (faz) ve N (nötr) girişlerini kutudaki etiketlere göre bağlayın.',
-      'Lamba çıkışını rölenin çıkış ucuna bağlayın, röleyi anahtar kutusunun içine yerleştirin ve kapağı takın.',
-      'Sigortayı açın. Röle üzerindeki ışık yanıp sönmeye başladığında eşleşmeye hazırdır.',
-      'Uygulamada "Cihaz Ekle" adımına girin, kutudaki QR kodu okutun ve ev WiFi ağınızı seçin.',
-      'Cihaza oda adı verin (ör. Salon Lambası). Artık uygulamadan ve sesli asistandan kontrol edebilirsiniz.',
-    ],
-    warning: 'Elektrik bağlantısı konusunda emin değilseniz kurulumu bir elektrik ustasına yaptırın.',
-  },
-  {
-    id: 'curtain',
-    icon: Wind,
-    title: 'Akıllı Perde Motoru',
-    category: 'Konfor',
-    duration: '30 dk',
-    difficulty: 'Orta',
-    tools: ['Matkap ve dübel', 'Metre', 'Tornavida'],
-    steps: [
-      'Perde rayının uzunluğunu ölçün ve rayı kutudaki montaj aparatlarıyla duvara veya tavana sabitleyin.',
-      'Motoru rayın uç kısmına oturtun ve kilitleme mandalını kapatın.',
-      'Perde askılarını raya takın, ilk askıyı motor arabasına bağlayın.',
-      'Motorun fişini prize takın, eşleşme düğmesine 3 saniye basılı tutun.',
-      'Uygulamada "Cihaz Ekle" ile motoru ekleyin ve açık / kapalı limitlerini ekrandaki yönergelerle ayarlayın.',
-      'İsterseniz gün doğumu veya belirli saatler için otomasyon kurun.',
-    ],
-  },
-  {
-    id: 'water',
-    icon: Droplets,
-    title: 'Su Baskın Sensörü',
-    category: 'Güvenlik',
-    duration: '5 dk',
-    difficulty: 'Kolay',
-    tools: ['Telefonunuzda uygulama'],
-    steps: [
-      'Sensörün pil yalıtım bandını çekin. Işık yanıp sönmeye başlar.',
-      'Uygulamada "Cihaz Ekle" adımına girin ve sensörü listeden seçin.',
-      'Sensörü çamaşır makinesi, bulaşık makinesi veya lavabo altı gibi su sızabilecek bir noktada zemine yerleştirin.',
-      'Uygulamada bildirimleri açın. Su algılandığında telefonunuza anında uyarı gelir.',
-    ],
-  },
-  {
-    id: 'motion',
-    icon: Eye,
-    title: 'Hareket Sensörü',
-    category: 'Güvenlik',
-    duration: '10 dk',
-    difficulty: 'Kolay',
-    tools: ['Çift taraflı bant veya vida', 'Telefonunuzda uygulama'],
-    steps: [
-      'Pil yalıtım bandını çekin ve sensörü uygulamaya "Cihaz Ekle" ile ekleyin.',
-      'Sensörü yerden yaklaşık 2–2,5 metre yükseğe, odanın girişini görecek şekilde konumlandırın.',
-      'Doğrudan güneş ışığı alan ve kalorifer peteğine yakın yerlerden kaçının, yanlış algılamaya neden olabilir.',
-      'Uygulamada "hareket algılanınca ışığı aç" gibi bir otomasyon oluşturarak sensörü test edin.',
-    ],
-  },
-];
-
-const GUIDE_CATEGORIES = ['Tümü', ...Array.from(new Set(INSTALL_GUIDES.map((g) => g.category)))];
 
 // Her ürün için ortak ilk kurulum adımları
 const QUICK_START = [
@@ -114,7 +27,7 @@ const getImage = (p) => p?.primaryImage || p?.images?.[0]?.preview || p?.images?
 
 const InstallGuideCard = ({ guide, open, onToggle }) => {
 
-  const Icon = guide.icon;
+  const Icon = iconFor(guide.icon);
 
   return (
 
@@ -146,12 +59,12 @@ const InstallGuideCard = ({ guide, open, onToggle }) => {
           <div>
             <h4 className="text-sm font-bold mb-2 flex items-center gap-2"><Wrench size={16} className="text-slate-500" />Gerekenler</h4>
             <div className="flex flex-wrap gap-2">
-              {guide.tools.map((t) => <span key={t} className="text-xs px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">{t}</span>)}
+              {(guide.tools ?? []).map((t) => <span key={t} className="text-xs px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">{t}</span>)}
             </div>
           </div>
 
           <ol className="space-y-3">
-            {guide.steps.map((step, i) => (
+            {(guide.steps ?? []).map((step, i) => (
               <li key={i} className="flex gap-3 text-sm text-slate-600 dark:text-slate-300">
                 <span className="w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-bold flex items-center justify-center flex-shrink-0">{i + 1}</span>
                 <span className="pt-0.5">{step}</span>
@@ -237,14 +150,25 @@ const Guides = () => {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('Tümü');
-  const [openGuide, setOpenGuide] = useState(INSTALL_GUIDES[0].id);
+  const [openGuide, setOpenGuide] = useState(null);
 
   const { home, homeLoading } = useSelector((state) => state.products);
+  const { content } = useSelector((state) => state.guides);
 
   useEffect(() => {
 
     dispatch(getHomeProducts(8));
+    dispatch(fetchGuides());
   }, [dispatch]);
+
+  // İçerik editör panelinden yönetilir; sunucuya ulaşılamazsa varsayılan içerik gösterilir
+  const visible = (list) => sortByOrder((list ?? []).filter((x) => x.isPublished !== false));
+  const catalogs = useMemo(() => visible(content.catalogs), [content.catalogs]);
+  const installs = useMemo(() => visible(content.installs), [content.installs]);
+  const videos = useMemo(() => visible(content.videos), [content.videos]);
+  const guideCategories = useMemo(() => ['Tümü', ...Array.from(new Set(installs.map((g) => g.category).filter(Boolean)))], [installs]);
+  const guideKey = (g) => g._id ?? g.id ?? g.title;
+  const activeGuide = openGuide ?? (installs[0] ? guideKey(installs[0]) : null);
 
   // Tanıtım için öne çıkan ürünler; yoksa en yeni ürünler
   const showcase = useMemo(() => {
@@ -257,13 +181,13 @@ const Guides = () => {
 
     const q = searchQuery.trim().toLocaleLowerCase('tr');
 
-    return INSTALL_GUIDES.filter((g) => {
+    return installs.filter((g) => {
 
       if (activeCategory !== 'Tümü' && g.category !== activeCategory) return false;
       if (!q) return true;
-      return [g.title, g.category, ...g.steps].some((t) => t.toLocaleLowerCase('tr').includes(q));
+      return [g.title, g.category, ...(g.steps ?? [])].some((t) => String(t ?? '').toLocaleLowerCase('tr').includes(q));
     });
-  }, [searchQuery, activeCategory]);
+  }, [searchQuery, activeCategory, installs]);
 
   return (
 
@@ -308,17 +232,17 @@ const Guides = () => {
 
           <div className="grid md:grid-cols-3 gap-6">
 
-            {CATALOGS.map((c) => (
+            {catalogs.map((c) => (
 
-              <div key={c.title} className="border rounded-3xl p-8 flex flex-col bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+              <div key={c._id ?? c.id ?? c.title} className="border rounded-3xl p-8 flex flex-col bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
 
-                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-white mb-5 bg-gradient-to-br ${c.color}`}><FileText size={26} /></div>
+                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-white mb-5 bg-gradient-to-br ${CATALOG_COLORS[c.color] ?? CATALOG_COLORS.blue}`}><FileText size={26} /></div>
                 <h3 className="text-xl font-bold mb-2">{c.title}</h3>
                 <p className="text-sm text-slate-600 dark:text-slate-400 mb-4 flex-1">{c.description}</p>
-                <p className="text-xs text-slate-500 mb-5">{c.pages} sayfa · {c.size}</p>
+                <p className="text-xs text-slate-500 mb-5">{c.pages ? `${c.pages} sayfa · ` : ''}PDF</p>
 
-                {c.file ? (
-                  <a href={c.file} download className="w-full py-3 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 bg-slate-900 dark:bg-white text-white dark:text-slate-950 hover:opacity-90">
+                {c.fileUrl ? (
+                  <a href={c.fileUrl} target="_blank" rel="noopener noreferrer" download className="w-full py-3 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 bg-slate-900 dark:bg-white text-white dark:text-slate-950 hover:opacity-90">
                     <Download size={16} />İndir
                   </a>
                 ) : (
@@ -426,7 +350,7 @@ const Guides = () => {
             </div>
 
             <div className="flex gap-2 overflow-x-auto">
-              {GUIDE_CATEGORIES.map((c) => (
+              {guideCategories.map((c) => (
                 <button key={c} onClick={() => setActiveCategory(c)} className={`px-4 py-2 rounded-xl text-sm whitespace-nowrap transition-all ${activeCategory === c ? 'bg-blue-600 text-white' : 'text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800'}`}>{c}</button>
               ))}
             </div>
@@ -436,7 +360,7 @@ const Guides = () => {
           <div className="space-y-4">
 
             {filteredGuides.length ? filteredGuides.map((g) => (
-              <InstallGuideCard key={g.id} guide={g} open={openGuide === g.id} onToggle={() => setOpenGuide(openGuide === g.id ? null : g.id)} />
+              <InstallGuideCard key={guideKey(g)} guide={g} open={activeGuide === guideKey(g)} onToggle={() => setOpenGuide(activeGuide === guideKey(g) ? '' : guideKey(g))} />
             )) : (
               <p className="text-center py-10 text-slate-500">Aramanızla eşleşen rehber bulunamadı.</p>
             )}
@@ -463,7 +387,7 @@ const Guides = () => {
           </div>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {VIDEOS.map((v) => <VideoCard key={v.title} video={v} />)}
+            {videos.map((v) => <VideoCard key={v._id ?? v.id ?? v.title} video={v} />)}
           </div>
 
         </div>

@@ -4,7 +4,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 import { logoutUser } from '../redux/userSlice';
 
-import { LayoutDashboard, MessageSquare, ShoppingBag, Users, ShoppingCart, HeadphonesIcon, BarChart2, LogOut, Bell, QrCode } from 'lucide-react';
+import { LayoutDashboard, MessageSquare, ShoppingBag, Users, ShoppingCart, HeadphonesIcon, BarChart2, LogOut, Bell, QrCode, BookOpen } from 'lucide-react';
 
 const EditorSidebar = () => {
 
@@ -22,6 +22,7 @@ const EditorSidebar = () => {
     { name: 'Destek', path: '/editor/support', icon: <HeadphonesIcon size={25} />,  badge: 3 },
     { name: 'Raporlar', path: '/editor/reports', icon: <BarChart2 size={25} />, badge: null },
     { name: 'QR Oluşturucu', path: '/editor/qrcode', icon: <QrCode size={25} /> },
+    { name: 'Rehberler', path: '/editor/guides', icon: <BookOpen size={25} /> },
   ];
 
   const logout = () => {
