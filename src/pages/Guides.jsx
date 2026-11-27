@@ -1,112 +1,215 @@
-import React, { useState } from 'react';
-import { BookOpen, Terminal, Cpu, Wifi, ChevronRight, Copy, CheckCircle2, Code, Lightbulb, Search, Download, Video, MessageCircle, Shield, AlertCircle, PlayCircle, ExternalLink, Github, Book, Rocket, Database, Cloud, Lock, Bluetooth, Activity, Sparkles, Star, Clock, Users, ChevronDown, Filter, ThumbsUp, Eye, ArrowRight } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
+import { BookOpen, Search, Download, FileText, Clock, ChevronDown, CheckCircle2, AlertTriangle, Wrench, Plug, Droplets, Wind, Eye, Smartphone, Wifi, ArrowRight, Package, MessageCircle, Sparkles, ShieldCheck, PlayCircle, Video } from 'lucide-react';
 
-const GuideCard = ({ icon: Icon, title, duration, level, views, likes, children, featured = false }) => (
+import { getHomeProducts } from '../redux/productSlice';
 
-  <div className={`bg-slate-900 border rounded-3xl p-8 transition-all group relative overflow-hidden ${featured ? 'border-blue-500/50 shadow-lg shadow-blue-500/10' : 'border-slate-800 hover:border-blue-500/30'}`}>
+// ── Kataloglar ──
+// PDF hazır olduğunda `file` alanına adresini yazın (ör. '/catalogs/urun-katalogu-2026.pdf', public/ klasörüne koyabilirsiniz).
+// `file` boş olan kataloglar "Yakında" olarak görünür.
+const CATALOGS = [
+  { title: 'Ürün Kataloğu 2026', description: 'Tüm akıllı ev ürünlerimiz, özellikleri ve teknik bilgileri tek dosyada.', pages: 32, size: 'PDF', file: null, color: 'from-blue-500 to-cyan-500' },
+  { title: 'Akıllı Ev Paketleri', description: 'Daire tipine göre (1+1, 2+1, 3+1) hazırlanmış paket önerileri.', pages: 12, size: 'PDF', file: null, color: 'from-purple-500 to-pink-500' },
+  { title: 'Kurulum Kılavuzu', description: 'Tüm ürünler için adım adım kurulum talimatları, yazdırılabilir.', pages: 24, size: 'PDF', file: null, color: 'from-emerald-500 to-teal-500' },
+];
 
-    {featured && ( <div className="absolute top-0 right-0 bg-gradient-to-br from-blue-500 to-purple-500 px-4 py-2 rounded-bl-2xl text-xs font-bold flex items-center gap-1">
+// ── Videolar ──
+// Video eklemek için YouTube adresindeki kimliği `youtubeId` alanına yazın
+// (ör. https://www.youtube.com/watch?v=pRTeSIznQ1E → 'pRTeSIznQ1E'). Kimliği boş olanlar "Yakında" görünür.
+const VIDEOS = [
+  { title: 'Typus Home Tanıtım', type: 'Tanıtım', duration: '', youtubeId: 'pRTeSIznQ1E' },
+  { title: 'Akıllı Kontrol Rölesi Kurulumu', type: 'Kurulum', duration: '', youtubeId: null },
+  { title: 'Akıllı Perde Motoru Kurulumu', type: 'Kurulum', duration: '', youtubeId: null },
+  { title: 'Sensörleri Uygulamaya Ekleme', type: 'Kurulum', duration: '', youtubeId: null },
+];
 
-      <Star size={12} fill="currentColor" />
-      Öne Çıkan
+// ── Kurulum rehberleri ──
+const INSTALL_GUIDES = [
+  {
+    id: 'relay',
+    icon: Plug,
+    title: 'Akıllı Kontrol Rölesi',
+    category: 'Aydınlatma',
+    duration: '20 dk',
+    difficulty: 'Elektrik bilgisi gerekir',
+    tools: ['Düz ve yıldız tornavida', 'Kontrol kalemi', 'Telefonunuzda uygulama'],
+    steps: [
+      'Sigorta kutusundan ilgili hattın sigortasını kapatın ve kontrol kalemiyle elektrik olmadığından emin olun.',
+      'Anahtarın kapağını sökün, rölenin L (faz) ve N (nötr) girişlerini kutudaki etiketlere göre bağlayın.',
+      'Lamba çıkışını rölenin çıkış ucuna bağlayın, röleyi anahtar kutusunun içine yerleştirin ve kapağı takın.',
+      'Sigortayı açın. Röle üzerindeki ışık yanıp sönmeye başladığında eşleşmeye hazırdır.',
+      'Uygulamada "Cihaz Ekle" adımına girin, kutudaki QR kodu okutun ve ev WiFi ağınızı seçin.',
+      'Cihaza oda adı verin (ör. Salon Lambası). Artık uygulamadan ve sesli asistandan kontrol edebilirsiniz.',
+    ],
+    warning: 'Elektrik bağlantısı konusunda emin değilseniz kurulumu bir elektrik ustasına yaptırın.',
+  },
+  {
+    id: 'curtain',
+    icon: Wind,
+    title: 'Akıllı Perde Motoru',
+    category: 'Konfor',
+    duration: '30 dk',
+    difficulty: 'Orta',
+    tools: ['Matkap ve dübel', 'Metre', 'Tornavida'],
+    steps: [
+      'Perde rayının uzunluğunu ölçün ve rayı kutudaki montaj aparatlarıyla duvara veya tavana sabitleyin.',
+      'Motoru rayın uç kısmına oturtun ve kilitleme mandalını kapatın.',
+      'Perde askılarını raya takın, ilk askıyı motor arabasına bağlayın.',
+      'Motorun fişini prize takın, eşleşme düğmesine 3 saniye basılı tutun.',
+      'Uygulamada "Cihaz Ekle" ile motoru ekleyin ve açık / kapalı limitlerini ekrandaki yönergelerle ayarlayın.',
+      'İsterseniz gün doğumu veya belirli saatler için otomasyon kurun.',
+    ],
+  },
+  {
+    id: 'water',
+    icon: Droplets,
+    title: 'Su Baskın Sensörü',
+    category: 'Güvenlik',
+    duration: '5 dk',
+    difficulty: 'Kolay',
+    tools: ['Telefonunuzda uygulama'],
+    steps: [
+      'Sensörün pil yalıtım bandını çekin. Işık yanıp sönmeye başlar.',
+      'Uygulamada "Cihaz Ekle" adımına girin ve sensörü listeden seçin.',
+      'Sensörü çamaşır makinesi, bulaşık makinesi veya lavabo altı gibi su sızabilecek bir noktada zemine yerleştirin.',
+      'Uygulamada bildirimleri açın. Su algılandığında telefonunuza anında uyarı gelir.',
+    ],
+  },
+  {
+    id: 'motion',
+    icon: Eye,
+    title: 'Hareket Sensörü',
+    category: 'Güvenlik',
+    duration: '10 dk',
+    difficulty: 'Kolay',
+    tools: ['Çift taraflı bant veya vida', 'Telefonunuzda uygulama'],
+    steps: [
+      'Pil yalıtım bandını çekin ve sensörü uygulamaya "Cihaz Ekle" ile ekleyin.',
+      'Sensörü yerden yaklaşık 2–2,5 metre yükseğe, odanın girişini görecek şekilde konumlandırın.',
+      'Doğrudan güneş ışığı alan ve kalorifer peteğine yakın yerlerden kaçının, yanlış algılamaya neden olabilir.',
+      'Uygulamada "hareket algılanınca ışığı aç" gibi bir otomasyon oluşturarak sensörü test edin.',
+    ],
+  },
+];
 
-    </div> )}
-    
-    <div className="flex items-center justify-between mb-6">
+const GUIDE_CATEGORIES = ['Tümü', ...Array.from(new Set(INSTALL_GUIDES.map((g) => g.category)))];
 
-      <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${featured ? 'bg-gradient-to-br from-blue-500 to-purple-500 text-white' : 'bg-blue-500/10 text-blue-500 group-hover:bg-blue-500/20'}`}>
-        <Icon size={24} />
-      </div>
+// Her ürün için ortak ilk kurulum adımları
+const QUICK_START = [
+  { icon: Smartphone, title: 'Uygulamayı indirin', text: 'Hesabınızla giriş yapın veya yeni hesap oluşturun.' },
+  { icon: Wifi, title: 'WiFi hazır olsun', text: 'Cihazlar 2,4 GHz ev ağınıza bağlanır, şifrenizi yanınızda bulundurun.' },
+  { icon: Package, title: 'Cihazı ekleyin', text: 'Kutudaki QR kodu okutun, uygulama sizi adım adım yönlendirir.' },
+  { icon: Sparkles, title: 'Otomasyon kurun', text: 'Saat, sensör veya sesli komutla çalışan senaryolar oluşturun.' },
+];
 
-      <div className="flex gap-2">
+const FAQS = [
+  { question: 'Kurulum için teknik bilgi gerekiyor mu?', answer: 'Sensörler ve perde motoru için gerekmez, uygulama sizi adım adım yönlendirir. Röle gibi elektrik tesisatına bağlanan ürünlerde bir elektrik ustasından destek almanızı öneririz.' },
+  { question: 'İnternet kesilirse cihazlar çalışmaya devam eder mi?', answer: 'Anahtarlar ve fiziksel düğmeler çalışmaya devam eder. Uzaktan kontrol ve bildirimler internet geldiğinde kaldığı yerden devam eder.' },
+  { question: 'Kurulum hizmeti veriyor musunuz?', answer: 'Evet. Sipariş sırasında kurulum hizmeti seçebilir veya iletişim sayfasından bize ulaşarak randevu oluşturabilirsiniz.' },
+  { question: 'Cihaz eşleşmezse ne yapmalıyım?', answer: 'Cihazı 5 saniye boyunca sıfırlama düğmesine basılı tutarak sıfırlayın, telefonunuzun 2,4 GHz ağa bağlı olduğundan emin olun ve tekrar deneyin.' },
+];
 
-        <span className="text-[10px] uppercase tracking-widest font-bold bg-slate-800 px-2 py-1 rounded-md text-slate-400 flex items-center gap-1"><Clock size={10} />{duration}</span>
-        <span className={`text-[10px] uppercase tracking-widest font-bold px-2 py-1 rounded-md ${level === 'Başlangıç' ? 'bg-green-500/20 text-green-400' : level === 'Orta' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-red-500/20 text-red-400'}`}>{level}</span>
+const getImage = (p) => p?.primaryImage || p?.images?.[0]?.preview || p?.images?.[0]?.file || null;
 
-      </div>
+const InstallGuideCard = ({ guide, open, onToggle }) => {
 
-    </div>
-
-    <h3 className="text-xl font-bold mb-4 group-hover:text-blue-400 transition-colors">{title}</h3>
-    <div className="text-slate-400 text-sm leading-relaxed space-y-4 mb-6">{children}</div>
-
-    <div className="flex items-center gap-4 pt-4 border-t border-slate-800 text-xs text-slate-500">
-
-      <div className="flex items-center gap-1">
-
-        <Eye size={14} />
-        {views}
-
-      </div>
-
-      <div className="flex items-center gap-1">
-
-        <ThumbsUp size={14} />
-        {likes}
-
-      </div>
-
-    </div>
-
-    <button className="mt-4 w-full bg-slate-800 hover:bg-slate-700 py-3 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-colors group/btn">
-
-      Detaylı İncele
-      <ArrowRight size={16} className="group-hover/btn:translate-x-1 transition-transform" />
-
-    </button>
-
-  </div>
-);
-
-const CodeBlock = ({ code, language = 'cpp' }) => {
-
-  const [copied, setCopied] = useState(false);
-
-  const copyToClipboard = () => {
-
-    navigator.clipboard.writeText(code);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
+  const Icon = guide.icon;
 
   return (
 
-    <div className="relative group/code">
+    <div className={`bg-white dark:bg-slate-900 border rounded-3xl overflow-hidden transition-all ${open ? 'border-blue-500/50 shadow-lg shadow-blue-500/10' : 'border-slate-200 dark:border-slate-800 hover:border-blue-500/30'}`}>
 
-      <div className="absolute top-3 right-3 flex gap-2 z-10">
+      <button onClick={onToggle} className="w-full p-6 flex items-center gap-4 text-left" aria-expanded={open}>
 
-        <span className="text-xs bg-slate-900 px-2 py-1 rounded-lg text-slate-400 border border-slate-700">{language}</span>
+        <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-blue-500/10 text-blue-600 dark:text-blue-400"><Icon size={24} /></div>
 
-        <button onClick={copyToClipboard} className="p-2 bg-slate-900 rounded-lg hover:bg-slate-800 transition-colors border border-slate-700">
-          {copied ? ( <CheckCircle2 size={14} className="text-green-500" /> ) : ( <Copy size={14} className="text-slate-400" /> )}
-        </button>
+        <div className="flex-1 min-w-0">
+          <h3 className="text-lg font-bold">{guide.title}</h3>
+          <div className="flex flex-wrap gap-2 mt-1 text-xs text-slate-500 dark:text-slate-400">
+            <span className="flex items-center gap-1"><Clock size={12} />{guide.duration}</span>
+            <span>·</span>
+            <span>{guide.difficulty}</span>
+            <span>·</span>
+            <span>{guide.category}</span>
+          </div>
+        </div>
 
-      </div>
+        <ChevronDown size={20} className={`flex-shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
 
-      <pre className="bg-slate-950 p-6 rounded-2xl border border-slate-800 text-[11px] font-mono overflow-x-auto">
-        <code className="text-blue-300">{code}</code>
-      </pre>
+      </button>
+
+      {open && (
+
+        <div className="px-6 pb-6 border-t border-slate-200 dark:border-slate-800 pt-5 space-y-5">
+
+          <div>
+            <h4 className="text-sm font-bold mb-2 flex items-center gap-2"><Wrench size={16} className="text-slate-500" />Gerekenler</h4>
+            <div className="flex flex-wrap gap-2">
+              {guide.tools.map((t) => <span key={t} className="text-xs px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">{t}</span>)}
+            </div>
+          </div>
+
+          <ol className="space-y-3">
+            {guide.steps.map((step, i) => (
+              <li key={i} className="flex gap-3 text-sm text-slate-600 dark:text-slate-300">
+                <span className="w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-bold flex items-center justify-center flex-shrink-0">{i + 1}</span>
+                <span className="pt-0.5">{step}</span>
+              </li>
+            ))}
+          </ol>
+
+          {guide.warning && (
+            <div className="flex gap-3 p-4 rounded-2xl text-sm bg-amber-50 dark:bg-amber-500/10 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-500/20">
+              <AlertTriangle size={18} className="flex-shrink-0 mt-0.5" />
+              <span>{guide.warning}</span>
+            </div>
+          )}
+
+        </div>
+      )}
 
     </div>
   );
 };
 
-const VideoTutorial = ({ title, duration, thumbnail, views }) => (
+const VideoCard = ({ video }) => {
 
-  <div className="group cursor-pointer">
+  const [playing, setPlaying] = useState(false);
+  const ready = Boolean(video.youtubeId);
 
-    <div className="relative rounded-2xl overflow-hidden mb-3">
+  return (
 
-      <div className="aspect-video bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center"><PlayCircle size={48} className="text-white group-hover:scale-110 transition-transform" /></div>
-      <div className="absolute bottom-2 right-2 bg-black/80 px-2 py-1 rounded text-xs font-bold">{duration}</div>
+    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden">
+
+      <div className="relative aspect-video bg-gradient-to-br from-slate-800 to-slate-900">
+
+        {ready && playing ? (
+          <iframe src={`https://www.youtube-nocookie.com/embed/${video.youtubeId}?autoplay=1&rel=0&modestbranding=1&playsinline=1`} title={video.title} allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowFullScreen className="absolute inset-0 w-full h-full" />
+        ) : ready ? (
+          <button onClick={() => setPlaying(true)} className="group absolute inset-0 w-full h-full" aria-label={`${video.title} videosunu oynat`}>
+            <img src={`https://i.ytimg.com/vi/${video.youtubeId}/hqdefault.jpg`} alt="" loading="lazy" className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+            <PlayCircle size={56} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-white drop-shadow-lg group-hover:scale-110 transition-transform" />
+          </button>
+        ) : (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-slate-400">
+            <Video size={36} />
+            <span className="text-xs font-semibold">Yakında</span>
+          </div>
+        )}
+
+        {video.duration && !playing && <span className="absolute bottom-2 right-2 bg-black/80 text-white px-2 py-1 rounded text-xs font-bold">{video.duration}</span>}
+
+      </div>
+
+      <div className="p-4">
+        <span className={`text-[10px] uppercase tracking-widest font-bold px-2 py-1 rounded-md ${video.type === 'Tanıtım' ? 'bg-purple-100 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400' : 'bg-blue-100 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400'}`}>{video.type}</span>
+        <h3 className="font-bold text-sm mt-2">{video.title}</h3>
+      </div>
 
     </div>
-
-    <h4 className="font-semibold text-sm group-hover:text-blue-400 transition-colors mb-1">{title}</h4>
-    <p className="text-xs text-slate-500">{views} görüntüleme</p>
-
-  </div>
-);
+  );
+};
 
 const FAQItem = ({ question, answer }) => {
 
@@ -114,18 +217,14 @@ const FAQItem = ({ question, answer }) => {
 
   return (
 
-    <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden">
 
-      <button onClick={() => setIsOpen(!isOpen)} className="w-full p-6 flex items-center justify-between hover:bg-slate-800/50 transition-colors">
-
+      <button onClick={() => setIsOpen(!isOpen)} className="w-full p-6 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors" aria-expanded={isOpen}>
         <span className="font-semibold text-left">{question}</span>
-        <ChevronDown size={20} className={`transition-transform ${isOpen ? 'rotate-180' : ''}`}/>
-
+        <ChevronDown size={20} className={`flex-shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
-      {isOpen && ( <div className="px-6 pb-6 text-slate-400 text-sm leading-relaxed border-t border-slate-800 pt-4">
-        {answer}
-      </div> )}
+      {isOpen && <div className="px-6 pb-6 text-slate-600 dark:text-slate-400 text-sm leading-relaxed border-t border-slate-200 dark:border-slate-800 pt-4">{answer}</div>}
 
     </div>
   );
@@ -133,209 +232,44 @@ const FAQItem = ({ question, answer }) => {
 
 const Guides = () => {
 
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('Tümü');
-  const [activeLevel, setActiveLevel] = useState('Tümü');
+  const [openGuide, setOpenGuide] = useState(INSTALL_GUIDES[0].id);
 
-  const categories = [
+  const { home, homeLoading } = useSelector((state) => state.products);
 
-    { name: 'Tümü', icon: BookOpen, count: 24 },
-    { name: 'Kurulum', icon: Rocket, count: 8 },
-    { name: 'Donanım', icon: Cpu, count: 6 },
-    { name: 'Yazılım', icon: Code, count: 7 },
-    { name: 'Güvenlik', icon: Shield, count: 3 },
-  ];
+  useEffect(() => {
 
-  const levels = ['Tümü', 'Başlangıç', 'Orta', 'İleri'];
+    dispatch(getHomeProducts(8));
+  }, [dispatch]);
 
-  const guides = [
-    {
-      icon: Wifi,
-      title: "ESP32 WiFi Kurulumu",
-      duration: "5 DK",
-      level: "Başlangıç",
-      views: "12.5K",
-      likes: "340",
-      featured: true,
-      category: "Kurulum"
-    },
-    {
-      icon: Cpu,
-      title: "GPIO Pin Yapılandırması",
-      duration: "10 DK",
-      level: "Orta",
-      views: "8.2K",
-      likes: "215",
-      category: "Donanım"
-    },
-    {
-      icon: Terminal,
-      title: "MQTT Broker Entegrasyonu",
-      duration: "15 DK",
-      level: "İleri",
-      views: "6.7K",
-      likes: "189",
-      featured: true,
-      category: "Yazılım"
-    },
-    {
-      icon: Database,
-      title: "Veri Saklama ve Yedekleme",
-      duration: "12 DK",
-      level: "Orta",
-      views: "5.4K",
-      likes: "156",
-      category: "Yazılım"
-    },
-    {
-      icon: Cloud,
-      title: "Cloud Entegrasyon",
-      duration: "20 DK",
-      level: "İleri",
-      views: "4.9K",
-      likes: "142",
-      category: "Yazılım"
-    },
-    {
-      icon: Bluetooth,
-      title: "BLE Sensör Bağlantısı",
-      duration: "8 DK",
-      level: "Orta",
-      views: "7.1K",
-      likes: "198",
-      category: "Donanım"
-    },
-  ];
+  // Tanıtım için öne çıkan ürünler; yoksa en yeni ürünler
+  const showcase = useMemo(() => {
 
-  const codeSnippets = {
+    const list = home?.featured?.length ? home.featured : home?.newest ?? [];
+    return list.slice(0, 4);
+  }, [home]);
 
-    mqtt: `// Akıllı Ev MQTT Yapılandırması
+  const filteredGuides = useMemo(() => {
 
-    #include <WiFi.h>
-    #include <PubSubClient.h>
+    const q = searchQuery.trim().toLocaleLowerCase('tr');
 
+    return INSTALL_GUIDES.filter((g) => {
 
-    #define MQTT_SERVER "mqtt.homeserver.local"
-    #define MQTT_PORT 1883
-    #define MQTT_TOPIC "home/livingroom/light"
-    #define DEVICE_ID "ESP32_S3_01"
-
-    WiFiClient espClient;
-    PubSubClient client(espClient);
-
-    void setup() {
-
-      Serial.begin(115200);
-      setupWiFi();
-      client.setServer(MQTT_SERVER, MQTT_PORT);
-      client.setCallback(callback);
-    }`,
-
-    pinout: `// GPIO Pin Tanımlamaları
-    #define DHT22_PIN 14      // Sıcaklık/Nem Sensörü
-    #define RELAY_PIN 12      // Röle Kontrolü
-    #define PIR_PIN 27        // Hareket Sensörü
-    #define LED_PIN 2         // Dahili LED
-    #define BUTTON_PIN 0      // Boot Butonu
-
-    // Analog Pinler
-    #define LDR_PIN 34        // Işık Sensörü (ADC)
-    #define SOUND_PIN 35      // Ses Sensörü (ADC)`,
-
-    wifi: `// WiFi Bağlantı Yapılandırması
-    #include <WiFi.h>
-
-    const char* ssid = "YourSSID";
-    const char* password = "YourPassword";
-
-    void setupWiFi() {
-
-      WiFi.mode(WIFI_STA);
-      WiFi.begin(ssid, password);
-  
-      while (WiFi.status() != WL_CONNECTED) {
-
-      delay(500);
-      Serial.print(".");
-    }
-  
-    Serial.println("WiFi Bağlandı!");
-    Serial.println(WiFi.localIP());
-    }`
-  };
-
-  const videoTutorials = [
-
-    { title: "ESP32 İlk Kurulum Rehberi", duration: "12:34", views: "45K" },
-    { title: "MQTT ile Cihaz Kontrolü", duration: "18:22", views: "32K" },
-    { title: "Sensör Entegrasyonu", duration: "15:47", views: "28K" },
-    { title: "OTA Güncelleme Yapımı", duration: "10:15", views: "21K" },
-  ];
-
-  const faqs = [
-
-    {
-      question: "ESP32 ile kaç cihaz aynı anda kontrol edilebilir?",
-      answer: "ESP32, GPIO pinleri ve çeşitli protokoller kullanılarak 30'dan fazla cihazı aynı anda kontrol edebilir. WiFi üzerinden MQTT ile sınırsız cihaz yönetilebilir."
-    },
-    {
-      question: "OTA güncellemesi nasıl çalışır?",
-      answer: "Over-The-Air (OTA) güncellemesi, cihazınızı WiFi üzerinden uzaktan güncelleyebilmenizi sağlar. Fiziksel erişim gerektirmez ve sistem çalışırken yapılabilir."
-    },
-    {
-      question: "Güç kesintisinde sistem ne olur?",
-      answer: "ESP32 flash belleğinde son ayarları saklar. Güç geldiğinde otomatik olarak son durumuna döner. Ayrıca UPS veya batarya yedekleme sistemi eklenebilir."
-    },
-    {
-      question: "Hangi sensörler destekleniyor?",
-      answer: "DHT22, BME280, PIR, ultrasonik, LDR, gaz sensörleri ve daha fazlası desteklenmektedir. I2C, SPI ve analog pinler üzerinden çoğu sensör entegre edilebilir."
-    },
-  ];
-
-  const resources = [
-
-    {
-      icon: Github,
-      title: "GitHub Deposu",
-      description: "Açık kaynak kodları ve örnekler",
-      link: "#",
-      color: "from-purple-500 to-pink-500"
-    },
-    {
-      icon: Book,
-      title: "API Dokümantasyonu",
-      description: "Detaylı API referansları",
-      link: "#",
-      color: "from-blue-500 to-cyan-500"
-    },
-    {
-      icon: Video,
-      title: "Video Kütüphanesi",
-      description: "50+ eğitim videosu",
-      link: "#",
-      color: "from-orange-500 to-red-500"
-    },
-    {
-      icon: MessageCircle,
-      title: "Topluluk Forum",
-      description: "Soru-cevap ve tartışmalar",
-      link: "#",
-      color: "from-green-500 to-emerald-500"
-    },
-  ];
-
-  const stats = [
-
-    { label: "Toplam Rehber", value: "124", icon: BookOpen },
-    { label: "Video İçerik", value: "58", icon: Video },
-    { label: "Aktif Kullanıcı", value: "12.5K", icon: Users },
-    { label: "Ortalama Puan", value: "4.8", icon: Star },
-  ];
+      if (activeCategory !== 'Tümü' && g.category !== activeCategory) return false;
+      if (!q) return true;
+      return [g.title, g.category, ...g.steps].some((t) => t.toLocaleLowerCase('tr').includes(q));
+    });
+  }, [searchQuery, activeCategory]);
 
   return (
 
     <div className="min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-white">
 
+      {/* Başlık */}
       <section className="pt-32 pb-16 px-6 border-b relative overflow-hidden border-slate-200 dark:border-slate-900 bg-gradient-to-b from-blue-100/20 to-transparent dark:from-blue-900/10 dark:to-transparent">
 
         <div className="absolute top-0 left-0 w-96 h-96 rounded-full blur-3xl bg-blue-500/10 dark:bg-blue-500/5" />
@@ -345,72 +279,54 @@ const Guides = () => {
 
           <div className="flex items-center gap-3 font-bold mb-4 text-blue-600 dark:text-blue-400">
             <BookOpen size={20} />
-            <span>Dokümantasyon & Rehberler</span>
+            <span>Kataloglar & Kurulum Rehberleri</span>
           </div>
 
           <h1 className="text-4xl md:text-6xl font-extrabold mb-6">Bilgi <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400">Merkezi</span></h1>
-          <p className="text-lg max-w-2xl mb-8 text-slate-600 dark:text-slate-400">ESP32 tabanlı akıllı ev sisteminizi kurmak, optimize etmek ve özelleştirmek için ihtiyacınız olan tüm teknik dökümanlar.</p>
+          <p className="text-lg max-w-2xl mb-8 text-slate-600 dark:text-slate-400">Ürünlerimizi tanıyın, kataloglarımızı indirin ve akıllı evinizi adım adım kurun.</p>
 
-          <div className="max-w-2xl relative">
-
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-            <input type="text" placeholder="Rehberlerde ara..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full border rounded-2xl pl-12 pr-4 py-4 focus:outline-none transition-colors bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-800 text-slate-900 dark:text-white focus:border-blue-500 dark:focus:border-blue-500"/>
-
+          <div className="flex flex-wrap gap-3">
+            <a href="#kataloglar" className="px-5 py-3 rounded-xl font-semibold text-sm bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"><FileText size={16} />Kataloglar</a>
+            <a href="#urunler" className="px-5 py-3 rounded-xl font-semibold text-sm bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 flex items-center gap-2"><Package size={16} />Ürün Tanıtımları</a>
+            <a href="#kurulum" className="px-5 py-3 rounded-xl font-semibold text-sm bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 flex items-center gap-2"><Wrench size={16} />Kurulum Rehberleri</a>
+            <a href="#videolar" className="px-5 py-3 rounded-xl font-semibold text-sm bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 flex items-center gap-2"><Video size={16} />Videolar</a>
           </div>
 
         </div>
 
       </section>
 
-      <section className="py-12 px-6 border-b border-slate-200 dark:border-slate-900">
-
-        <div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6">
-
-          {stats.map((stat, i) => ( <div key={i} className="border rounded-2xl p-6 text-center transition-all bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-blue-500/30 dark:hover:border-blue-500/30">
-
-            <stat.icon className="mx-auto mb-3 text-blue-600 dark:text-blue-400" size={24} />
-            <div className="text-3xl font-bold mb-1">{stat.value}</div>
-            <div className="text-sm text-slate-600 dark:text-slate-400">{stat.label}</div>
-
-          </div> ))}
-
-        </div>
-
-      </section>
-
-      <section className="py-8 px-6 border-b sticky top-10 backdrop-blur-md z-30 border-slate-200 dark:border-slate-900 bg-white/95 dark:bg-slate-950/95">
+      {/* Kataloglar */}
+      <section id="kataloglar" className="py-16 px-6 scroll-mt-24">
 
         <div className="max-w-7xl mx-auto">
 
-          <div className="flex items-center gap-3 mb-4 overflow-x-auto pb-2">
-
-            <Filter size={18} className="text-slate-400 flex-shrink-0" />
-
-            {categories.map((cat) => {
-
-              const Icon = cat.icon;
-
-              return (
-
-                <button key={cat.name} onClick={() => setActiveCategory(cat.name)} className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all whitespace-nowrap ${activeCategory === cat.name ? 'bg-blue-600 text-white' : 'text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800'}`}>
-
-                  <Icon size={16} />
-                  {cat.name}
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-slate-200/50 dark:bg-slate-800/50">{cat.count}</span>
-
-                </button>
-              );
-            })}
-
+          <div className="mb-8">
+            <h2 className="text-3xl font-bold mb-2">Kataloglar</h2>
+            <p className="text-slate-600 dark:text-slate-400">Ürünlerimizi ve paketlerimizi incelemek için kataloglarımızı indirin</p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="grid md:grid-cols-3 gap-6">
 
-            <span className="text-sm mr-2 text-slate-600 dark:text-slate-400">Seviye:</span>
+            {CATALOGS.map((c) => (
 
-            {levels.map((level) => ( <button key={level} onClick={() => setActiveLevel(level)} className={`px-3 py-1 rounded-lg text-sm transition-all ${activeLevel === level ? 'bg-blue-600 text-white' : 'text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800'}`}>
-              {level}
-            </button> ))}
+              <div key={c.title} className="border rounded-3xl p-8 flex flex-col bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+
+                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-white mb-5 bg-gradient-to-br ${c.color}`}><FileText size={26} /></div>
+                <h3 className="text-xl font-bold mb-2">{c.title}</h3>
+                <p className="text-sm text-slate-600 dark:text-slate-400 mb-4 flex-1">{c.description}</p>
+                <p className="text-xs text-slate-500 mb-5">{c.pages} sayfa · {c.size}</p>
+
+                {c.file ? (
+                  <a href={c.file} download className="w-full py-3 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 bg-slate-900 dark:bg-white text-white dark:text-slate-950 hover:opacity-90">
+                    <Download size={16} />İndir
+                  </a>
+                ) : (
+                  <span className="w-full py-3 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 bg-slate-100 dark:bg-slate-800 text-slate-500 cursor-not-allowed">Yakında</span>
+                )}
+
+              </div>
+            ))}
 
           </div>
 
@@ -418,390 +334,172 @@ const Guides = () => {
 
       </section>
 
-      <section className="py-16 px-6">
+      {/* Ürün tanıtımları */}
+      <section id="urunler" className="py-16 px-6 bg-slate-50 dark:bg-slate-900/20 scroll-mt-24">
 
         <div className="max-w-7xl mx-auto">
 
-          <div className="flex items-center justify-between mb-8">
+          <div className="flex items-end justify-between mb-8 gap-4">
 
             <div>
+              <h2 className="text-3xl font-bold mb-2">Ürün Tanıtımları</h2>
+              <p className="text-slate-600 dark:text-slate-400">Öne çıkan ürünlerimizi yakından tanıyın</p>
+            </div>
 
-              <h2 className="text-3xl font-bold mb-2">Hızlı Başlangıç Rehberleri</h2>
-              <p className="text-slate-600 dark:text-slate-400">En popüler ve önerilen rehberler</p>
+            <Link to="/products" className="flex items-center gap-2 text-blue-600 dark:text-blue-400 hover:text-blue-500 font-semibold whitespace-nowrap">Tüm Ürünler <ArrowRight size={18} /></Link>
+
+          </div>
+
+          {homeLoading && !showcase.length ? (
+
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {[0, 1, 2, 3].map((i) => <div key={i} className="aspect-[3/4] rounded-3xl bg-slate-200 dark:bg-slate-800 animate-pulse" />)}
+            </div>
+
+          ) : showcase.length ? (
+
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+
+              {showcase.map((p) => {
+
+                const image = getImage(p);
+
+                return (
+
+                  <article key={p._id ?? p.id ?? p.slug} onClick={() => navigate(`/productdetail/${p.slug}`)} className="group cursor-pointer bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden transition-all hover:-translate-y-1 hover:shadow-xl hover:border-blue-500/30">
+
+                    <div className="aspect-square bg-slate-100 dark:bg-slate-800/60 overflow-hidden">
+                      {image ? <img src={image} alt={p.name} loading="lazy" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" /> : <div className="w-full h-full flex items-center justify-center text-slate-400"><Package size={40} /></div>}
+                    </div>
+
+                    <div className="p-5">
+                      {p.category && <p className="text-xs text-slate-500 mb-1">{p.category}</p>}
+                      <h3 className="font-bold leading-snug line-clamp-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{p.name}</h3>
+                      {p.shortDescription && <p className="text-sm text-slate-600 dark:text-slate-400 mt-2 line-clamp-2">{p.shortDescription}</p>}
+                      <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-blue-600 dark:text-blue-400">İncele <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" /></span>
+                    </div>
+
+                  </article>
+                );
+              })}
 
             </div>
 
-            <button className="flex items-center gap-2 text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300">
-              Tümünü Gör <ArrowRight size={18} />
-            </button>
+          ) : (
 
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-
-            {guides.slice(0, 6).map((guide, i) => ( <GuideCard key={i} icon={guide.icon} title={guide.title} duration={guide.duration} level={guide.level} views={guide.views} likes={guide.likes} featured={guide.featured}>
-
-              <p>ESP32-S3 cihazınızı ilk kez ayağa kaldırırken izlemeniz gereken adımlar:</p>
-
-              <ul className="space-y-2">
-
-                <li className="flex items-start gap-2 text-xs">
-                  <ChevronRight size={14} className="mt-0.5 flex-shrink-0 text-blue-600 dark:text-blue-500" />
-                  Cihazı USB-C ile bilgisayarınıza bağlayın
-                </li>
-
-                <li className="flex items-start gap-2 text-xs">
-                  <ChevronRight size={14} className="mt-0.5 flex-shrink-0 text-blue-600 dark:text-blue-500" />
-                  Dashboard üzerinden firmware yükleme işlemini başlatın
-                </li>
-
-                <li className="flex items-start gap-2 text-xs">
-                  <ChevronRight size={14} className="mt-0.5 flex-shrink-0 text-blue-600 dark:text-blue-500" />
-                  WiFi yapılandırma portalından ağ bilgilerini girin
-                </li>
-
-              </ul>
-
-            </GuideCard> ))}
-
-          </div>
+            <div className="text-center py-12 rounded-3xl border border-dashed border-slate-300 dark:border-slate-700 text-slate-500">
+              Ürünler şu anda yüklenemedi. <Link to="/products" className="text-blue-600 dark:text-blue-400 font-semibold">Mağazaya göz atın</Link>
+            </div>
+          )}
 
         </div>
 
       </section>
 
-      <section className="py-16 px-6 bg-slate-50 dark:bg-slate-900/20">
+      {/* Kurulum */}
+      <section id="kurulum" className="py-16 px-6 scroll-mt-24">
 
-        <div className="max-w-7xl mx-auto">
+        <div className="max-w-5xl mx-auto">
 
-          <div className="flex items-center gap-3 mb-8">
+          <div className="mb-8">
+            <h2 className="text-3xl font-bold mb-2">Kurulum Rehberleri</h2>
+            <p className="text-slate-600 dark:text-slate-400">Her ürün için adım adım kurulum talimatları</p>
+          </div>
 
-            <Code className="text-blue-600 dark:text-blue-400" size={28} />
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
 
-            <div>
-
-              <h2 className="text-3xl font-bold">Kod Örnekleri</h2>
-              <p className="text-slate-600 dark:text-slate-400">Projelerinizde kullanabileceğiniz hazır kod parçacıkları</p>
-
-            </div>
+            {QUICK_START.map((s, i) => (
+              <div key={s.title} className="p-5 rounded-2xl border bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+                <div className="flex items-center gap-2 mb-2 text-blue-600 dark:text-blue-400"><s.icon size={18} /><span className="text-xs font-bold">ADIM {i + 1}</span></div>
+                <h3 className="font-bold text-sm mb-1">{s.title}</h3>
+                <p className="text-xs text-slate-600 dark:text-slate-400">{s.text}</p>
+              </div>
+            ))}
 
           </div>
 
-          <div className="grid md:grid-cols-2 gap-8">
+          <div className="flex flex-col md:flex-row gap-4 mb-6">
 
-            <div>
-
-              <h3 className="font-bold mb-4 flex items-center gap-2"><Terminal size={20} className="text-blue-600 dark:text-blue-400" />MQTT Kurulumu</h3>
-              <CodeBlock code={codeSnippets.mqtt} language="cpp" />
-
+            <div className="relative flex-1">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+              <input type="text" placeholder="Kurulum rehberlerinde ara..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full border rounded-xl pl-11 pr-4 py-3 focus:outline-none transition-colors bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-800 focus:border-blue-500" />
             </div>
 
-            <div>
-
-              <h3 className="font-bold mb-4 flex items-center gap-2"><Cpu size={20} className="text-green-600 dark:text-green-400" />GPIO Pin Yapılandırması</h3>
-              <CodeBlock code={codeSnippets.pinout} language="cpp" />
-
+            <div className="flex gap-2 overflow-x-auto">
+              {GUIDE_CATEGORIES.map((c) => (
+                <button key={c} onClick={() => setActiveCategory(c)} className={`px-4 py-2 rounded-xl text-sm whitespace-nowrap transition-all ${activeCategory === c ? 'bg-blue-600 text-white' : 'text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800'}`}>{c}</button>
+              ))}
             </div>
-
-            <div>
-
-              <h3 className="font-bold mb-4 flex items-center gap-2"><Wifi size={20} className="text-purple-600 dark:text-purple-400" />WiFi Bağlantısı</h3>
-              <CodeBlock code={codeSnippets.wifi} language="cpp" />
-
-            </div>
-
-            <div className="border rounded-3xl p-8 flex flex-col items-center justify-center text-center bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-600/10 dark:to-purple-600/10 border-blue-200 dark:border-blue-500/20">
-
-              <Github size={48} className="mb-4 text-blue-600 dark:text-blue-400" />
-              <h3 className="text-xl font-bold mb-2">100+ Kod Örneği</h3>
-              <p className="mb-6 text-sm text-slate-600 dark:text-slate-400">GitHub deposunda daha fazla örnek ve proje bulabilirsiniz</p>
-
-              <button className="px-6 py-3 rounded-xl font-bold flex items-center gap-2 transition-transform hover:scale-105 bg-slate-900 dark:bg-white text-white dark:text-slate-950">
-                GitHub'da Görüntüle
-                <ExternalLink size={16} />
-              </button>
-
-            </div>
-
-          </div>
-
-        </div>
-
-      </section>
-
-      <section className="py-16 px-6">
-
-        <div className="max-w-7xl mx-auto">
-
-          <div className="flex items-center justify-between mb-8">
-
-            <div className="flex items-center gap-3">
-
-              <Video className="text-blue-600 dark:text-blue-400" size={28} />
-
-              <div>
-
-                <h2 className="text-3xl font-bold">Video Eğitimleri</h2>
-                <p className="text-slate-600 dark:text-slate-400">Adım adım görsel rehberler</p>
-
-              </div>
-
-            </div>
-
-            <button className="px-6 py-3 rounded-xl font-semibold flex items-center gap-2 transition-colors bg-blue-600 hover:bg-blue-700 text-white">
-              <PlayCircle size={18} />
-              Tümünü İzle
-            </button>
-
-          </div>
-
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-
-            {videoTutorials.map((video, i) => ( <VideoTutorial key={i} {...video} /> ))}
-
-          </div>
-
-        </div>
-
-      </section>
-
-      <section className="py-16 px-6 bg-slate-50 dark:bg-slate-900/20">
-
-        <div className="max-w-4xl mx-auto">
-
-          <div className="border rounded-[3rem] p-8 md:p-16 space-y-12 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
-
-            <article className="space-y-6">
-
-              <div className="flex items-center gap-4 text-sm font-bold text-blue-600 dark:text-blue-500">
-
-                <span className="px-3 py-1 rounded-full uppercase flex items-center gap-2 bg-blue-100 dark:bg-blue-500/10"><Shield size={14} />Önemli Güvenlik</span>
-
-              </div>
-
-              <h2 className="text-3xl md:text-4xl font-bold">Uçtan Uca Şifreleme ve Güvenlik</h2>
-
-              <p className="leading-relaxed text-slate-600 dark:text-slate-400">
-
-                ESP32-S3 üzerinde çalışan yazılımımız, sunucu ile kurduğu tüm bağlantılarda{' '}
-                <span className="font-semibold text-blue-600 dark:text-blue-400">AES-256</span> şifreleme katmanı kullanır.
-                Bu, evinizdeki sensör verilerinin dış müdahalelere karşı tamamen korunduğu anlamına gelir.
-
-              </p>
-
-              <div className="border rounded-2xl p-6 space-y-4 bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800">
-
-                <h3 className="font-bold flex items-center gap-2"><Lock className="text-green-600 dark:text-green-400" size={20} />Güvenlik Özellikleri</h3>
-
-                <ul className="space-y-3 text-sm text-slate-600 dark:text-slate-400">
-
-                  <li className="flex items-start gap-3">
-                    <CheckCircle2 size={16} className="mt-0.5 flex-shrink-0 text-green-600 dark:text-green-500" />
-                    <span>256-bit AES şifreleme ile veri iletimi</span>
-                  </li>
-
-                  <li className="flex items-start gap-3">
-                    <CheckCircle2 size={16} className="mt-0.5 flex-shrink-0 text-green-600 dark:text-green-500" />
-                    <span>TLS 1.3 protokolü ile güvenli bağlantı</span>
-                  </li>
-
-                  <li className="flex items-start gap-3">
-                    <CheckCircle2 size={16} className="mt-0.5 flex-shrink-0 text-green-600 dark:text-green-500" />
-                    <span>İki faktörlü kimlik doğrulama desteği</span>
-                  </li>
-
-                  <li className="flex items-start gap-3">
-                    <CheckCircle2 size={16} className="mt-0.5 flex-shrink-0 text-green-600 dark:text-green-500" />
-                    <span>Otomatik güvenlik güncellemeleri (OTA)</span>
-                  </li>
-
-                </ul>
-
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-6">
-
-                <div className="p-6 border rounded-3xl flex items-start gap-4 bg-gradient-to-br from-yellow-50 to-orange-50 dark:from-yellow-500/10 dark:to-orange-500/10 border-yellow-200 dark:border-yellow-500/20">
-
-                  <div className="p-3 rounded-2xl bg-yellow-100 dark:bg-yellow-500/10 text-yellow-600 dark:text-yellow-500"><Lightbulb size={24} /></div>
-
-                  <div>
-
-                    <h4 className="font-bold mb-2 text-sm">Pro İpucu</h4>
-                    <p className="text-xs text-slate-600 dark:text-slate-400">Daha stabil WiFi bağlantısı için ESP32 anteninin metal kutu dışında kaldığından emin olun. Sinyal gücünü artırmak için harici anten kullanabilirsiniz.</p>
-
-                  </div>
-
-                </div>
-
-                <div className="p-6 border rounded-3xl flex items-start gap-4 bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-500/10 dark:to-purple-500/10 border-indigo-200 dark:border-indigo-500/20">
-
-                  <div className="p-3 rounded-2xl bg-indigo-100 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-500"><Sparkles size={24} /></div>
-
-                  <div>
-
-                    <h4 className="font-bold mb-2 text-sm">Yeni Özellik</h4>
-                    <p className="text-xs text-slate-600 dark:text-slate-400">OTA (Over-the-Air) güncellemeleri sayesinde cihazınızı sökmeden, WiFi üzerinden uzaktan güncelleyebilirsiniz.</p>
-
-                  </div>
-
-                </div>
-
-                <div className="p-6 border rounded-3xl flex items-start gap-4 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-500/10 dark:to-emerald-500/10 border-green-200 dark:border-green-500/20">
-
-                  <div className="p-3 rounded-2xl bg-green-100 dark:bg-green-500/10 text-green-600 dark:text-green-500"><Activity size={24} /></div>
-
-                  <div>
-
-                    <h4 className="font-bold mb-2 text-sm">Performans</h4>
-                    <p className="text-xs text-slate-600 dark:text-slate-400">ESP32-S3'ün çift çekirdekli işlemcisi sayesinde aynı anda birden fazla sensörü yönetebilir ve hızlı yanıt süreleri elde edebilirsiniz.</p>
-
-                  </div>
-
-                </div>
-
-                <div className="p-6 border rounded-3xl flex items-start gap-4 bg-gradient-to-br from-red-50 to-pink-50 dark:from-red-500/10 dark:to-pink-500/10 border-red-200 dark:border-red-500/20">
-
-                  <div className="p-3 rounded-2xl bg-red-100 dark:bg-red-500/10 text-red-600 dark:text-red-500"><AlertCircle size={24} /></div>
-
-                  <div>
-
-                    <h4 className="font-bold mb-2 text-sm">Uyarı</h4>
-                    <p className="text-xs text-slate-600 dark:text-slate-400">Güç kaynaklarını doğru şekilde bağladığınızdan emin olun. Yanlış voltaj cihaza kalıcı hasar verebilir.</p>
-
-                  </div>
-
-                </div>
-
-              </div>
-
-              <div className="pt-6">
-
-                <h3 className="font-bold mb-4 flex items-center gap-2"><Cpu className="text-purple-600 dark:text-purple-400" size={20} />Donanım Pin Şeması</h3>
-
-                <div className="rounded-2xl border overflow-hidden bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800">
-
-                  <div className="grid grid-cols-3 gap-px bg-slate-300 dark:bg-slate-800">
-
-                    <div className="p-3 font-bold text-sm bg-slate-100 dark:bg-slate-900">Sensör/Cihaz</div>
-                    <div className="p-3 font-bold text-sm bg-slate-100 dark:bg-slate-900">GPIO Pin</div>
-                    <div className="p-3 font-bold text-sm bg-slate-100 dark:bg-slate-900">Özellik</div>
-
-                    <div className="p-3 text-sm bg-white dark:bg-slate-950">DHT22 (Sıcaklık)</div>
-                    <div className="p-3 font-mono text-sm bg-white dark:bg-slate-950 text-blue-600 dark:text-blue-400">GPIO 14</div>
-                    <div className="p-3 text-xs bg-white dark:bg-slate-950 text-slate-600 dark:text-slate-400">Digital Input</div>
-
-                    <div className="p-3 text-sm bg-white dark:bg-slate-950">Röle (Lamba)</div>
-                    <div className="p-3 font-mono text-sm bg-white dark:bg-slate-950 text-green-600 dark:text-green-400">GPIO 12</div>
-                    <div className="p-3 text-xs bg-white dark:bg-slate-950 text-slate-600 dark:text-slate-400">Digital Output</div>
-
-                    <div className="p-3 text-sm bg-white dark:bg-slate-950">PIR (Hareket)</div>
-                    <div className="p-3 font-mono text-sm bg-white dark:bg-slate-950 text-purple-600 dark:text-purple-400">GPIO 27</div>
-                    <div className="p-3 text-xs bg-white dark:bg-slate-950 text-slate-600 dark:text-slate-400">Digital Input</div>
-
-                    <div className="p-3 text-sm bg-white dark:bg-slate-950">LDR (Işık)</div>
-                    <div className="p-3 font-mono text-sm bg-white dark:bg-slate-950 text-orange-600 dark:text-orange-400">GPIO 34</div>
-                    <div className="p-3 text-xs bg-white dark:bg-slate-950 text-slate-600 dark:text-slate-400">Analog Input</div>
-
-                  </div>
-
-                </div>
-
-                <p className="text-xs italic mt-3 text-slate-500 dark:text-slate-500">* ESP32-S3 DevKit v1 referans alınmıştır. Farklı modellerde pin numaraları değişebilir.</p>
-
-              </div>
-
-            </article>
-
-          </div>
-
-        </div>
-
-      </section>
-
-      <section className="py-16 px-6">
-
-        <div className="max-w-4xl mx-auto">
-
-          <div className="text-center mb-12">
-
-            <h2 className="text-3xl font-bold mb-4">Sıkça Sorulan Sorular</h2>
-            <p className="text-slate-600 dark:text-slate-400">En çok merak edilen konular</p>
 
           </div>
 
           <div className="space-y-4">
 
-            {faqs.map((faq, i) => ( <FAQItem key={i} {...faq} /> ))}
+            {filteredGuides.length ? filteredGuides.map((g) => (
+              <InstallGuideCard key={g.id} guide={g} open={openGuide === g.id} onToggle={() => setOpenGuide(openGuide === g.id ? null : g.id)} />
+            )) : (
+              <p className="text-center py-10 text-slate-500">Aramanızla eşleşen rehber bulunamadı.</p>
+            )}
 
+          </div>
+
+          <div className="mt-8 flex gap-3 p-5 rounded-2xl border bg-green-50 dark:bg-green-500/10 border-green-200 dark:border-green-500/20 text-sm text-green-800 dark:text-green-300">
+            <ShieldCheck size={20} className="flex-shrink-0" />
+            <span>Elektrik tesisatına bağlanan ürünlerde işe başlamadan önce mutlaka sigortayı kapatın. Kurulum hizmetimizle ürünlerinizi uzman ekibimize de kurdurabilirsiniz.</span>
           </div>
 
         </div>
 
       </section>
 
-      <section className="py-16 px-6 bg-slate-50 dark:bg-slate-900/20">
+      {/* Videolar */}
+      <section id="videolar" className="py-16 px-6 bg-slate-50 dark:bg-slate-900/20 scroll-mt-24">
 
         <div className="max-w-7xl mx-auto">
 
-          <div className="text-center mb-12">
-
-            <h2 className="text-3xl font-bold mb-4">Ek Kaynaklar</h2>
-            <p className="text-slate-600 dark:text-slate-400">Daha fazla bilgi ve destek için</p>
-
+          <div className="mb-8">
+            <h2 className="text-3xl font-bold mb-2">Videolar</h2>
+            <p className="text-slate-600 dark:text-slate-400">Ürün tanıtım ve kurulum videoları</p>
           </div>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-
-            {resources.map((resource, i) => ( <a key={i} href={resource.link} className="group border rounded-3xl p-8 text-center transition-all hover:scale-105 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-blue-500/50 dark:hover:border-blue-500/50">
-
-              <div className={`w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center text-white group-hover:scale-110 transition-transform bg-gradient-to-br ${resource.color}`}>
-                <resource.icon size={28} />
-              </div>
-
-              <h3 className="font-bold mb-2 transition-colors group-hover:text-blue-600 dark:group-hover:text-blue-400">{resource.title}</h3>
-              <p className="text-sm mb-4 text-slate-600 dark:text-slate-400">{resource.description}</p>
-              <div className="flex items-center justify-center gap-2 text-sm font-semibold text-blue-600 dark:text-blue-400">Keşfet <ExternalLink size={14} /></div>
-
-            </a> ))}
-
+            {VIDEOS.map((v) => <VideoCard key={v.title} video={v} />)}
           </div>
 
         </div>
 
       </section>
 
+      {/* SSS */}
+      <section className="py-16 px-6">
+
+        <div className="max-w-4xl mx-auto">
+
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold mb-4">Sıkça Sorulan Sorular</h2>
+            <p className="text-slate-600 dark:text-slate-400">Kurulum hakkında en çok merak edilenler</p>
+          </div>
+
+          <div className="space-y-4">
+            {FAQS.map((faq) => <FAQItem key={faq.question} {...faq} />)}
+          </div>
+
+        </div>
+
+      </section>
+
+      {/* Destek */}
       <section className="pt-20 pb-24 px-6">
 
-        <div className="max-w-6xl mx-auto border rounded-3xl p-12 text-center relative overflow-hidden bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-600/20 dark:to-purple-600/20 border-blue-300 dark:border-blue-500/30">
+        <div className="max-w-6xl mx-auto border rounded-3xl p-12 text-center bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-600/20 dark:to-purple-600/20 border-blue-300 dark:border-blue-500/30">
 
-          <div className="absolute inset-0 bg-grid-pattern opacity-5" />
+          <MessageCircle className="mx-auto mb-6 text-blue-600 dark:text-blue-400" size={48} />
+          <h3 className="text-3xl md:text-4xl font-bold mb-4">Kurulumda yardıma mı ihtiyacınız var?</h3>
+          <p className="mb-8 max-w-2xl mx-auto text-slate-600 dark:text-slate-400">Destek ekibimiz sorularınızı yanıtlamaya ve kurulum randevusu oluşturmaya hazır.</p>
 
-          <div className="relative z-10">
-
-            <MessageCircle className="mx-auto mb-6 text-blue-600 dark:text-blue-400" size={48} />
-            <h3 className="text-3xl md:text-4xl font-bold mb-4">Aradığınızı Bulamadınız mı?</h3>
-            <p className="mb-8 max-w-2xl mx-auto text-slate-600 dark:text-slate-400">Topluluğumuz size yardımcı olmaya hazır. Sorularınızı forum'da sorun veya dokümantasyon ekibimizle iletişime geçin.</p>
-        
-            <div className="flex flex-wrap justify-center gap-4">
-
-              <button className="px-8 py-4 rounded-2xl font-bold transition-all text-sm shadow-lg flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white shadow-blue-300/20 dark:shadow-blue-900/20">
-                <MessageCircle size={18} />
-                Topluluk Forumu
-              </button>
-
-              <button className="px-8 py-4 rounded-2xl font-bold transition-all text-sm flex items-center gap-2 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-900 dark:text-white">
-                <Video size={18} />
-                Video Eğitimleri
-              </button>
-
-              <button className="px-8 py-4 rounded-2xl font-bold transition-all text-sm flex items-center gap-2 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-900 dark:text-white">
-                <Download size={18} />
-                PDF İndir
-              </button>
-
-            </div>
-
+          <div className="flex flex-wrap justify-center gap-4">
+            <Link to="/contact" className="px-8 py-4 rounded-2xl font-bold text-sm shadow-lg flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white"><MessageCircle size={18} />Bize Ulaşın</Link>
+            <Link to="/faq" className="px-8 py-4 rounded-2xl font-bold text-sm flex items-center gap-2 bg-white/70 dark:bg-slate-800 hover:bg-white dark:hover:bg-slate-700"><CheckCircle2 size={18} />Tüm SSS</Link>
           </div>
 
         </div>

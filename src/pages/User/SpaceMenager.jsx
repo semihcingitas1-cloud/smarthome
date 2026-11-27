@@ -74,18 +74,6 @@ const SpaceManager = () => {
 
   const handleDeleteHome = async (id) => {
 
-    return (
-
-      <div className=''>
-
-        <div>
-
-
-        </div>
-
-      </div>
-    );
-
     if (window.confirm('Bu evi ve içindeki tüm odaları silmek istediğinize emin misiniz?')) {
 
       await dispatch(deleteHome(id));
@@ -601,7 +589,7 @@ const SpaceManager = () => {
 
       </main>
 
-      <style jsx>{`
+      <style>{`
         @keyframes slide-in {
           from {
             transform: translateX(100%);

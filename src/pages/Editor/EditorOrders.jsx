@@ -348,13 +348,14 @@ const EditorOrders = () => {
                   {selectedOrder.items?.map((item, i) => (
                     <div key={i} className="flex items-center justify-between gap-4 p-3.5 text-sm">
                       <div>
-                        <div className="font-semibold">{item.name}</div>
+                        <div className="font-semibold">{item.name}{item.isGift && <span className="ml-2 text-[10px] font-bold uppercase bg-purple-100 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400 px-1.5 py-0.5 rounded">Hediye</span>}</div>
                         <div className="text-xs text-gray-400 dark:text-slate-500">
                           {[item.selectedModel, item.selectedColor, item.sku && `SKU: ${item.sku}`].filter(Boolean).join(' • ')}
                         </div>
                       </div>
                       <div className="text-right whitespace-nowrap">
                         <div className="font-bold">{money(item.totalPrice)}</div>
+                        {item.discount > 0 && <div className="text-xs text-emerald-600">indirim payı -{money(item.discount)}</div>}
                         <div className="text-xs text-gray-400 dark:text-slate-500">{item.quantity} x {money(item.price)}</div>
                       </div>
                     </div>
@@ -368,12 +369,27 @@ const EditorOrders = () => {
                 <div className="flex justify-between"><span className="text-gray-500 dark:text-slate-400">Yöntem</span><span className="font-semibold">{PAYMENT_METHODS[selectedOrder.payment?.method] || '-'}</span></div>
                 <div className="flex justify-between"><span className="text-gray-500 dark:text-slate-400">Ödeme Durumu</span><span className="font-semibold">{PAYMENT_STATUS[selectedOrder.payment?.status] || '-'}</span></div>
                 <div className="flex justify-between"><span className="text-gray-500 dark:text-slate-400">Ara Toplam</span><span>{money(selectedOrder.pricing?.subtotal)}</span></div>
-                <div className="flex justify-between"><span className="text-gray-500 dark:text-slate-400">Kargo</span><span>{money(selectedOrder.pricing?.shipping)}</span></div>
-                <div className="flex justify-between"><span className="text-gray-500 dark:text-slate-400">KDV</span><span>{money(selectedOrder.pricing?.tax)}</span></div>
-                {selectedOrder.pricing?.couponDiscount > 0 && (
-                  <div className="flex justify-between"><span className="text-gray-500 dark:text-slate-400">Kupon ({selectedOrder.coupon?.code})</span><span className="text-emerald-600">-{money(selectedOrder.pricing.couponDiscount)}</span></div>
-                )}
+                {(selectedOrder.coupons?.length
+                  ? selectedOrder.coupons
+                  : selectedOrder.coupon?.code ? [{ code: selectedOrder.coupon.code, discount: selectedOrder.pricing?.couponDiscount }] : []
+                ).map((c) => (
+                  <div key={c.code} className="flex justify-between">
+                    <span className="text-gray-500 dark:text-slate-400">{c.auto ? 'Otomatik' : 'Kupon'} ({c.code}{c.name && c.name !== c.code ? ` · ${c.name}` : ''})</span>
+                    <span className="text-emerald-600">{c.discount > 0 ? `-${money(c.discount)}` : c.shippingDiscount > 0 ? 'Kargo bedava' : 'Avantaj'}</span>
+                  </div>
+                ))}
+                <div className="flex justify-between">
+                  <span className="text-gray-500 dark:text-slate-400">Kargo</span>
+                  <span>{selectedOrder.pricing?.shippingDiscount > 0 && <span className="line-through text-gray-400 mr-1.5">{money(selectedOrder.pricing.shippingDiscount)}</span>}{money(selectedOrder.pricing?.shipping)}</span>
+                </div>
                 <div className="flex justify-between pt-2 border-t border-gray-200 dark:border-slate-700 text-base font-black"><span>Toplam</span><span>{money(selectedOrder.pricing?.total)}</span></div>
+                <div className="flex justify-between text-xs text-gray-400 dark:text-slate-500"><span>İçindeki KDV</span><span>{money(selectedOrder.pricing?.tax)}</span></div>
+                {(selectedOrder.perks?.freeInstallation || selectedOrder.perks?.warrantyExtraMonths > 0) && (
+                  <div className="flex justify-between text-purple-600 dark:text-purple-400 text-xs font-semibold pt-1">
+                    <span>Kupon avantajı</span>
+                    <span>{[selectedOrder.perks.freeInstallation && 'Ücretsiz kurulum', selectedOrder.perks.warrantyExtraMonths > 0 && `+${selectedOrder.perks.warrantyExtraMonths} ay garanti`].filter(Boolean).join(' · ')}</span>
+                  </div>
+                )}
               </div>
 
               {/* Müşteri notu */}

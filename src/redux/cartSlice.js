@@ -1,8 +1,13 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
 
-const BASE_URL = "https://ornekciceksitesi.com";
+import { BASE_URL, toOrderItems, authHeaders } from '../utils/checkout';
+
 const STORAGE_KEY = 'cart';
+const COUPON_KEY = 'cartCoupon';
+
+// Bu hatalarda kod sepetten kalkar; diğerlerinde (ör. minimum tutar) sepet değişince yeniden denenir
+const PERMANENT_COUPON_ERRORS = ['NOT_FOUND', 'INACTIVE', 'EXPIRED', 'EXHAUSTED', 'USER_LIMIT', 'NOT_ELIGIBLE', 'SEGMENT', 'EMAIL_DOMAIN', 'FIRST_ORDER_ONLY', 'NEW_USER_ONLY', 'PLATFORM'];
 
 // ───────────────────────── YARDIMCILAR ─────────────────────────
 
@@ -42,17 +47,48 @@ const storeInLocalStorage = (data) => {
     } catch {}
 };
 
+const readCoupon = () => {
+    try {
+        return localStorage.getItem(COUPON_KEY) || null;
+    } catch {
+        return null;
+    }
+};
+
+const storeCoupon = (code) => {
+    try {
+        if (code) localStorage.setItem(COUPON_KEY, code);
+        else localStorage.removeItem(COUPON_KEY);
+    } catch {}
+};
+
 // Stokta olmayan / kaldırılan ürünler toplama katılmaz
 const calculateTotal = (carts) => carts.reduce((sum, item) => (item.unavailable ? sum : sum + item.price * item.quantity), 0);
 
+// Sepet değişince sunucu hesabı eskir; ekran yeni hesap gelene kadar yerel toplamı gösterir
 const syncTotals = (state) => {
     state.totalAmount = calculateTotal(state.carts);
+    state.quoteStale = true;
     storeInLocalStorage(state.carts);
 };
 
-// ───────────────────────── THUNK ─────────────────────────
+const hasToken = () => {
+    try {
+        return !!localStorage.getItem('token');
+    } catch {
+        return false;
+    }
+};
 
-// Sepetteki ürünlerin güncel fiyat ve stoğunu backend'den alır
+const toError = (error, fallback) => ({
+    message: error.response?.data?.message || fallback,
+    code: error.response?.data?.code || null,
+    status: error.response?.status || null,
+});
+
+// ───────────────────────── THUNK'LAR ─────────────────────────
+
+// Sepetteki ürünlerin güncel fiyat ve stoğunu backend'den alır (giriş gerekmez)
 export const validateCart = createAsyncThunk(
     'cart/validateCart',
     async (_, { getState, rejectWithValue }) => {
@@ -75,6 +111,64 @@ export const validateCart = createAsyncThunk(
     }
 );
 
+/**
+ * Sunucu hesabı: kupon, otomatik indirim, kargo ve KDV. Sadece giriş yapmış kullanıcı için.
+ * paymentMethod ve city ödeme sayfasında gönderilir (ödeme yöntemine/şehre özel kuponlar için).
+ */
+export const fetchQuote = createAsyncThunk(
+    'cart/fetchQuote',
+    async ({ paymentMethod, city } = {}, { getState, rejectWithValue }) => {
+        try {
+            const { carts, couponCode } = getState().cart;
+            const items = toOrderItems(carts);
+            if (!items.length) return null;
+
+            const { data } = await axios.post(
+                `${BASE_URL}/coupons/quote`,
+                { items, code: couponCode || undefined, paymentMethod, city, platform: 'web' },
+                { headers: authHeaders() }
+            );
+            return data;
+        } catch (error) {
+            return rejectWithValue(toError(error, 'Sepet tutarı hesaplanamadı.'));
+        }
+    },
+    { condition: () => hasToken() }
+);
+
+// "Uygula" butonu: kod geçerliyse kaydedilir ve yeni toplam döner
+export const applyCoupon = createAsyncThunk(
+    'cart/applyCoupon',
+    async ({ code, paymentMethod, city }, { getState, rejectWithValue }) => {
+        try {
+            const items = toOrderItems(getState().cart.carts);
+            const { data } = await axios.post(
+                `${BASE_URL}/coupons/validate`,
+                { code, items, paymentMethod, city, platform: 'web' },
+                { headers: authHeaders() }
+            );
+            return { code: data.applied?.find((a) => !a.auto)?.coupon?.code || code.trim().toUpperCase(), quote: data };
+        } catch (error) {
+            return rejectWithValue(toError(error, 'Kupon uygulanamadı.'));
+        }
+    }
+);
+
+// Kullanıcının görebileceği kuponlar; sepete göre uygulanabilirlik ve indirim tutarıyla
+export const fetchAvailableCoupons = createAsyncThunk(
+    'cart/fetchAvailableCoupons',
+    async (_, { getState, rejectWithValue }) => {
+        try {
+            const items = toOrderItems(getState().cart.carts);
+            const { data } = await axios.post(`${BASE_URL}/coupons/available`, { items, platform: 'web' }, { headers: authHeaders() });
+            return data.coupons ?? [];
+        } catch (error) {
+            return rejectWithValue(toError(error, 'Kuponlar alınamadı.'));
+        }
+    },
+    { condition: () => hasToken() }
+);
+
 // ───────────────────────── SLICE ─────────────────────────
 
 const initialCarts = fetchFromLocalStorage();
@@ -85,6 +179,31 @@ const initialState = {
     validating: false,
     validationError: null,
     lastValidatedAt: null,
+
+    couponCode: readCoupon(),
+    couponApplying: false,
+    couponMessage: null, // son "Uygula" denemesinin hata mesajı
+
+    quote: null,         // sunucu hesabı: { totals, applied, couponError, hints, issues, gifts, perks }
+    quoting: false,
+    quoteStale: true,
+    quoteError: null,
+    quoteRequestId: null,
+
+    availableCoupons: [],
+    availableLoading: false,
+};
+
+const acceptQuote = (state, quote) => {
+    state.quote = quote;
+    state.quoteStale = false;
+    state.quoteError = null;
+
+    const err = quote?.couponError;
+    if (err && state.couponCode && PERMANENT_COUPON_ERRORS.includes(err.code)) {
+        state.couponCode = null;
+        storeCoupon(null);
+    }
 };
 
 export const cartSlice = createSlice({
@@ -138,7 +257,33 @@ export const cartSlice = createSlice({
         clearCart: (state) => {
 
             state.carts = [];
+            state.couponCode = null;
+            state.couponMessage = null;
+            state.quote = null;
+            state.availableCoupons = [];
+            storeCoupon(null);
             syncTotals(state);
+        },
+
+        removeCoupon: (state) => {
+
+            state.couponCode = null;
+            state.couponMessage = null;
+            state.quoteStale = true;
+            storeCoupon(null);
+        },
+
+        clearCouponMessage: (state) => {
+
+            state.couponMessage = null;
+        },
+
+        // Çıkış yapınca kullanıcıya özel hesaplar temizlenir
+        resetQuote: (state) => {
+
+            state.quote = null;
+            state.quoteStale = true;
+            state.availableCoupons = [];
         },
 
         // Fiyat değişikliği uyarılarını kapat
@@ -201,9 +346,52 @@ export const cartSlice = createSlice({
             .addCase(validateCart.rejected, (state, action) => {
                 state.validating = false;
                 state.validationError = action.payload;
+            })
+
+            .addCase(fetchQuote.pending, (state, action) => {
+                state.quoting = true;
+                state.quoteRequestId = action.meta.requestId;
+            })
+            .addCase(fetchQuote.fulfilled, (state, action) => {
+                // Arka arkaya gelen isteklerde sadece sonuncusu geçerli
+                if (action.meta.requestId !== state.quoteRequestId) return;
+                state.quoting = false;
+                if (action.payload) acceptQuote(state, action.payload);
+                else state.quote = null;
+            })
+            .addCase(fetchQuote.rejected, (state, action) => {
+                if (action.meta.requestId !== state.quoteRequestId) return;
+                state.quoting = false;
+                state.quoteError = action.payload?.message || null;
+            })
+
+            .addCase(applyCoupon.pending, (state) => {
+                state.couponApplying = true;
+                state.couponMessage = null;
+            })
+            .addCase(applyCoupon.fulfilled, (state, action) => {
+                state.couponApplying = false;
+                state.couponCode = action.payload.code;
+                storeCoupon(action.payload.code);
+                acceptQuote(state, action.payload.quote);
+            })
+            .addCase(applyCoupon.rejected, (state, action) => {
+                state.couponApplying = false;
+                state.couponMessage = action.payload?.message || 'Kupon uygulanamadı.';
+            })
+
+            .addCase(fetchAvailableCoupons.pending, (state) => {
+                state.availableLoading = true;
+            })
+            .addCase(fetchAvailableCoupons.fulfilled, (state, action) => {
+                state.availableLoading = false;
+                state.availableCoupons = action.payload;
+            })
+            .addCase(fetchAvailableCoupons.rejected, (state) => {
+                state.availableLoading = false;
             });
     },
 });
 
-export const { addToCart, removeFromCart, clearCart, updateQuantity, acknowledgeCartChanges } = cartSlice.actions;
+export const { addToCart, removeFromCart, clearCart, updateQuantity, acknowledgeCartChanges, removeCoupon, clearCouponMessage, resetQuote } = cartSlice.actions;
 export default cartSlice.reducer;

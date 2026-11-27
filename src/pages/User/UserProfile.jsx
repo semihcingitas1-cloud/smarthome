@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useDispatch, useSelector } from "react-redux";
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
 import { logoutUser } from "../../redux/userSlice";
+import MyOrders from "../../components/orders/MyOrders";
 
 import { User, Mail, Lock, Bell, Shield, Palette, LogOut, Camera, Key, Save, Eye, EyeOff, ChevronRight, Globe, Clock, MapPin, Phone, Calendar, Award, Activity, Settings, Trash2, CheckCircle2, AlertCircle, Edit2, X, Languages, RefreshCw, Copy, Check, Heart, Users, Plus, ShieldCheck, UserMinus, List } from 'lucide-react';
 
@@ -16,7 +17,9 @@ const UserProfile = () => {
   const [showPass, setShowPass] = useState(false);
   const [showCurrentPass, setShowCurrentPass] = useState(false);
   const [showConfirmPass, setShowConfirmPass] = useState(false);
-  const [activeTab, setActiveTab] = useState('profile');
+  // ?tab=orders ile doğrudan Siparişler sekmesi açılır (ödeme sonrası yönlendirme)
+  const [searchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState(() => searchParams.get('tab') || 'profile');
   const [isEditing, setIsEditing] = useState(false);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -443,7 +446,7 @@ const UserProfile = () => {
 
                 </> )}
 
-                {activeTab === 'orders' && ( <div className="space-y-8">siparişler</div> )}
+                {activeTab === 'orders' && <MyOrders />}
 
                 {activeTab === 'security' && ( <div className="space-y-8">
 
@@ -771,7 +774,7 @@ const UserProfile = () => {
 
       </main>
 
-      <style jsx>{`
+      <style>{`
         @keyframes slide-in {
           from {
             transform: translateX(100%);

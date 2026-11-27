@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, Link } from 'react-router-dom';
 
-import { removeFromCart, updateQuantity, clearCart, validateCart, acknowledgeCartChanges } from '../../redux/cartSlice';
+import { removeFromCart, updateQuantity, clearCart, validateCart, acknowledgeCartChanges, fetchQuote, applyCoupon, removeCoupon, clearCouponMessage, fetchAvailableCoupons } from '../../redux/cartSlice';
+import { calcLocalTotals, formatTL, freeShippingProgress, FREE_SHIPPING_THRESHOLD } from '../../utils/checkout';
 
-import { ShoppingBag, Trash2, ShieldCheck, CreditCard, Tag, ArrowLeft, Plus, Minus, Truck, RotateCcw, ChevronRight, X, AlertTriangle, Lock, RefreshCw } from 'lucide-react';
+import { ShoppingBag, Trash2, ShieldCheck, CreditCard, Tag, ArrowLeft, Plus, Minus, Truck, RotateCcw, ChevronRight, X, AlertTriangle, Lock, RefreshCw, Gift, Sparkles, Ticket, Loader2, ChevronDown, Info } from 'lucide-react';
 
 const UNAVAILABLE_TEXT = {
   out_of_stock: 'Stokta kalmadı',
@@ -13,63 +14,91 @@ const UNAVAILABLE_TEXT = {
   unavailable: 'Şu an satın alınamıyor',
 };
 
+// Tailwind sınıfları dinamik üretilemez (derlemede silinir); her renk tam yazılmalı
+const FEATURES = [
+  { icon: Truck, label: 'Bedava Kargo', sub: `${formatTL(FREE_SHIPPING_THRESHOLD, false)} ve Üzeri`, box: 'border-emerald-200 dark:border-emerald-900/40 bg-emerald-50/50 dark:bg-emerald-950/20', iconBg: 'bg-emerald-500', title: 'text-emerald-800 dark:text-emerald-400', subCls: 'text-emerald-600 dark:text-emerald-500' },
+  { icon: ShieldCheck, label: 'Güvenli Ödeme', sub: 'SSL ile korunur', box: 'border-orange-200 dark:border-orange-900/40 bg-orange-50/50 dark:bg-orange-950/20', iconBg: 'bg-orange-500', title: 'text-orange-800 dark:text-orange-400', subCls: 'text-orange-600 dark:text-orange-500' },
+  { icon: CreditCard, label: 'Kart veya Havale', sub: 'İki ödeme seçeneği', box: 'border-blue-200 dark:border-blue-900/40 bg-blue-50/50 dark:bg-blue-950/20', iconBg: 'bg-blue-500', title: 'text-blue-800 dark:text-blue-400', subCls: 'text-blue-600 dark:text-blue-500' },
+  { icon: RotateCcw, label: 'Kolay İade', sub: '14 Gün Koşulsuz', box: 'border-purple-200 dark:border-purple-900/40 bg-purple-50/50 dark:bg-purple-950/20', iconBg: 'bg-purple-500', title: 'text-purple-800 dark:text-purple-400', subCls: 'text-purple-600 dark:text-purple-500' },
+];
+
+// Kupon kartında indirimin kısa açıklaması
+const couponValueText = (c) => {
+  switch (c.discountType) {
+    case 'percentage': return `%${c.value} indirim${c.maxDiscountAmount ? ` (en fazla ${formatTL(c.maxDiscountAmount, false)})` : ''}`;
+    case 'fixed': return `${formatTL(c.value, false)} indirim`;
+    case 'free_shipping': return 'Kargo bedava';
+    case 'buy_x_get_y': return c.buyXGetY ? `${c.buyXGetY.buyQuantity + c.buyXGetY.getQuantity} al ${c.buyXGetY.buyQuantity} öde` : 'X al Y öde';
+    case 'tiered_percentage': return 'Sepet tutarına göre artan % indirim';
+    case 'tiered_fixed': return 'Sepet tutarına göre artan indirim';
+    case 'gift_product': return 'Hediye ürün';
+    case 'free_installation': return 'Ücretsiz kurulum';
+    case 'extended_warranty': return `${c.warrantyExtraMonths} ay ek garanti`;
+    default: return '';
+  }
+};
+
+const appliedBenefitText = (a) => {
+  if (a.gift) return `Hediye: ${a.gift.name || 'ürün'}`;
+  if (a.freeShipping && !a.discount) return 'Kargo bedava';
+  if (a.perks?.freeInstallation) return 'Ücretsiz kurulum';
+  if (a.perks?.warrantyExtraMonths) return `${a.perks.warrantyExtraMonths} ay ek garanti`;
+  return `-${formatTL(a.discount)}`;
+};
+
 const Cart = () => {
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  const [coupon, setCoupon] = useState('');
-  const [appliedCoupon, setAppliedCoupon] = useState(null);
-  const [couponError, setCouponError] = useState('');
+  const [couponInput, setCouponInput] = useState('');
+  const [showCoupons, setShowCoupons] = useState(false);
 
-  const { carts, validating } = useSelector(state => state.cart);
+  const { carts, validating, couponCode, couponApplying, couponMessage, quote, quoting, quoteStale, availableCoupons, availableLoading } = useSelector(state => state.cart);
   const { isAuth } = useSelector(state => state.user);
-
-  const COUPONS = { 'AKILLIEV20': 20, 'SMART10': 10, 'SMARTHOME15': 15 };
-  const FREE_SHIPPING_THRESHOLD = 2500;
-  const SHIPPING_FEE = 200;
-  const TAX_RATE = 0.20;
 
   // Sayfa açılınca güncel fiyat ve stok
   useEffect(() => {
     dispatch(validateCart());
   }, [dispatch]);
 
+  // Sepet ya da kupon değişince sunucu hesabı (kısa gecikmeyle, art arda tıklamalarda tek istek)
+  const cartSignature = carts.map((i) => `${i.cartKey}:${i.quantity}:${i.unavailable ? 0 : 1}`).join('|');
+
+  useEffect(() => {
+    if (!isAuth || !carts.length) return undefined;
+    const t = setTimeout(() => dispatch(fetchQuote()), 350);
+    return () => clearTimeout(t);
+  }, [dispatch, isAuth, cartSignature, couponCode]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (isAuth && showCoupons && carts.length) dispatch(fetchAvailableCoupons());
+  }, [dispatch, isAuth, showCoupons, cartSignature]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const activeItems = carts.filter((item) => !item.unavailable);
   const unavailableItems = carts.filter((item) => item.unavailable);
   const changedItems = carts.filter((item) => item.priceChanged || item.quantityAdjusted);
 
-  // Fiyatlar KDV dahil: toplam = ara toplam - indirim + kargo
-  const subtotal = activeItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
-  const discountAmount = appliedCoupon ? Math.round(subtotal * COUPONS[appliedCoupon] / 100) : 0;
-  const shipping = subtotal >= FREE_SHIPPING_THRESHOLD || subtotal === 0 ? 0 : SHIPPING_FEE;
-  const total = subtotal - discountAmount + shipping;
-  const includedTax = total - total / (1 + TAX_RATE);
-  const totalQty = activeItems.reduce((acc, item) => acc + item.quantity, 0);
-  const shippingProgress = Math.min((subtotal / FREE_SHIPPING_THRESHOLD) * 100, 100);
+  const localTotals = useMemo(() => calcLocalTotals(carts), [carts]);
+  const serverReady = isAuth && quote && !quoteStale;
+  const totals = serverReady ? quote.totals : localTotals;
+  const applied = serverReady ? quote.applied ?? [] : [];
+  const hints = serverReady ? quote.hints ?? [] : [];
+  const issues = serverReady ? quote.issues ?? [] : [];
+  const pendingCouponError = serverReady && couponCode ? quote.couponError : null;
+  const calculating = isAuth && (quoting || quoteStale) && carts.length > 0;
 
-  const canCheckout = activeItems.length > 0 && unavailableItems.length === 0 && !validating;
+  const canCheckout = activeItems.length > 0 && unavailableItems.length === 0 && issues.length === 0 && !validating;
 
   const handleApplyCoupon = (e) => {
-
     e.preventDefault();
-    const code = coupon.toUpperCase().trim();
-
-    if (COUPONS[code]) {
-
-      setAppliedCoupon(code);
-      setCouponError('');
-    } else {
-
-      setCouponError('Geçersiz kupon kodu.');
-    }
+    const code = couponInput.trim();
+    if (!code) return;
+    dispatch(applyCoupon({ code })).unwrap().then(() => setCouponInput('')).catch(() => {});
   };
 
-  const handleRemoveCoupon = () => {
-
-    setAppliedCoupon(null);
-    setCoupon('');
-    setCouponError('');
+  const applyFromList = (code) => {
+    dispatch(applyCoupon({ code })).unwrap().then(() => setShowCoupons(false)).catch(() => {});
   };
 
   const handleClearCart = () => {
@@ -82,8 +111,9 @@ const Cart = () => {
     unavailableItems.forEach((item) => dispatch(removeFromCart(item.cartKey)));
   };
 
+  const goCheckout = () => navigate(isAuth ? '/payment' : '/auth?redirect=/cart');
+
   const getImage = (item) => item.images?.[0]?.file || item.images?.[0]?.preview || item.image || '';
-  const formatTL = (value, decimals = 0) => `₺${Number(value || 0).toLocaleString('tr-TR', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
 
   if (carts.length === 0) return (
 
@@ -131,7 +161,7 @@ const Cart = () => {
 
             <div className="p-2.5 bg-blue-600 rounded-2xl shadow-lg shadow-blue-500/25"><ShoppingBag size={24} className="text-white" /></div>
             Alışveriş Sepetim
-            <span className="text-sm font-normal bg-blue-500/10 text-blue-600 dark:text-blue-400 px-3 py-1 rounded-full border border-blue-500/20">{totalQty} ürün</span>
+            <span className="text-sm font-normal bg-blue-500/10 text-blue-600 dark:text-blue-400 px-3 py-1 rounded-full border border-blue-500/20">{totals.quantity} ürün</span>
 
           </h1>
 
@@ -181,30 +211,40 @@ const Cart = () => {
           </div>
         )}
 
-        {subtotal < FREE_SHIPPING_THRESHOLD && ( <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-2xl p-4 mb-6 flex items-center gap-4 shadow-sm">
+        {issues.length > 0 && (
+
+          <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/40 rounded-2xl p-4 mb-4 flex items-start gap-3">
+            <AlertTriangle size={20} className="text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+            <ul className="text-sm text-red-700 dark:text-red-400 space-y-0.5">
+              {issues.map((issue) => <li key={`${issue.index}-${issue.code}`}>{issue.message}</li>)}
+            </ul>
+          </div>
+        )}
+
+        {totals.remainingForFreeShipping > 0 && totals.shipping > 0 && ( <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-2xl p-4 mb-6 flex items-center gap-4 shadow-sm">
 
           <div className="p-2.5 bg-blue-500/10 rounded-xl flex-shrink-0"><Truck size={20} className="text-blue-500" /></div>
 
           <div className="flex-1 min-w-0">
 
-            <p className="text-sm font-semibold text-gray-900 dark:text-white mb-1.5">Ücretsiz kargo için{' '}<span className="text-blue-600 dark:text-blue-400">₺{(FREE_SHIPPING_THRESHOLD - subtotal).toLocaleString('tr-TR')}</span>{' '}daha ekleyin</p>
+            <p className="text-sm font-semibold text-gray-900 dark:text-white mb-1.5">Ücretsiz kargo için{' '}<span className="text-blue-600 dark:text-blue-400">{formatTL(totals.remainingForFreeShipping)}</span>{' '}daha ekleyin</p>
 
             <div className="w-full bg-gray-100 dark:bg-slate-800 rounded-full h-2">
 
-              <div className="bg-gradient-to-r from-blue-500 to-blue-600 h-2 rounded-full transition-all duration-500" style={{ width: `${shippingProgress}%` }}/>
+              <div className="bg-gradient-to-r from-blue-500 to-blue-600 h-2 rounded-full transition-all duration-500" style={{ width: `${freeShippingProgress(totals.subtotal)}%` }}/>
 
             </div>
 
           </div>
 
-          <span className="text-sm font-bold text-gray-500 dark:text-slate-400 flex-shrink-0">{Math.round(shippingProgress)}%</span>
+          <span className="text-sm font-bold text-gray-500 dark:text-slate-400 flex-shrink-0">{Math.round(freeShippingProgress(totals.subtotal))}%</span>
 
         </div> )}
 
-        {subtotal >= FREE_SHIPPING_THRESHOLD && ( <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800/40 rounded-2xl p-4 mb-6 flex items-center gap-3">
+        {totals.subtotal > 0 && totals.shipping === 0 && ( <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800/40 rounded-2xl p-4 mb-6 flex items-center gap-3">
 
           <Truck size={20} className="text-green-600 dark:text-green-400" />
-          <p className="text-sm font-semibold text-green-700 dark:text-green-400">Tebrikler! Ücretsiz kargoya hak kazandınız.</p>
+          <p className="text-sm font-semibold text-green-700 dark:text-green-400">Tebrikler! Kargo ücretsiz.</p>
 
         </div> )}
 
@@ -304,16 +344,11 @@ const Cart = () => {
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-2">
 
-              {[
-                { icon: Truck, label: 'Bedava Kargo', sub: '₺2000 ve Üzeri', color: 'emerald' },
-                { icon: ShieldCheck, label: 'Güvenli Ödeme', sub: 'iyzico Altyapısı', color: 'orange' },
-                { icon: CreditCard, label: 'Kolay Taksit', sub: '12 Aya Kadar', color: 'blue' },
-                { icon: RotateCcw, label: 'Kolay İade', sub: '14 Gün Koşulsuz', color: 'purple' },
-              ].map(({ icon: Icon, label, sub, color }) => ( <div key={label} className={`flex flex-col items-center text-center p-4 rounded-2xl border border-${color}-200 dark:border-${color}-900/40 bg-${color}-50/50 dark:bg-${color}-950/20`}>
+              {FEATURES.map(({ icon: Icon, label, sub, box, iconBg, title, subCls }) => ( <div key={label} className={`flex flex-col items-center text-center p-4 rounded-2xl border ${box}`}>
 
-                <div className={`w-10 h-10 rounded-xl bg-${color}-500 text-white flex items-center justify-center mb-2 shadow-sm`}><Icon size={18} /></div>
-                <span className={`text-[11px] font-bold text-${color}-800 dark:text-${color}-400 leading-tight`}>{label}</span>
-                <span className={`text-[10px] text-${color}-600 dark:text-${color}-500 mt-0.5`}>{sub}</span>
+                <div className={`w-10 h-10 rounded-xl ${iconBg} text-white flex items-center justify-center mb-2 shadow-sm`}><Icon size={18} /></div>
+                <span className={`text-[11px] font-bold leading-tight ${title}`}>{label}</span>
+                <span className={`text-[10px] mt-0.5 ${subCls}`}>{sub}</span>
 
               </div> ))}
 
@@ -325,38 +360,116 @@ const Cart = () => {
 
             <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm">
 
-              <h3 className="font-bold mb-3 flex items-center gap-2 text-gray-900 dark:text-white"><Tag size={18} className="text-purple-500" /> Kupon Kodu</h3>
+              <h3 className="font-bold mb-3 flex items-center gap-2 text-gray-900 dark:text-white"><Tag size={18} className="text-purple-500" /> Kupon</h3>
 
-              {appliedCoupon ? ( <div className="flex items-center justify-between bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800/40 rounded-xl px-4 py-3">
+              {!isAuth ? (
 
-                <div>
-
-                  <p className="text-sm font-bold text-green-700 dark:text-green-400">{appliedCoupon}</p>
-                  <p className="text-xs text-green-600 dark:text-green-500">%{COUPONS[appliedCoupon]} indirim aktif</p>
-
+                <div className="flex items-start gap-2 text-sm text-gray-500 dark:text-slate-400 bg-gray-50 dark:bg-slate-800/60 rounded-xl p-3">
+                  <Info size={16} className="flex-shrink-0 mt-0.5" />
+                  <span><Link to="/auth?redirect=/cart" className="text-blue-600 dark:text-blue-400 font-semibold hover:underline">Giriş yap</Link>, kupon kodunu kullan ve sana özel kuponları gör.</span>
                 </div>
 
-                <button onClick={handleRemoveCoupon} className="text-green-600 hover:text-red-500 transition-colors">
-                  <X size={16} />
-                </button>
+              ) : (
 
-              </div> ) : ( <form onSubmit={handleApplyCoupon} className="flex gap-2">
+                <>
+                  {/* Uygulanan kuponlar (elle girilen + otomatik) */}
+                  {applied.length > 0 && (
+                    <div className="space-y-2 mb-3">
+                      {applied.map((a) => (
+                        <div key={a.coupon.code} className="flex items-center justify-between gap-2 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800/40 rounded-xl px-3 py-2.5">
+                          <div className="min-w-0">
+                            <p className="text-sm font-bold text-green-700 dark:text-green-400 flex items-center gap-1.5">
+                              {a.auto ? <Sparkles size={14} /> : <Ticket size={14} />}
+                              <span className="truncate">{a.auto ? a.coupon.name : a.coupon.code}</span>
+                              {a.auto && <span className="text-[10px] font-semibold uppercase tracking-wide bg-green-600 text-white px-1.5 py-0.5 rounded">Otomatik</span>}
+                            </p>
+                            <p className="text-xs text-green-600 dark:text-green-500">{appliedBenefitText(a)}</p>
+                            {a.warnings?.map((w) => <p key={w.code} className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">{w.message}</p>)}
+                          </div>
+                          {!a.auto && (
+                            <button onClick={() => dispatch(removeCoupon())} aria-label="Kuponu kaldır" className="text-green-600 hover:text-red-500 transition-colors flex-shrink-0"><X size={16} /></button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
 
-                <div className="relative flex-1">
+                  {/* Kayıtlı kod şu an uygulanamıyorsa (ör. tutar düştü) */}
+                  {pendingCouponError && (
+                    <div className="flex items-start justify-between gap-2 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 rounded-xl px-3 py-2.5 mb-3">
+                      <div className="text-xs text-amber-700 dark:text-amber-400">
+                        <p className="font-bold text-sm mb-0.5">{couponCode}</p>
+                        {pendingCouponError.message}
+                      </div>
+                      <button onClick={() => dispatch(removeCoupon())} aria-label="Kuponu kaldır" className="text-amber-600 hover:text-red-500 flex-shrink-0"><X size={16} /></button>
+                    </div>
+                  )}
 
-                  <Tag size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input type="text" placeholder="Kupon kodunuz" value={coupon} onChange={e => { setCoupon(e.target.value); setCouponError(''); }} className="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl pl-9 pr-3 py-2.5 text-sm focus:outline-none focus:border-blue-500 transition-colors text-gray-900 dark:text-white"/>
+                  {!applied.some((a) => !a.auto) && !pendingCouponError && (
+                    <form onSubmit={handleApplyCoupon} className="flex gap-2">
 
-                </div>
+                      <div className="relative flex-1">
+                        <Tag size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <input type="text" placeholder="Kupon kodunuz" value={couponInput} onChange={e => { setCouponInput(e.target.value.toUpperCase()); if (couponMessage) dispatch(clearCouponMessage()); }} maxLength={32} className="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl pl-9 pr-3 py-2.5 text-sm uppercase focus:outline-none focus:border-blue-500 transition-colors text-gray-900 dark:text-white"/>
+                      </div>
 
-                <button type="submit" className="px-4 bg-gray-900 dark:bg-slate-700 hover:bg-gray-800 dark:hover:bg-slate-600 text-white rounded-xl text-sm font-semibold transition-colors">
-                  Uygula
-                </button>
+                      <button type="submit" disabled={couponApplying || !couponInput.trim()} className="px-4 min-w-[84px] bg-gray-900 dark:bg-slate-700 hover:bg-gray-800 dark:hover:bg-slate-600 disabled:opacity-50 text-white rounded-xl text-sm font-semibold transition-colors flex items-center justify-center">
+                        {couponApplying ? <Loader2 size={16} className="animate-spin" /> : 'Uygula'}
+                      </button>
 
-              </form> )}
+                    </form>
+                  )}
 
-              {couponError && <p className="text-xs text-red-500 mt-2">{couponError}</p>}
-              <p className="text-xs text-gray-400 dark:text-slate-500 mt-2">Deneme: <span className="font-mono">SMART10</span>, <span className="font-mono">AKILLIEV20</span></p>
+                  {couponMessage && <p className="text-xs text-red-500 mt-2">{couponMessage}</p>}
+
+                  {/* "₺X daha ekle" ipuçları */}
+                  {hints.length > 0 && (
+                    <div className="mt-3 space-y-1.5">
+                      {hints.map((h, i) => (
+                        <p key={i} className="text-xs text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/30 rounded-lg px-3 py-2 flex items-start gap-1.5">
+                          <Gift size={13} className="flex-shrink-0 mt-0.5" />
+                          <span>{h.name ? <strong>{h.name}: </strong> : null}{h.message}</span>
+                        </p>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Kullanıcının görebileceği kuponlar */}
+                  <button onClick={() => setShowCoupons((v) => !v)} className="mt-3 w-full flex items-center justify-between text-sm font-semibold text-purple-600 dark:text-purple-400 hover:text-purple-700">
+                    <span className="flex items-center gap-1.5"><Ticket size={15} /> Kuponlarım</span>
+                    <ChevronDown size={16} className={`transition-transform ${showCoupons ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {showCoupons && (
+                    <div className="mt-2 space-y-2">
+                      {availableLoading && !availableCoupons.length && <p className="text-xs text-gray-400 flex items-center gap-1.5"><Loader2 size={12} className="animate-spin" /> Kuponlar yükleniyor…</p>}
+                      {!availableLoading && !availableCoupons.length && <p className="text-xs text-gray-400">Şu an kullanabileceğin bir kupon yok.</p>}
+                      {availableCoupons.map((c) => {
+                        const isApplied = applied.some((a) => a.coupon.code === c.code);
+                        return (
+                          <div key={c.code} className={`rounded-xl border p-3 ${c.applicable ? 'border-purple-200 dark:border-purple-800/40 bg-purple-50/50 dark:bg-purple-950/20' : 'border-gray-200 dark:border-slate-700 opacity-80'}`}>
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="min-w-0">
+                                <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{c.name}</p>
+                                <p className="text-xs text-purple-700 dark:text-purple-300">{couponValueText(c)}{c.personal ? ' · sana özel' : ''}</p>
+                                {c.message && <p className={`text-xs mt-1 ${c.applicable ? 'text-amber-600 dark:text-amber-400' : 'text-gray-500 dark:text-slate-400'}`}>{c.message}</p>}
+                                {c.expiresAt && <p className="text-[11px] text-gray-400 mt-1">Son gün: {new Date(c.expiresAt).toLocaleDateString('tr-TR')}</p>}
+                              </div>
+                              {isApplied ? (
+                                <span className="text-xs font-bold text-green-600 flex-shrink-0">Uygulandı</span>
+                              ) : c.isAuto ? (
+                                <span className="text-[11px] text-gray-400 flex-shrink-0 text-right">Şartlar sağlanınca<br />otomatik</span>
+                              ) : (
+                                <button onClick={() => applyFromList(c.code)} disabled={!c.applicable || couponApplying} className="text-xs font-bold px-3 py-1.5 rounded-lg bg-purple-600 text-white disabled:bg-gray-300 dark:disabled:bg-slate-700 disabled:text-gray-500 flex-shrink-0">Uygula</button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </>
+              )}
 
             </div>
 
@@ -364,46 +477,55 @@ const Cart = () => {
 
               <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-100 dark:border-slate-800">
                 <h3 className="font-bold text-lg text-gray-900 dark:text-white">Sipariş Özeti</h3>
-                {validating && <span className="flex items-center gap-1.5 text-xs text-gray-400"><RefreshCw size={12} className="animate-spin" /> Fiyatlar kontrol ediliyor</span>}
+                {(validating || calculating) && <span className="flex items-center gap-1.5 text-xs text-gray-400"><RefreshCw size={12} className="animate-spin" /> Hesaplanıyor</span>}
               </div>
 
               <div className="space-y-3 text-sm">
 
                 <div className="flex justify-between text-gray-600 dark:text-slate-400">
 
-                  <span>Ara Toplam ({totalQty} ürün)</span>
-                  <span>{formatTL(subtotal, 2)}</span>
+                  <span>Ara Toplam ({totals.quantity} ürün)</span>
+                  <span>{formatTL(totals.subtotal)}</span>
 
                 </div>
+
+                {applied.filter((a) => a.discount > 0).map((a) => (
+                  <div key={a.coupon.code} className="flex justify-between text-green-600 dark:text-green-400 font-semibold">
+                    <span className="truncate pr-2">{a.auto ? a.coupon.name : `Kupon (${a.coupon.code})`}</span>
+                    <span>-{formatTL(a.discount)}</span>
+                  </div>
+                ))}
 
                 <div className="flex justify-between text-gray-600 dark:text-slate-400">
 
                   <span>Kargo</span>
-                  {shipping === 0 ? <span className="text-green-600 dark:text-green-400 font-semibold">Ücretsiz</span> : <span>{formatTL(shipping, 2)}</span> }
+                  {totals.shipping === 0
+                    ? <span className="text-green-600 dark:text-green-400 font-semibold">{totals.shippingDiscount > 0 && <span className="line-through text-gray-400 font-normal mr-1.5">{formatTL(totals.shippingDiscount)}</span>}Ücretsiz</span>
+                    : <span>{formatTL(totals.shipping)}</span>}
 
                 </div>
 
-                {discountAmount > 0 && ( <div className="flex justify-between text-green-600 dark:text-green-400 font-semibold bg-green-50 dark:bg-green-950/30 px-3 py-2 rounded-xl">
-
-                  <span>Kupon İndirimi</span>
-                  <span>-{formatTL(discountAmount)}</span>
-
-                </div> )}
+                {serverReady && quote.gifts?.map((g) => (
+                  <div key={g.product} className="flex justify-between text-purple-600 dark:text-purple-400 font-semibold">
+                    <span className="flex items-center gap-1.5"><Gift size={14} /> {g.name || 'Hediye ürün'}</span>
+                    <span>Hediye</span>
+                  </div>
+                ))}
 
                 <div className="border-t border-gray-100 dark:border-slate-800 pt-3">
 
                   <div className="flex justify-between items-baseline">
                     <span className="font-bold text-gray-900 dark:text-white">Toplam</span>
-                    <span className="text-2xl font-black text-blue-600 dark:text-blue-400">{formatTL(total, 2)}</span>
+                    <span className="text-2xl font-black text-blue-600 dark:text-blue-400">{formatTL(totals.total)}</span>
                   </div>
 
-                  <p className="text-xs text-gray-400 dark:text-slate-500 text-right mt-1">KDV dahil (içindeki KDV: {formatTL(includedTax, 2)})</p>
+                  <p className="text-xs text-gray-400 dark:text-slate-500 text-right mt-1">KDV dahil (içindeki KDV: {formatTL(totals.vat)})</p>
 
                 </div>
 
               </div>
 
-              <button onClick={() => navigate(isAuth ? '/payment' : '/auth')} disabled={!canCheckout} className="w-full mt-5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-500/20 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100">
+              <button onClick={goCheckout} disabled={!canCheckout} className="w-full mt-5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-500/20 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100">
                 <CreditCard size={18} />
                 {validating ? 'Kontrol ediliyor…' : isAuth ? 'Siparişi Tamamla' : 'Giriş Yap ve Devam Et'}
               </button>

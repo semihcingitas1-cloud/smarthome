@@ -344,10 +344,14 @@ const MessagesAdminNew = () => {
 
                   return (
 
-                    <button
+                    // İçinde "Sohbeti Sil" butonu olduğu için dış öğe <button> olamaz (buton içinde buton geçersiz HTML)
+                    <div
                       key={c.id}
+                      role="button"
+                      tabIndex={0}
                       onClick={() => openConversation(c.id)}
-                      className={`w-full text-left px-4 py-4 border-b border-gray-100 dark:border-slate-800/60 transition-colors group ${
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openConversation(c.id); } }}
+                      className={`w-full text-left cursor-pointer px-4 py-4 border-b border-gray-100 dark:border-slate-800/60 transition-colors group ${
                         active ? "bg-blue-50 dark:bg-blue-500/10" : "hover:bg-gray-50 dark:hover:bg-slate-800/60"
                       }`}
                     >
@@ -400,7 +404,7 @@ const MessagesAdminNew = () => {
                           </button>
                         </div>
                       </div>
-                    </button>
+                    </div>
                   );
                 })
               )}

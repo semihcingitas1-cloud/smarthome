@@ -108,7 +108,7 @@ const Maintenance = () => {
 
       </div>
 
-      <style jsx>{`
+      <style>{`
         @keyframes progress {
           0% { opacity: 0.6; }
           50% { opacity: 1; }

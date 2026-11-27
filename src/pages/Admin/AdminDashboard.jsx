@@ -209,7 +209,7 @@ const AdminDashboard = () => {
 
                   <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
 
-                    {users.map((user) => ( <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors group">
+                    {users.map((user) => ( <tr key={user._id ?? user.id} className="hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors group">
 
                       <td className="py-4">
 

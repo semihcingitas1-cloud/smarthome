@@ -4,6 +4,7 @@ import { useNavigate, useLocation, Link } from "react-router-dom";
 
 import { logoutUser } from "../redux/userSlice";
 import { fetchNotifications, markNotificationRead, markAllNotificationsRead, deleteNotification, clearNotifications } from "../redux/notificationSlice";
+import { homePathFor } from "../utils/roles";
 
 import { Home, Settings, Bell, User, LogIn, Menu, X, ChevronDown, LogOut, Shield, Wifi, Sun, Moon, LayoutDashboard, Search, Zap, ShoppingCart, HelpCircle, Cpu, AlertCircle, Info } from "lucide-react";
 
@@ -183,7 +184,7 @@ const Header = () => {
       },
       {
         label: "Dashboard",
-        path: role === 'admin' ? "/admin/dashboard" : role === 'editor' ? "/editor/dashboard" : "/user/dashboard",
+        path: homePathFor({ role }),
         icon: <LayoutDashboard size={14} />,
         authRequired: true,
       },

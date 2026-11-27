@@ -7,55 +7,56 @@ import AdminSidebar from '../../layout/AdminSidebar';
 
 import { Search, Filter, Download, RefreshCw, AlertTriangle, Info, XCircle, CheckCircle2, Clock, ShieldAlert, ChevronLeft, ChevronRight, MoreHorizontal } from 'lucide-react';
 
+const PAGE_SIZE = 50;
+
+const formatTime = (iso) => (iso ? new Date(iso).toLocaleTimeString('tr-TR') : '-');
+const formatDay = (iso) => (iso ? new Date(iso).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }) : '');
+
+const toCsv = (rows) => {
+  const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  const head = ['Zaman', 'Seviye', 'Modül', 'Mesaj', 'Kullanıcı', 'IP'];
+  return [head, ...rows.map((r) => [r.timestamp, r.type, r.module, r.message, r.user, r.ip])].map((r) => r.map(esc).join(';')).join('\n');
+};
+
 const AdminLogs = () => {
 
   const dispatch = useDispatch();
 
+  const [searchInput, setSearchInput] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
+  const [page, setPage] = useState(1);
 
-  const { logs, logsLoading, logsError } = useSelector((state) => state.adminUser);
+  const { logs, logsTotal, logsCounts, logsLoading, logsError } = useSelector((state) => state.serverMetrics);
+
+  const totalPages = Math.max(1, Math.ceil((logsTotal || 0) / PAGE_SIZE));
+
+  const load = () => dispatch(getServerLogs({ level: filterType === 'all' ? undefined : filterType, search: searchTerm || undefined, page, limit: PAGE_SIZE }));
 
   useEffect(() => {
+    load();
+  }, [filterType, searchTerm, page]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    if (logsError) {
-
-      alert(logsError);
-    }
-
-    dispatch(getServerLogs({ projectId: 'project-7a6a1a99-6493-4e38-81f', instanceId: 'instance-20260414-102205' }));
-
-  }, [dispatch, logsError]);
+  // Arama: yazmayı bıraktıktan sonra
+  useEffect(() => {
+    const t = setTimeout(() => { setSearchTerm(searchInput.trim()); setPage(1); }, 400);
+    return () => clearTimeout(t);
+  }, [searchInput]);
 
   useEffect(() => {
 
     window.scrollTo(0, 0);
   }, []);
 
-  const logsData = [
-    {
-      id: "LOG-8842",
-      type: "critical",
-      module: "Security",
-      message: "Yetkisiz erişim denemesi tespit edildi (Art arda 15 hatalı şifre)",
-      user: "Bilinmeyen",
-      ip: "192.168.1.105",
-      time: "20:00:12",
-      date: "25 Mayıs 2026"
-    },
-    {
-      id: "LOG-8836",
-      type: "warning",
-      module: "System",
-      message: "Sunucu RAM kullanımı %85 seviyesini aştı.",
-      user: "System",
-      ip: "10.0.0.1",
-      time: "17:30:00",
-      date: "25 Mayıs 2026"
-    }
-  ];
-
-  console.log(logs, logsLoading, logsError);
+  const exportCsv = () => {
+    const blob = new Blob(['\ufeff' + toCsv(logs)], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `sunucu-loglari-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const getLogBadge = (type) => {
 
@@ -98,12 +99,12 @@ const AdminLogs = () => {
             
             <div className="flex items-center gap-3">
 
-              <button className="flex items-center gap-2 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 text-gray-700 dark:text-slate-300 px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors shadow-sm">
-                <RefreshCw size={16} />
+              <button onClick={load} disabled={logsLoading} className="flex items-center gap-2 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 text-gray-700 dark:text-slate-300 px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors shadow-sm disabled:opacity-60">
+                <RefreshCw size={16} className={logsLoading ? 'animate-spin' : ''} />
                 <span className="hidden sm:inline">Yenile</span>
               </button>
 
-              <button className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl font-bold text-sm transition-colors shadow-lg shadow-blue-500/25">
+              <button onClick={exportCsv} disabled={!logs.length} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-4 py-2.5 rounded-xl font-bold text-sm transition-colors shadow-lg shadow-blue-500/25">
                 <Download size={16} />
                 <span className="hidden sm:inline">Dışa Aktar (CSV)</span>
               </button>
@@ -120,7 +121,7 @@ const AdminLogs = () => {
                 <Search size={18} className="text-gray-400" />
               </div>
 
-              <input type="text" placeholder="Log mesajı, IP adresi veya modül ara..." className="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-900 dark:text-white rounded-2xl pl-11 pr-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm font-medium" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}/>
+              <input type="text" placeholder="Log mesajı, IP adresi veya modül ara..." className="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-900 dark:text-white rounded-2xl pl-11 pr-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm font-medium" value={searchInput} onChange={(e) => setSearchInput(e.target.value)}/>
 
             </div>
 
@@ -128,19 +129,22 @@ const AdminLogs = () => {
 
               <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><Filter size={18} className="text-gray-400" /></div>
 
-              <select className="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-900 dark:text-white rounded-2xl pl-11 pr-10 py-3.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm font-bold appearance-none cursor-pointer" value={filterType} onChange={(e) => setFilterType(e.target.value)}>
+              <select className="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-900 dark:text-white rounded-2xl pl-11 pr-10 py-3.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm font-bold appearance-none cursor-pointer" value={filterType} onChange={(e) => { setFilterType(e.target.value); setPage(1); }}>
 
                 <option value="all">Tüm Loglar</option>
-                <option value="critical">Kritikler</option>
-                <option value="error">Hatalar</option>
-                <option value="warning">Uyarılar</option>
-                <option value="info">Bilgiler</option>
+                <option value="error">Hatalar{logsCounts ? ` (${logsCounts.error})` : ''}</option>
+                <option value="warning">Uyarılar{logsCounts ? ` (${logsCounts.warning})` : ''}</option>
+                <option value="info">Bilgiler{logsCounts ? ` (${logsCounts.info})` : ''}</option>
 
               </select>
 
             </div>
             
           </div>
+
+          {logsError && (
+            <div className="mb-6 p-4 rounded-2xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/40 text-sm text-red-700 dark:text-red-400 flex items-center gap-2"><AlertTriangle size={16} /> {logsError}</div>
+          )}
 
           <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-3xl shadow-lg shadow-gray-100/50 dark:shadow-none overflow-hidden">
 
@@ -165,13 +169,17 @@ const AdminLogs = () => {
 
                 <tbody className="divide-y divide-gray-100 dark:divide-slate-800/50">
 
-                  {logsData.map((log, idx) => {
+                  {!logsLoading && logs.length === 0 && (
+                    <tr><td colSpan={6} className="px-6 py-12 text-center text-sm text-gray-500 dark:text-slate-400">Gösterilecek log kaydı yok.</td></tr>
+                  )}
+
+                  {logs.map((log, idx) => {
 
                     const badge = getLogBadge(log.type);
 
                     return (
 
-                      <tr key={idx} className="hover:bg-gray-50/80 dark:hover:bg-slate-800/30 transition-colors group">
+                      <tr key={log.id || idx} className="hover:bg-gray-50/80 dark:hover:bg-slate-800/30 transition-colors group">
                         
                         <td className="px-6 py-4 whitespace-nowrap">
 
@@ -181,8 +189,8 @@ const AdminLogs = () => {
 
                             <div>
 
-                              <p className="font-bold text-gray-900 dark:text-white text-sm">{log.time}</p>
-                              <p className="text-xs text-gray-500 dark:text-slate-500">{log.date}</p>
+                              <p className="font-bold text-gray-900 dark:text-white text-sm">{formatTime(log.timestamp)}</p>
+                              <p className="text-xs text-gray-500 dark:text-slate-500">{formatDay(log.timestamp)}</p>
 
                             </div>
 
@@ -209,15 +217,15 @@ const AdminLogs = () => {
 
                         <td className="px-6 py-4">
 
-                          <p className={`text-sm font-medium line-clamp-2 ${log.type === 'critical' ? 'text-red-600 dark:text-red-400 font-bold' : 'text-gray-700 dark:text-slate-300'}`}>{log.message}</p>
-                          <p className="text-xs text-gray-400 dark:text-slate-500 font-mono mt-1">ID: {log.id}</p>
+                          <p className={`text-sm font-medium line-clamp-2 ${log.type === 'error' ? 'text-red-600 dark:text-red-400' : 'text-gray-700 dark:text-slate-300'}`} title={log.message}>{log.message}</p>
+                          {log.meta && <p className="text-xs text-gray-400 dark:text-slate-500 font-mono mt-1 line-clamp-1" title={JSON.stringify(log.meta)}>{JSON.stringify(log.meta)}</p>}
 
                         </td>
 
                         <td className="px-6 py-4 whitespace-nowrap">
 
-                          <p className="text-sm font-semibold text-gray-900 dark:text-white">{log.user}</p>
-                          <p className="text-xs text-gray-500 dark:text-slate-400 font-mono">{log.ip}</p>
+                          <p className="text-sm font-semibold text-gray-900 dark:text-white">{log.user || 'Sistem'}</p>
+                          <p className="text-xs text-gray-500 dark:text-slate-400 font-mono">{log.ip || '-'}</p>
 
                         </td>
 
@@ -241,29 +249,17 @@ const AdminLogs = () => {
 
             <div className="border-t border-gray-100 dark:border-slate-800 p-4 md:p-6 flex flex-col md:flex-row items-center justify-between gap-4 bg-gray-50/50 dark:bg-slate-900/50">
 
-              <span className="text-sm text-gray-500 dark:text-slate-400 font-medium">Toplam <span className="font-bold text-gray-900 dark:text-white">1,245</span> kayıttan <span className="font-bold text-gray-900 dark:text-white">1-7</span> arası gösteriliyor</span>
-              
+              <span className="text-sm text-gray-500 dark:text-slate-400 font-medium">Toplam <span className="font-bold text-gray-900 dark:text-white">{logsTotal.toLocaleString('tr-TR')}</span> kayıt{logsTotal > 0 && <> · <span className="font-bold text-gray-900 dark:text-white">{(page - 1) * PAGE_SIZE + 1}-{Math.min(page * PAGE_SIZE, logsTotal)}</span> arası</>}</span>
+
               <div className="flex items-center gap-2">
 
-                <button className="p-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-gray-400 hover:text-gray-900 dark:hover:text-white disabled:opacity-50 transition-colors shadow-sm" disabled>
+                <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1} className="p-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-gray-500 hover:text-gray-900 dark:hover:text-white disabled:opacity-50 transition-colors shadow-sm" aria-label="Önceki sayfa">
                   <ChevronLeft size={18} />
                 </button>
 
-                <button className="w-10 h-10 flex items-center justify-center rounded-xl bg-blue-600 text-white font-bold shadow-md shadow-blue-500/20">
-                  1
-                </button>
+                <span className="text-sm font-bold text-gray-700 dark:text-slate-300 px-2">{page} / {totalPages}</span>
 
-                <button className="w-10 h-10 flex items-center justify-center rounded-xl bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-300 font-bold hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">
-                  2
-                </button>
-
-                <button className="w-10 h-10 flex items-center justify-center rounded-xl bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-300 font-bold hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">
-                  3
-                </button>
-
-                <span className="text-gray-400 mx-1">...</span>
-
-                <button className="p-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-gray-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors shadow-sm">
+                <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page >= totalPages} className="p-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-gray-500 hover:text-gray-900 dark:hover:text-white disabled:opacity-50 transition-colors shadow-sm" aria-label="Sonraki sayfa">
                   <ChevronRight size={18} />
                 </button>
 

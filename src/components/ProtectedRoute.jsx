@@ -2,7 +2,7 @@
  * @param {object}   props
  * @param {object}   props.user             - Redux auth state'inden gelen kullanıcı
  * @param {boolean}  props.loading          - Auth kontrol sürüyor mu?
- * @param {string[]} [props.allowedRoles]   - Bu rotaya girebilecek roller. Ör: ['admin', 'moderator']
+ * @param {string[]} [props.allowedRoles]   - Bu rotaya girebilecek roller. Ör: ['admin', 'superadmin']
  * @param {string}   [props.minRole]        - Bu rolden büyük/eşit herkese izin ver. Ör: 'editor'
  * @param {string}   [props.redirectPath]   - Giriş yapılmamışsa yönlendirilecek sayfa
  * @param {string}   [props.unauthorizedPath] - Rol yetersizse yönlendirilecek sayfa
@@ -39,8 +39,6 @@ const ProtectedRoute = ({ user, loading, allowedRoles, minRole, redirectPath = "
     if (minRole) return hasMinRole(user, minRole);
     return false;
   }, [user, allowedRoles, minRole]);
-
-  console.log({ token, tokenIsValid, isExpired, user, loading });
 
   if (loading) {
 

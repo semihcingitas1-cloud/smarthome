@@ -5,6 +5,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { login, register, resendVerification, clearError } from '../../redux/userSlice';
 
 import TwoFactorLoginStep from '../../components/auth/TwoFactorLoginStep';
+import { homePathFor } from '../../utils/roles';
 
 import { Mail, Lock, User, Phone, LogIn, UserPlus, ShieldCheck, Home, Eye, EyeOff, AlertCircle, CheckCircle2, Loader2, Sparkles, Shield, Zap, Github, Chrome, Facebook, ArrowRight, Info, MailCheck, RefreshCw, KeyRound } from 'lucide-react';
 
@@ -59,15 +60,17 @@ const Auth = () => {
 
   useEffect(() => {
 
-    if (isAuth) {
+    if (!isAuth) return undefined;
 
-      setShowSuccessMessage(true);
-      setTimeout(() => {
+    setShowSuccessMessage(true);
 
-        user?.user?.role === 'admin' ? navigate('/admin/dashboard') : navigate('/user/dashboard');
-      }, 1500);
-    }
-  }, [isAuth, navigate]);
+    // Sepetten gelindiyse oraya dön (?redirect=/cart); sadece site içi adreslere izin var
+    const redirect = searchParams.get('redirect');
+    const target = redirect && redirect.startsWith('/') && !redirect.startsWith('//') ? redirect : homePathFor(user);
+    const timer = setTimeout(() => navigate(target, { replace: true }), 1500);
+
+    return () => clearTimeout(timer);
+  }, [isAuth, navigate]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
 

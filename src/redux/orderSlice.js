@@ -1,14 +1,19 @@
-// src/store/orderSlice.js
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
 
-const BASE_URL = "https://ornekciceksitesi.com";
+import { BASE_URL, authHeaders } from '../utils/checkout';
 
-const authHeaders = () => ({
-  headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+const config = (extra = {}) => ({ headers: authHeaders(), ...extra });
+
+const toError = (error, fallback) => ({
+  message: error.response?.data?.message || fallback,
+  code: error.response?.data?.code || null,
+  status: error.response?.status || null,
+  data: error.response?.data || null,
 });
 
-// Editör: sadece kendisine atanan siparişler, admin: hepsi (filtre backend'de)
+// ───────────────────────── EDİTÖR / ADMİN ─────────────────────────
+
 export const fetchOrders = createAsyncThunk(
   'orders/fetchOrders',
   async ({ status, search, page = 1, limit = 20 } = {}, { rejectWithValue }) => {
@@ -17,7 +22,7 @@ export const fetchOrders = createAsyncThunk(
       if (status) params.status = status;
       if (search) params.search = search;
 
-      const { data } = await axios.get(`${BASE_URL}/admin/orders`, { ...authHeaders(), params });
+      const { data } = await axios.get(`${BASE_URL}/admin/orders`, config({ params }));
       return data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Siparişler alınamadı.');
@@ -32,7 +37,7 @@ export const updateOrderStatus = createAsyncThunk(
       const { data } = await axios.put(
         `${BASE_URL}/admin/orders/${orderId}/status`,
         { status, note, trackingNumber, carrier },
-        authHeaders()
+        config()
       );
       return data.order;
     } catch (error) {
@@ -41,7 +46,104 @@ export const updateOrderStatus = createAsyncThunk(
   }
 );
 
+// ───────────────────────── MÜŞTERİ ─────────────────────────
+
+/**
+ * payload: { items, shippingAddress, payment: { method, cardLast4? }, couponCode?, expectedTotal?, notes? }
+ * Fiyat ve indirim sunucuda hesaplanır; expectedTotal ekranda gösterilen toplamdır.
+ */
+export const placeOrder = createAsyncThunk(
+  'orders/placeOrder',
+  async (payload, { rejectWithValue }) => {
+    try {
+      const { data } = await axios.post(`${BASE_URL}/orders`, { ...payload, platform: 'web', source: 'web' }, config());
+      return data.order;
+    } catch (error) {
+      return rejectWithValue(toError(error, 'Sipariş oluşturulamadı.'));
+    }
+  }
+);
+
+export const fetchMyOrders = createAsyncThunk(
+  'orders/fetchMyOrders',
+  async ({ status, page = 1, limit = 10 } = {}, { rejectWithValue }) => {
+    try {
+      const params = { page, limit };
+      if (status) params.status = status;
+      const { data } = await axios.get(`${BASE_URL}/orders/my-orders`, config({ params }));
+      return data;
+    } catch (error) {
+      return rejectWithValue(toError(error, 'Siparişler alınamadı.'));
+    }
+  }
+);
+
+export const fetchMyOrder = createAsyncThunk(
+  'orders/fetchMyOrder',
+  async (id, { rejectWithValue }) => {
+    try {
+      const { data } = await axios.get(`${BASE_URL}/orders/${id}`, config());
+      return data.order;
+    } catch (error) {
+      return rejectWithValue(toError(error, 'Sipariş bulunamadı.'));
+    }
+  }
+);
+
+export const cancelMyOrder = createAsyncThunk(
+  'orders/cancelMyOrder',
+  async ({ id, reason }, { rejectWithValue }) => {
+    try {
+      const { data } = await axios.patch(`${BASE_URL}/orders/${id}/cancel`, { reason }, config());
+      return data.order;
+    } catch (error) {
+      return rejectWithValue(toError(error, 'Sipariş iptal edilemedi.'));
+    }
+  }
+);
+
+export const requestOrderReturn = createAsyncThunk(
+  'orders/requestOrderReturn',
+  async ({ id, reason }, { rejectWithValue }) => {
+    try {
+      const { data } = await axios.post(`${BASE_URL}/orders/${id}/return`, { reason }, config());
+      return data.order;
+    } catch (error) {
+      return rejectWithValue(toError(error, 'İade talebi oluşturulamadı.'));
+    }
+  }
+);
+
+// ───────────────────────── ADRESLER ─────────────────────────
+
+export const fetchAddresses = createAsyncThunk(
+  'orders/fetchAddresses',
+  async (_, { rejectWithValue }) => {
+    try {
+      const { data } = await axios.get(`${BASE_URL}/addresses`, config());
+      return data.addresses ?? [];
+    } catch (error) {
+      return rejectWithValue(toError(error, 'Adresler alınamadı.'));
+    }
+  }
+);
+
+export const addAddress = createAsyncThunk(
+  'orders/addAddress',
+  async (address, { rejectWithValue }) => {
+    try {
+      const { data } = await axios.post(`${BASE_URL}/addresses`, address, config());
+      return data.addresses ?? [];
+    } catch (error) {
+      return rejectWithValue(toError(error, 'Adres eklenemedi.'));
+    }
+  }
+);
+
+// ───────────────────────── SLICE ─────────────────────────
+
 const initialState = {
+  // editör / admin
   orders: [],
   selectedOrder: null,
   filters: { status: '', search: '' },
@@ -49,7 +151,23 @@ const initialState = {
   updating: false,
   error: null,
   pagination: { total: 0, page: 1, limit: 20, totalPages: 0 },
+
+  // müşteri
+  myOrders: [],
+  myOrdersLoading: false,
+  myOrdersError: null,
+  myPagination: { total: 0, page: 1, limit: 10, totalPages: 0 },
+  currentOrder: null,
+  placing: false,
+  actionLoading: false,
+
+  addresses: [],
+  addressesLoading: false,
+  addressesLoaded: false,
 };
+
+// Listedeki dolu alanları (populate edilmiş ürün, kullanıcı) bozmadan güncelle
+const mergeOrder = (list, updated) => list.map((o) => (o._id === updated._id ? { ...o, ...updated, user: o.user ?? updated.user, items: o.items ?? updated.items } : o));
 
 const orderSlice = createSlice({
   name: 'orders',
@@ -66,6 +184,9 @@ const orderSlice = createSlice({
     },
     clearOrderError: (state) => {
       state.error = null;
+    },
+    setCurrentOrder: (state, action) => {
+      state.currentOrder = action.payload;
     },
     resetOrders: () => initialState,
   },
@@ -106,9 +227,79 @@ const orderSlice = createSlice({
       .addCase(updateOrderStatus.rejected, (state, action) => {
         state.updating = false;
         state.error = action.payload;
+      })
+
+      .addCase(placeOrder.pending, (state) => {
+        state.placing = true;
+      })
+      .addCase(placeOrder.fulfilled, (state, action) => {
+        state.placing = false;
+        state.currentOrder = action.payload;
+        state.myOrders = [action.payload, ...state.myOrders.filter((o) => o._id !== action.payload._id)];
+      })
+      .addCase(placeOrder.rejected, (state) => {
+        state.placing = false;
+      })
+
+      .addCase(fetchMyOrders.pending, (state) => {
+        state.myOrdersLoading = true;
+        state.myOrdersError = null;
+      })
+      .addCase(fetchMyOrders.fulfilled, (state, action) => {
+        state.myOrdersLoading = false;
+        state.myOrders = action.payload.orders ?? [];
+        state.myPagination = action.payload.pagination ?? state.myPagination;
+      })
+      .addCase(fetchMyOrders.rejected, (state, action) => {
+        state.myOrdersLoading = false;
+        state.myOrdersError = action.payload?.message;
+      })
+
+      .addCase(fetchMyOrder.fulfilled, (state, action) => {
+        state.currentOrder = action.payload;
+        state.myOrders = mergeOrder(state.myOrders, action.payload);
+      })
+
+      .addCase(cancelMyOrder.pending, (state) => {
+        state.actionLoading = true;
+      })
+      .addCase(cancelMyOrder.fulfilled, (state, action) => {
+        state.actionLoading = false;
+        state.myOrders = mergeOrder(state.myOrders, action.payload);
+        if (state.currentOrder?._id === action.payload._id) state.currentOrder = { ...state.currentOrder, ...action.payload };
+      })
+      .addCase(cancelMyOrder.rejected, (state) => {
+        state.actionLoading = false;
+      })
+
+      .addCase(requestOrderReturn.pending, (state) => {
+        state.actionLoading = true;
+      })
+      .addCase(requestOrderReturn.fulfilled, (state, action) => {
+        state.actionLoading = false;
+        state.myOrders = mergeOrder(state.myOrders, action.payload);
+      })
+      .addCase(requestOrderReturn.rejected, (state) => {
+        state.actionLoading = false;
+      })
+
+      .addCase(fetchAddresses.pending, (state) => {
+        state.addressesLoading = true;
+      })
+      .addCase(fetchAddresses.fulfilled, (state, action) => {
+        state.addressesLoading = false;
+        state.addressesLoaded = true;
+        state.addresses = action.payload;
+      })
+      .addCase(fetchAddresses.rejected, (state) => {
+        state.addressesLoading = false;
+        state.addressesLoaded = true;
+      })
+      .addCase(addAddress.fulfilled, (state, action) => {
+        state.addresses = action.payload;
       });
   },
 });
 
-export const { selectOrder, clearSelectedOrder, setFilters, clearOrderError, resetOrders } = orderSlice.actions;
+export const { selectOrder, clearSelectedOrder, setFilters, clearOrderError, setCurrentOrder, resetOrders } = orderSlice.actions;
 export default orderSlice.reducer;

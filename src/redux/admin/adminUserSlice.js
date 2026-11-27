@@ -68,7 +68,8 @@ export const updateUserRole = createAsyncThunk(
 
         try {
 
-            const { data } = await axios.patch( `${BASE_URL}/admin/users/${userId}/role`, { role }, getAuthConfig() );
+            // Sunucuda tek güncelleme adresi var: PUT /admin/users/:id (rol değişikliği sadece superadmin)
+            const { data } = await axios.put( `${BASE_URL}/admin/users/${userId}`, { role }, getAuthConfig() );
             return data.user;
         } catch (error) {
 
@@ -85,7 +86,7 @@ export const updateUserStatus = createAsyncThunk(
 
         try {
 
-            const { data } = await axios.patch( `${BASE_URL}/admin/users/${userId}/status`, { isActive }, getAuthConfig() );
+            const { data } = await axios.put( `${BASE_URL}/admin/users/${userId}`, { isActive }, getAuthConfig() );
             return data.user;
         } catch (error) {
 
@@ -119,8 +120,15 @@ export const deleteManyUsers = createAsyncThunk(
 
         try {
 
-            await axios.post(`${BASE_URL}/admin/users/bulk-delete`, { ids: userIds }, getAuthConfig());
-            return userIds;
+            // Sunucuda toplu silme adresi yok: tek tek silinir, silinemeyenler bildirilir
+            const results = await Promise.allSettled(userIds.map((id) => axios.delete(`${BASE_URL}/admin/users/${id}`, getAuthConfig())));
+            const deleted = userIds.filter((_, i) => results[i].status === 'fulfilled');
+            const failed = results.filter((r) => r.status === 'rejected');
+
+            if (!deleted.length) {
+                return rejectWithValue(failed[0]?.reason?.response?.data || { message: 'Kullanıcılar silinemedi.' });
+            }
+            return deleted;
         } catch (error) {
 
             return rejectWithValue(error.response?.data || { message: 'Toplu silme başarısız.' });
@@ -136,9 +144,9 @@ export const verifyUserEmail = createAsyncThunk(
 
         try {
 
-            const { data } = await axios.patch(
-                `${BASE_URL}/admin/users/${userId}/verify-email`,
-                {},
+            const { data } = await axios.put(
+                `${BASE_URL}/admin/users/${userId}`,
+                { isEmailVerified: true },
                 getAuthConfig()
             );
             return data.user;

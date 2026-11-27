@@ -38,6 +38,8 @@ const initialState = {
   },
 
   logs: [],
+  logsTotal: 0,
+  logsCounts: null,
 
   metricsLoading: false,
   logsLoading: false,
@@ -96,25 +98,27 @@ export const getServerMetrics = createAsyncThunk(
 
 // ======================================================
 // SUNUCU LOGLARI
-// Bu endpoint backend'de ayrıca tanımlı olmalıdır.
+// GET /admin/server/logs → sunucudaki winston log dosyaları
 // ======================================================
 
 export const getServerLogs = createAsyncThunk(
   'serverMetrics/getServerLogs',
-  async ({ projectId, instanceId } = {}, { rejectWithValue }) => {
+  async ({ level, search, page = 1, limit = 50 } = {}, { rejectWithValue }) => {
     try {
       const { data } = await axios.get(
         `${BASE_URL}/admin/server/logs`,
         {
           ...getAuthConfig(),
           params: {
-            ...(projectId ? { projectId } : {}),
-            ...(instanceId ? { instanceId } : {})
+            page,
+            limit,
+            ...(level ? { level } : {}),
+            ...(search ? { search } : {})
           }
         }
       );
 
-      return data.data ?? [];
+      return { data: data.data ?? [], total: data.total ?? 0, counts: data.counts ?? null };
     } catch (error) {
       return rejectWithValue(
         error.response?.data || {
@@ -184,7 +188,9 @@ const serverMetricsSlice = createSlice({
       })
       .addCase(getServerLogs.fulfilled, (state, action) => {
         state.logsLoading = false;
-        state.logs = action.payload;
+        state.logs = action.payload.data;
+        state.logsTotal = action.payload.total;
+        state.logsCounts = action.payload.counts;
       })
       .addCase(getServerLogs.rejected, (state, action) => {
         state.logsLoading = false;

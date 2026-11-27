@@ -47,6 +47,7 @@ const ROLE_MAP = {
 
   superadmin: { label: 'Süper Admin', icon: ShieldCheck, cls: "text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-500/10" },
   admin:      { label: 'Admin',       icon: Shield,      cls: "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10" },
+  editor:     { label: 'Editör',      icon: Shield,      cls: "text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10" },
   user:       { label: 'Kullanıcı',   icon: User,        cls: "text-gray-500 dark:text-slate-400 bg-gray-100 dark:bg-slate-800" },
 };
 
@@ -190,6 +191,7 @@ const UserDrawer = ({ user, dispatch, actionLoading, onClose, onDelete }) => {
               <select value={newRole} onChange={e => setNewRole(e.target.value)} className="flex-1 text-xs rounded-lg px-2 py-1.5 border bg-white dark:bg-slate-700 border-gray-200 dark:border-slate-600 text-gray-800 dark:text-white outline-none">
 
                 <option value="user">Kullanıcı</option>
+                <option value="editor">Editör</option>
                 <option value="admin">Admin</option>
                 <option value="superadmin">Süper Admin</option>
 
@@ -401,6 +403,7 @@ const AdminUsers = () => {
                     <option value="all">Tüm Roller</option>
                     <option value="superadmin">Süper Admin</option>
                     <option value="admin">Admin</option>
+                    <option value="editor">Editör</option>
                     <option value="user">Kullanıcı</option>
 
                   </select>

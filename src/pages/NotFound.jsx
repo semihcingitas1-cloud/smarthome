@@ -279,7 +279,7 @@ const NotFound = () => {
 
       </div>
 
-      <style jsx>{`
+      <style>{`
 
         @keyframes glitch {
 

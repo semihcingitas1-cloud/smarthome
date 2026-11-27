@@ -1,11 +1,11 @@
 import axios from 'axios';
 
 const BASE_URL = "https://ornekciceksitesi.com";
-// automationSlice ile aynı önek; orada değiştirirsen burada da değiştir
-const API_URL = `${BASE_URL}/api`;
+// Sunucudaki tüm route'lar kökte (index.js: app.use('/', ...)); automationSlice ile aynı
+const API_URL = BASE_URL;
 
 // Onay isteklerinin adresleri: mobildeki services/approvals.js ile aynı olmalı
-const APPROVALS_PENDING_PATH = '/automation/approvals/pending';
+const APPROVALS_PENDING_PATH = '/automation/approvals';
 const approvalRespondPath = (id) => `/automation/approvals/${id}/respond`;
 
 const request = async (method, path, body) => {

@@ -1,787 +1,532 @@
-import React, { useState } from 'react';
-import { CreditCard, Building2, Lock, CheckCircle, ArrowLeft, AlertCircle, Shield, Zap, Calendar, User, Hash, ChevronRight, Info, Copy } from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { Link, useNavigate } from 'react-router-dom';
+import { CreditCard, Building2, Lock, CheckCircle, ArrowLeft, AlertCircle, Shield, Calendar, User, Hash, ChevronRight, Info, Copy, MapPin, Plus, Loader2, Gift, Sparkles, Ticket, Phone, Home, X, ShoppingBag } from 'lucide-react';
+
+import { fetchQuote, validateCart, clearCart, removeCoupon } from '../../redux/cartSlice';
+import { placeOrder, fetchAddresses, addAddress } from '../../redux/orderSlice';
+import {
+  formatTL, toOrderItems, calcLocalTotals, cardBrand, cvvLength, formatCardNumber, formatExpiry, validateCard,
+  validateAddress, formatPhone, isAddressComplete, toShippingAddress, BANK_ACCOUNTS,
+} from '../../utils/checkout';
+
+const PROVINCES = ['Adana', 'Adıyaman', 'Afyonkarahisar', 'Ağrı', 'Aksaray', 'Amasya', 'Ankara', 'Antalya', 'Ardahan', 'Artvin', 'Aydın', 'Balıkesir', 'Bartın', 'Batman', 'Bayburt', 'Bilecik', 'Bingöl', 'Bitlis', 'Bolu', 'Burdur', 'Bursa', 'Çanakkale', 'Çankırı', 'Çorum', 'Denizli', 'Diyarbakır', 'Düzce', 'Edirne', 'Elazığ', 'Erzincan', 'Erzurum', 'Eskişehir', 'Gaziantep', 'Giresun', 'Gümüşhane', 'Hakkari', 'Hatay', 'Iğdır', 'Isparta', 'İstanbul', 'İzmir', 'Kahramanmaraş', 'Karabük', 'Karaman', 'Kars', 'Kastamonu', 'Kayseri', 'Kilis', 'Kırıkkale', 'Kırklareli', 'Kırşehir', 'Kocaeli', 'Konya', 'Kütahya', 'Malatya', 'Manisa', 'Mardin', 'Mersin', 'Muğla', 'Muş', 'Nevşehir', 'Niğde', 'Ordu', 'Osmaniye', 'Rize', 'Sakarya', 'Samsun', 'Şanlıurfa', 'Siirt', 'Sinop', 'Şırnak', 'Sivas', 'Tekirdağ', 'Tokat', 'Trabzon', 'Tunceli', 'Uşak', 'Van', 'Yalova', 'Yozgat', 'Zonguldak'];
+
+// Bu hatalarda kullanıcı sepete dönüp düzeltmeli
+const CART_ERRORS = ['INSUFFICIENT_STOCK', 'OUT_OF_STOCK', 'UNAVAILABLE', 'MODEL_REQUIRED', 'GIFT_OUT_OF_STOCK', 'EMPTY_CART', 'INVALID_CART'];
+
+const EMPTY_ADDRESS = { title: 'Ev', fullName: '', phone: '', city: '', district: '', address: '', zipCode: '' };
+
+const inputCls = (error) => `w-full bg-gray-50 dark:bg-slate-800 border ${error ? 'border-red-500' : 'border-gray-300 dark:border-slate-700'} rounded-xl px-4 py-3 text-gray-900 dark:text-white focus:outline-none focus:border-blue-500 transition-colors`;
+
+const FieldError = ({ children }) => (children ? <p className="text-red-500 text-xs mt-1 flex items-center gap-1"><AlertCircle size={12} />{children}</p> : null);
+
+const Card = ({ title, icon: Icon, right, children }) => (
+  <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-3xl p-6 shadow-lg dark:shadow-none">
+    <div className="flex items-center justify-between mb-4 gap-3">
+      <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">{Icon && <Icon size={20} className="text-blue-600 dark:text-blue-400" />}{title}</h2>
+      {right}
+    </div>
+    {children}
+  </div>
+);
+
+// ───────────────────────── ADRES ─────────────────────────
+
+const AddressForm = ({ onSaved, onCancel, canCancel }) => {
+
+  const dispatch = useDispatch();
+  const [form, setForm] = useState(EMPTY_ADDRESS);
+  const [errors, setErrors] = useState({});
+  const [saving, setSaving] = useState(false);
+  const [serverError, setServerError] = useState('');
+
+  const set = (key) => (e) => {
+    const value = key === 'phone' ? formatPhone(e.target.value) : e.target.value;
+    setForm((f) => ({ ...f, [key]: value }));
+    if (errors[key]) setErrors((x) => ({ ...x, [key]: null }));
+  };
+
+  const submit = async (e) => {
+    e.preventDefault();
+    const found = validateAddress(form);
+    setErrors(found);
+    if (Object.keys(found).length) return;
+
+    setSaving(true);
+    setServerError('');
+    try {
+      const payload = Object.fromEntries(Object.entries(form).map(([k, v]) => [k, typeof v === 'string' ? v.trim() : v]));
+      payload.phone = payload.phone.replace(/\s/g, '');
+      const addresses = await dispatch(addAddress(payload)).unwrap();
+      onSaved(addresses);
+    } catch (err) {
+      setServerError(err?.message || 'Adres eklenemedi.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <form onSubmit={submit} className="space-y-3 mt-2" noValidate>
+      <div className="grid sm:grid-cols-2 gap-3">
+        <div>
+          <label className="text-sm font-semibold mb-1.5 block text-gray-700 dark:text-slate-300">Adres başlığı</label>
+          <input value={form.title} onChange={set('title')} placeholder="Ev, İş..." className={inputCls(errors.title)} maxLength={30} />
+          <FieldError>{errors.title}</FieldError>
+        </div>
+        <div>
+          <label className="text-sm font-semibold mb-1.5 block text-gray-700 dark:text-slate-300">Ad soyad</label>
+          <input value={form.fullName} onChange={set('fullName')} autoComplete="name" className={inputCls(errors.fullName)} maxLength={80} />
+          <FieldError>{errors.fullName}</FieldError>
+        </div>
+        <div>
+          <label className="text-sm font-semibold mb-1.5 block text-gray-700 dark:text-slate-300">Cep telefonu</label>
+          <input value={form.phone} onChange={set('phone')} inputMode="tel" autoComplete="tel" placeholder="05xx xxx xx xx" className={inputCls(errors.phone)} />
+          <FieldError>{errors.phone}</FieldError>
+        </div>
+        <div>
+          <label className="text-sm font-semibold mb-1.5 block text-gray-700 dark:text-slate-300">İl</label>
+          <input value={form.city} onChange={set('city')} list="tr-provinces" placeholder="Örn. Ankara" className={inputCls(errors.city)} />
+          <datalist id="tr-provinces">{PROVINCES.map((p) => <option key={p} value={p} />)}</datalist>
+          <FieldError>{errors.city}</FieldError>
+        </div>
+        <div>
+          <label className="text-sm font-semibold mb-1.5 block text-gray-700 dark:text-slate-300">İlçe</label>
+          <input value={form.district} onChange={set('district')} placeholder="Örn. Çankaya" className={inputCls(errors.district)} maxLength={60} />
+          <FieldError>{errors.district}</FieldError>
+        </div>
+        <div>
+          <label className="text-sm font-semibold mb-1.5 block text-gray-700 dark:text-slate-300">Posta kodu <span className="font-normal text-gray-400">(isteğe bağlı)</span></label>
+          <input value={form.zipCode} onChange={set('zipCode')} inputMode="numeric" maxLength={5} className={inputCls(false)} />
+        </div>
+      </div>
+      <div>
+        <label className="text-sm font-semibold mb-1.5 block text-gray-700 dark:text-slate-300">Açık adres</label>
+        <textarea value={form.address} onChange={set('address')} rows={2} placeholder="Mahalle, cadde, sokak, bina ve daire no" className={inputCls(errors.address)} maxLength={300} />
+        <FieldError>{errors.address}</FieldError>
+      </div>
+      {serverError && <p className="text-sm text-red-500">{serverError}</p>}
+      <div className="flex gap-2 justify-end">
+        {canCancel && <button type="button" onClick={onCancel} className="px-4 py-2.5 rounded-xl text-sm font-semibold text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800">Vazgeç</button>}
+        <button type="submit" disabled={saving} className="px-5 py-2.5 rounded-xl text-sm font-bold bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-60 flex items-center gap-2">
+          {saving && <Loader2 size={16} className="animate-spin" />} Adresi kaydet
+        </button>
+      </div>
+    </form>
+  );
+};
+
+// ───────────────────────── KART ÖNİZLEME ─────────────────────────
+
+const CardPreview = ({ card, flipped }) => {
+  const brand = cardBrand(card.number);
+  return (
+    <div className="mb-6" style={{ perspective: 1000 }}>
+      <div className="relative w-full max-w-sm mx-auto h-52 transition-transform duration-700" style={{ transformStyle: 'preserve-3d', transform: flipped ? 'rotateY(180deg)' : 'none' }}>
+        <div className="absolute inset-0 rounded-2xl p-6 shadow-2xl overflow-hidden bg-gradient-to-br from-blue-600 via-blue-700 to-purple-600" style={{ backfaceVisibility: 'hidden' }}>
+          <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16" />
+          <div className="w-12 h-9 bg-gradient-to-br from-yellow-200 to-yellow-400 rounded-md mb-7" />
+          <p className="text-white text-xl font-mono tracking-wider mb-5">{card.number || '•••• •••• •••• ••••'}</p>
+          <div className="flex justify-between items-end">
+            <div>
+              <p className="text-white/60 text-[10px] uppercase mb-1">Kart Sahibi</p>
+              <p className="text-white font-semibold uppercase text-sm truncate max-w-[180px]">{card.name || 'AD SOYAD'}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-white/60 text-[10px] uppercase mb-1">Son Kullanma</p>
+              <p className="text-white font-semibold text-sm">{card.expiry || 'AA/YY'}</p>
+            </div>
+          </div>
+          <div className="absolute top-6 right-6 text-white font-bold">
+            {brand === 'visa' && <span className="text-2xl italic">VISA</span>}
+            {brand === 'mastercard' && <span className="flex"><span className="w-7 h-7 bg-red-500 rounded-full opacity-90" /><span className="w-7 h-7 bg-yellow-500 rounded-full -ml-3 opacity-90" /></span>}
+            {brand === 'troy' && <span className="text-xl">TROY</span>}
+            {brand === 'amex' && <span className="text-lg">AMEX</span>}
+          </div>
+        </div>
+        <div className="absolute inset-0 rounded-2xl shadow-2xl overflow-hidden bg-gradient-to-br from-gray-700 via-gray-800 to-gray-900" style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}>
+          <div className="w-full h-11 bg-black mt-6" />
+          <div className="p-6">
+            <div className="bg-white rounded h-10 flex items-center justify-end px-4"><span className="text-black font-mono text-lg">{card.cvv || '•••'}</span></div>
+            <p className="text-white/60 text-xs mt-2">CVV</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ───────────────────────── SAYFA ─────────────────────────
 
 const PaymentPage = () => {
 
-  const [paymentMethod, setPaymentMethod] = useState('card');
-  const [isFlipped, setIsFlipped] = useState(false);
-  const [cardData, setCardData] = useState({ number: '', name: '', expiry: '', cvv: '' });
-  const [errors, setErrors] = useState({});
-  const [isProcessing, setIsProcessing] = useState(false);
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+
+  const { carts, couponCode, quote, quoting, quoteStale, quoteError } = useSelector((s) => s.cart);
+  const { addresses, addressesLoaded, placing } = useSelector((s) => s.orders);
+
+  const [selectedAddressId, setSelectedAddressId] = useState(null);
+  const [showAddressForm, setShowAddressForm] = useState(false);
+  const [method, setMethod] = useState('card');
+  const [card, setCard] = useState({ number: '', name: '', expiry: '', cvv: '' });
+  const [cardErrors, setCardErrors] = useState({});
+  const [flipped, setFlipped] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
-  const [toast, setToast] = useState(null);
+  const [banner, setBanner] = useState(null); // { type: 'error'|'info', text }
+  const [copied, setCopied] = useState(null);
+  const placedRef = useRef(false);
 
-  const [selectedPlan] = useState({
+  const activeItems = carts.filter((i) => !i.unavailable);
+  const selectedAddress = addresses.find((a) => a._id === selectedAddressId) || null;
+  const paymentMethod = method === 'card' ? 'credit_card' : 'bank_transfer';
 
-    name: 'Profesyonel',
-    price: 299,
-    period: '/ay',
-    features: ['Sınırsız Cihaz', '3 Lokasyon', 'AI Otomasyon']
-  });
+  useEffect(() => {
+    window.scrollTo(0, 0);
+    dispatch(fetchAddresses());
+    dispatch(validateCart());
+  }, [dispatch]);
 
-  const banks = [
-
-    { id: 1, name: 'Ziraat Bankası', iban: 'TR33 0001 1000 0000 0012 3456 78', logo: '🏦' },
-    { id: 2, name: 'İş Bankası', iban: 'TR33 0006 4000 0011 2345 6789 01', logo: '🏛️' },
-    { id: 3, name: 'Garanti BBVA', iban: 'TR33 0006 2000 0123 4567 8901 23', logo: '🏢' }
-  ];
-
-  const showToast = (message, type = 'success') => {
-
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 3000);
-  };
-
-  const formatCardNumber = (value) => {
-
-    const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
-    const matches = v.match(/\d{4,16}/g);
-    const match = (matches && matches[0]) || '';
-    const parts = [];
-
-    for (let i = 0, len = match.length; i < len; i += 4) {
-
-      parts.push(match.substring(i, i + 4));
-    }
-    return parts.length ? parts.join(' ') : value;
-  };
-
-  const formatExpiry = (value) => {
-
-    const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
-
-    if (v.length >= 2) {
-
-      return v.slice(0, 2) + '/' + v.slice(2, 4);
-    }
-    return v;
-  };
-
-  const getCardType = (number) => {
-
-    const num = number.replace(/\s/g, '');
-    if (num.startsWith('4')) return 'visa';
-    if (num.startsWith('5')) return 'mastercard';
-    if (num.startsWith('9792')) return 'troy';
-    return 'generic';
-  };
-
-  const validateCardNumber = (number) => {
-
-    const cleaned = number.replace(/\s/g, '');
-    if (!cleaned) return 'Kart numarası gereklidir';
-    if (cleaned.length !== 16) return 'Kart numarası 16 haneli olmalıdır';
-    
-    let sum = 0;
-    let isEven = false;
-
-    for (let i = cleaned.length - 1; i >= 0; i--) {
-
-      let digit = parseInt(cleaned[i]);
-
-      if (isEven) {
-
-        digit *= 2;
-        if (digit > 9) digit -= 9;
-      }
-
-      sum += digit;
-      isEven = !isEven;
-    }
-
-    if (sum % 10 !== 0) return 'Geçersiz kart numarası';
-    return null;
-  };
-
-  const validateExpiry = (expiry) => {
-
-    if (!expiry) return 'Son kullanma tarihi gereklidir';
-    const [month, year] = expiry.split('/');
-    if (!month || !year) return 'Geçersiz tarih formatı';
-    
-    const currentYear = new Date().getFullYear() % 100;
-    const currentMonth = new Date().getMonth() + 1;
-    
-    const expMonth = parseInt(month);
-    const expYear = parseInt(year);
-    
-    if (expMonth < 1 || expMonth > 12) return 'Geçersiz ay';
-    if (expYear < currentYear) return 'Kartın süresi dolmuş';
-    if (expYear === currentYear && expMonth < currentMonth) return 'Kartın süresi dolmuş';
-    
-    return null;
-  };
-
-  const validateCVV = (cvv) => {
-
-    if (!cvv) return 'CVV gereklidir';
-    if (cvv.length !== 3) return 'CVV 3 haneli olmalıdır';
-    return null;
-  };
-
-  const validateName = (name) => {
-
-    if (!name) return 'Kart sahibinin adı gereklidir';
-    if (name.length < 3) return 'İsim çok kısa';
-    if (!/^[a-zA-ZğüşıöçĞÜŞİÖÇ\s]+$/.test(name)) return 'İsim sadece harf içermelidir';
-    return null;
-  };
-
-  const handleCardNumberChange = (e) => {
-
-    const formatted = formatCardNumber(e.target.value);
-
-    if (formatted.replace(/\s/g, '').length <= 16) {
-
-      setCardData({ ...cardData, number: formatted });
-      if (errors.number) {
-
-        setErrors({ ...errors, number: null });
-      }
-    }
-  };
-
-  const handleExpiryChange = (e) => {
-
-    const formatted = formatExpiry(e.target.value);
-
-    if (formatted.replace('/', '').length <= 4) {
-
-      setCardData({ ...cardData, expiry: formatted });
-
-      if (errors.expiry) {
-
-        setErrors({ ...errors, expiry: null });
-      }
-    }
-  };
-
-  const handleCvvChange = (e) => {
-
-    const value = e.target.value.replace(/\D/g, '');
-
-    if (value.length <= 3) {
-
-      setCardData({ ...cardData, cvv: value });
-
-      if (errors.cvv) {
-
-        setErrors({ ...errors, cvv: null });
-      }
-    }
-  };
-
-  const handleNameChange = (e) => {
-
-    const value = e.target.value.toUpperCase();
-    setCardData({ ...cardData, name: value });
-
-    if (errors.name) {
-
-      setErrors({ ...errors, name: null });
-    }
-  };
-
-  const handleCvvFocus = () => setIsFlipped(true);
-  const handleCvvBlur = () => {
-
-    setIsFlipped(false);
-    const error = validateCVV(cardData.cvv);
-
-    if (error && cardData.cvv) {
-
-      setErrors({ ...errors, cvv: error });
-    }
-  };
-
-  const copyToClipboard = async (text, bankName) => {
-
-    try {
-
-      await navigator.clipboard.writeText(text);
-      showToast(`${bankName} IBAN numarası kopyalandı`, 'success');
-    } catch (err) {
-
-      showToast('Kopyalama başarısız', 'error');
-    }
-  };
-
-  const handlePayment = async () => {
-
-    if (!termsAccepted) {
-
-      showToast('Lütfen kullanım koşullarını kabul edin', 'error');
+  // Varsayılan adres seçili gelir
+  useEffect(() => {
+    if (!addressesLoaded) return;
+    if (!addresses.length) {
+      setShowAddressForm(true);
       return;
     }
+    if (!selectedAddressId || !addresses.some((a) => a._id === selectedAddressId)) {
+      setSelectedAddressId((addresses.find((a) => a.isDefault) || addresses[0])._id);
+    }
+  }, [addressesLoaded, addresses, selectedAddressId]);
 
-    if (paymentMethod === 'card') {
+  // Ödeme yöntemi ve şehir bazı kuponları etkiler; değişince sunucu yeniden hesaplar
+  const cartSignature = carts.map((i) => `${i.cartKey}:${i.quantity}:${i.unavailable ? 0 : 1}`).join('|');
+  useEffect(() => {
+    if (!carts.length) return;
+    dispatch(fetchQuote({ paymentMethod, city: selectedAddress?.city }));
+  }, [dispatch, paymentMethod, selectedAddress?.city, couponCode, cartSignature]); // eslint-disable-line react-hooks/exhaustive-deps
 
-      const newErrors = {
+  const localTotals = useMemo(() => calcLocalTotals(carts), [carts]);
+  const ready = !!quote && !quoteStale && !quoting;
+  const totals = quote && !quoteStale ? quote.totals : localTotals;
+  const applied = quote && !quoteStale ? quote.applied ?? [] : [];
+  const issues = quote && !quoteStale ? quote.issues ?? [] : [];
 
-        number: validateCardNumber(cardData.number),
-        name: validateName(cardData.name),
-        expiry: validateExpiry(cardData.expiry),
-        cvv: validateCVV(cardData.cvv)
-      };
+  const setCardField = (key, value) => {
+    setCard((c) => ({ ...c, [key]: value }));
+    if (cardErrors[key]) setCardErrors((e) => ({ ...e, [key]: null }));
+  };
 
-      const hasErrors = Object.values(newErrors).some(error => error !== null);
-      
-      if (hasErrors) {
-
-        setErrors(newErrors);
-        showToast('Lütfen tüm alanları doğru doldurun', 'error');
-        return;
-      }
-
-      setIsProcessing(true);
-      
-      setTimeout(() => {
-
-        setIsProcessing(false);
-        showToast('Ödeme başarılı! Yönlendiriliyorsunuz...', 'success');
-      }, 2000);
-    } else {
-
-      showToast('Banka transfer bilgileri kaydedildi', 'success');
+  const copyIban = async (iban) => {
+    try {
+      await navigator.clipboard.writeText(iban.replace(/\s/g, ''));
+      setCopied(iban);
+      setTimeout(() => setCopied(null), 1800);
+    } catch {
+      setBanner({ type: 'error', text: 'Kopyalanamadı, IBAN\'ı elle seçebilirsin.' });
     }
   };
 
-  const cardType = getCardType(cardData.number);
-  const totalAmount = Math.round(selectedPlan.price * 1.2 * 0.5);
+  const handleSubmit = async () => {
+    setBanner(null);
+
+    if (!selectedAddress || !isAddressComplete(selectedAddress)) {
+      setBanner({ type: 'error', text: 'Lütfen eksiksiz bir teslimat adresi seç.' });
+      return;
+    }
+    if (method === 'card') {
+      const errs = validateCard(card);
+      setCardErrors(errs);
+      if (Object.keys(errs).length) {
+        setBanner({ type: 'error', text: 'Kart bilgilerini kontrol et.' });
+        return;
+      }
+    }
+    if (!termsAccepted) {
+      setBanner({ type: 'error', text: 'Devam etmek için ön bilgilendirme formunu ve mesafeli satış sözleşmesini onayla.' });
+      return;
+    }
+    if (!ready) return;
+
+    const digits = card.number.replace(/\D/g, '');
+
+    try {
+      const order = await dispatch(placeOrder({
+        items: toOrderItems(carts),
+        shippingAddress: toShippingAddress(selectedAddress),
+        payment: method === 'card' ? { method: 'credit_card', cardLast4: digits.slice(-4) } : { method: 'bank_transfer' },
+        couponCode: couponCode || undefined,
+        expectedTotal: totals.total,
+      })).unwrap();
+
+      placedRef.current = true;
+      dispatch(clearCart());
+      navigate(`/paymentsuccess?order=${order._id}`, { replace: true, state: { order } });
+    } catch (err) {
+      const code = err?.code;
+      if (code === 'PRICE_CHANGED') {
+        dispatch(fetchQuote({ paymentMethod, city: selectedAddress.city }));
+        setBanner({ type: 'info', text: 'Sepet tutarı güncellendi. Yeni toplamı kontrol edip tekrar onayla.' });
+      } else if (CART_ERRORS.includes(code)) {
+        dispatch(validateCart());
+        setBanner({ type: 'error', text: `${err.message} Sepetini kontrol et.` });
+      } else if (err?.status === 422) {
+        dispatch(removeCoupon());
+        setBanner({ type: 'error', text: `${err.message} Kupon kaldırıldı, toplam yeniden hesaplandı.` });
+      } else {
+        setBanner({ type: 'error', text: err?.message || 'Sipariş oluşturulamadı, lütfen tekrar dene.' });
+      }
+    }
+  };
+
+  if (!carts.length && !placedRef.current) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-slate-950 flex items-center justify-center p-4">
+        <div className="text-center space-y-5 max-w-md">
+          <div className="w-24 h-24 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-3xl flex items-center justify-center mx-auto shadow-lg"><ShoppingBag size={40} className="text-gray-300 dark:text-slate-600" /></div>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Sepetin boş</h2>
+          <p className="text-gray-500 dark:text-slate-400 text-sm">Ödeme yapabilmek için önce sepetine ürün ekle.</p>
+          <Link to="/products" className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl font-bold"><ArrowLeft size={18} /> Ürünlere git</Link>
+        </div>
+      </div>
+    );
+  }
+
+  const brand = cardBrand(card.number);
 
   return (
 
     <div className="bg-gray-50 dark:bg-slate-950 min-h-screen py-12 px-4 transition-colors duration-300">
-      
-      {toast && ( <div className="fixed top-4 right-4 z-50 animate-slide-in">
-
-        <div className={`rounded-xl shadow-2xl p-4 flex items-center gap-3 ${toast.type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}>
-
-          {toast.type === 'success' ? ( <CheckCircle size={20} /> ) : ( <AlertCircle size={20} /> )}
-          <span className="font-semibold">{toast.message}</span>
-
-        </div>
-
-      </div> )}
 
       <div className="max-w-6xl mx-auto">
 
         <div className="mb-8">
-
-          <button className="flex items-center gap-2 text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white transition-colors mb-4" onClick={() => window.history.back()}>
-            <ArrowLeft size={20} />
-            Geri Dön
-          </button>
-
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Ödeme Bilgileri</h1>
-          <p className="text-gray-600 dark:text-slate-400">Güvenli ödeme için bilgilerinizi girin</p>
-
+          <Link to="/cart" className="inline-flex items-center gap-2 text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white transition-colors mb-4"><ArrowLeft size={20} /> Sepete dön</Link>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Ödeme</h1>
+          <p className="text-gray-600 dark:text-slate-400">Teslimat adresini ve ödeme yöntemini seç, siparişini onayla.</p>
         </div>
+
+        {banner && (
+          <div className={`mb-6 rounded-2xl p-4 flex items-start gap-3 border ${banner.type === 'error' ? 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800/40 text-red-700 dark:text-red-400' : 'bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800/40 text-blue-700 dark:text-blue-300'}`} role="alert">
+            <AlertCircle size={20} className="flex-shrink-0 mt-0.5" />
+            <p className="text-sm font-medium flex-1">{banner.text}</p>
+            <button onClick={() => setBanner(null)} aria-label="Kapat"><X size={16} /></button>
+          </div>
+        )}
 
         <div className="grid lg:grid-cols-3 gap-8">
 
           <div className="lg:col-span-2 space-y-6">
 
-            <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-3xl p-6 shadow-lg dark:shadow-none">
+            {/* Adres */}
+            <Card title="Teslimat Adresi" icon={MapPin} right={addresses.length > 0 && !showAddressForm && (
+              <button onClick={() => setShowAddressForm(true)} className="text-sm font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-1"><Plus size={16} /> Yeni adres</button>
+            )}>
+              {!addressesLoaded && <p className="text-sm text-gray-400 flex items-center gap-2"><Loader2 size={16} className="animate-spin" /> Adresler yükleniyor…</p>}
 
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Ödeme Yöntemi</h2>
+              {addressesLoaded && addresses.length > 0 && (
+                <div className="grid sm:grid-cols-2 gap-3">
+                  {addresses.map((a) => {
+                    const active = a._id === selectedAddressId;
+                    const incomplete = !isAddressComplete(a);
+                    return (
+                      <button key={a._id} type="button" onClick={() => setSelectedAddressId(a._id)} className={`text-left p-4 rounded-2xl border-2 transition-all ${active ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/10' : 'border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600'}`}>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="font-bold text-gray-900 dark:text-white flex items-center gap-1.5"><Home size={15} /> {a.title}</span>
+                          {a.isDefault && <span className="text-[10px] font-bold uppercase bg-gray-900 dark:bg-slate-700 text-white px-2 py-0.5 rounded">Varsayılan</span>}
+                        </div>
+                        <p className="text-sm text-gray-700 dark:text-slate-300">{a.fullName}</p>
+                        <p className="text-sm text-gray-500 dark:text-slate-400 line-clamp-2">{a.address}</p>
+                        <p className="text-sm text-gray-500 dark:text-slate-400">{a.district} / {a.city}</p>
+                        <p className="text-xs text-gray-400 mt-1 flex items-center gap-1"><Phone size={12} /> {a.phone}</p>
+                        {incomplete && <p className="text-xs text-red-500 mt-1">Bu adres eksik, lütfen yeni adres ekle.</p>}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
 
+              {addressesLoaded && showAddressForm && (
+                <div className={addresses.length ? 'mt-5 pt-5 border-t border-gray-100 dark:border-slate-800' : ''}>
+                  {addresses.length === 0 && <p className="text-sm text-gray-500 dark:text-slate-400">Kayıtlı adresin yok. Siparişin için bir teslimat adresi ekle.</p>}
+                  <AddressForm
+                    canCancel={addresses.length > 0}
+                    onCancel={() => setShowAddressForm(false)}
+                    onSaved={(list) => {
+                      const known = new Set(addresses.map((a) => a._id));
+                      const created = list.find((a) => !known.has(a._id));
+                      if (created) setSelectedAddressId(created._id);
+                      setShowAddressForm(false);
+                    }}
+                  />
+                </div>
+              )}
+            </Card>
+
+            {/* Ödeme yöntemi */}
+            <Card title="Ödeme Yöntemi" icon={CreditCard}>
               <div className="grid grid-cols-2 gap-4">
-
-                <button onClick={() => setPaymentMethod('card')} className={`p-4 rounded-2xl border-2 transition-all ${paymentMethod === 'card' ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/10' : 'border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600'}`} aria-label="Kredi kartı ile öde">
-                  <CreditCard size={24} className={`mx-auto mb-2 ${paymentMethod === 'card' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-slate-500'}`} />
-                  <p className={`font-semibold text-sm ${paymentMethod === 'card' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-slate-300'}`}>Kredi Kartı</p>
+                <button onClick={() => setMethod('card')} className={`p-4 rounded-2xl border-2 transition-all ${method === 'card' ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/10' : 'border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600'}`} aria-pressed={method === 'card'}>
+                  <CreditCard size={24} className={`mx-auto mb-2 ${method === 'card' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-slate-500'}`} />
+                  <p className={`font-semibold text-sm ${method === 'card' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-slate-300'}`}>Kredi / Banka Kartı</p>
                 </button>
-
-                <button onClick={() => setPaymentMethod('bank')} className={`p-4 rounded-2xl border-2 transition-all ${paymentMethod === 'bank' ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/10' : 'border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600'}`} aria-label="Banka transferi ile öde">
-                  <Building2 size={24} className={`mx-auto mb-2 ${paymentMethod === 'bank' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-slate-500'}`} />
-                  <p className={`font-semibold text-sm ${paymentMethod === 'bank' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-slate-300'}`}>Banka Transferi</p>
+                <button onClick={() => setMethod('bank')} className={`p-4 rounded-2xl border-2 transition-all ${method === 'bank' ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/10' : 'border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600'}`} aria-pressed={method === 'bank'}>
+                  <Building2 size={24} className={`mx-auto mb-2 ${method === 'bank' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-slate-500'}`} />
+                  <p className={`font-semibold text-sm ${method === 'bank' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-slate-300'}`}>Havale / EFT</p>
                 </button>
-
               </div>
 
-            </div>
-
-            {paymentMethod === 'card' && ( <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-3xl p-6 shadow-lg dark:shadow-none">
-                
-              <div className="mb-8 perspective-1000">
-
-                <div className={`relative w-full h-56 transition-transform duration-700 transform-style-3d ${isFlipped ? 'rotate-y-180' : ''}`}>
-
-                  <div className={`absolute inset-0 backface-hidden ${isFlipped ? 'hidden' : ''}`}>
-
-                    <div className="w-full h-full bg-gradient-to-br from-blue-600 via-blue-700 to-purple-600 rounded-2xl p-6 shadow-2xl relative overflow-hidden">
-
-                      <div className="absolute inset-0 opacity-10">
-
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-white rounded-full -mr-16 -mt-16" />
-                        <div className="absolute bottom-0 left-0 w-40 h-40 bg-white rounded-full -ml-20 -mb-20" />
-
-                      </div>
-
-                      <div className="w-12 h-10 bg-gradient-to-br from-yellow-200 to-yellow-400 rounded-md mb-8 relative">
-
-                        <div className="absolute inset-1 bg-gradient-to-br from-yellow-300 to-yellow-500 rounded-sm" />
-
-                      </div>
-
-                      <div className="mb-6">
-
-                        <p className="text-white text-xl md:text-2xl font-mono tracking-wider">{cardData.number || '•••• •••• •••• ••••'}</p>
-
-                      </div>
-
-                      <div className="flex justify-between items-end">
-
-                        <div>
-
-                          <p className="text-white/60 text-xs uppercase mb-1">Kart Sahibi</p>
-                          <p className="text-white font-semibold uppercase">{cardData.name || 'AD SOYAD'}</p>
-
-                        </div>
-
-                        <div className="text-right">
-
-                          <p className="text-white/60 text-xs uppercase mb-1">Son Kullanma</p>
-                          <p className="text-white font-semibold">{cardData.expiry || 'AA/YY'}</p>
-
-                        </div>
-
-                      </div>
-
-                      <div className="absolute top-6 right-6">
-
-                        {cardType === 'visa' && ( <div className="text-white font-bold text-2xl italic">VISA</div> )}
-
-                        {cardType === 'mastercard' && ( <div className="flex gap-[-8px]">
-
-                          <div className="w-8 h-8 bg-red-500 rounded-full opacity-80"></div>
-                          <div className="w-8 h-8 bg-yellow-500 rounded-full -ml-4 opacity-80"></div>
-
-                        </div> )}
-
-                        {cardType === 'troy' && ( <div className="text-white font-bold text-xl">TROY</div> )}
-
-                      </div>
-
+              {method === 'card' && (
+                <div className="mt-6">
+                  <CardPreview card={card} flipped={flipped} />
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-sm font-semibold mb-2 text-gray-700 dark:text-slate-300 flex items-center gap-2"><Hash size={16} />Kart Numarası</label>
+                      <input value={card.number} onChange={(e) => setCardField('number', formatCardNumber(e.target.value))} inputMode="numeric" autoComplete="cc-number" placeholder="1234 5678 9012 3456" className={`${inputCls(cardErrors.number)} font-mono text-lg`} />
+                      <FieldError>{cardErrors.number}</FieldError>
                     </div>
-
-                  </div>
-
-                  <div className={`absolute inset-0 backface-hidden rotate-y-180 ${!isFlipped ? 'hidden' : ''}`}>
-
-                    <div className="w-full h-full bg-gradient-to-br from-gray-700 via-gray-800 to-gray-900 rounded-2xl shadow-2xl overflow-hidden">
-
-                      <div className="w-full h-12 bg-black mt-6" />
-
-                      <div className="p-6">
-
-                        <div className="bg-white rounded h-10 flex items-center justify-end px-4">
-
-                          <span className="text-black font-mono text-lg">{cardData.cvv || '•••'}</span>
-
-                        </div>
-
-                        <p className="text-white/60 text-xs mt-2">CVV</p>
-
-                      </div>
-
-                      <div className="px-6">
-
-                        <p className="text-white/40 text-xs italic">Bu kart güvenli ödeme sistemi ile korunmaktadır.</p>
-
-                      </div>
-
+                    <div>
+                      <label className="text-sm font-semibold mb-2 text-gray-700 dark:text-slate-300 flex items-center gap-2"><User size={16} />Kart Üzerindeki İsim</label>
+                      <input value={card.name} onChange={(e) => setCardField('name', e.target.value.toUpperCase())} autoComplete="cc-name" placeholder="AD SOYAD" className={`${inputCls(cardErrors.name)} uppercase`} />
+                      <FieldError>{cardErrors.name}</FieldError>
                     </div>
-
-                  </div>
-
-                </div>
-
-              </div>
-
-              <div className="space-y-4">
-
-                <div>
-
-                  <label className="text-sm font-semibold mb-2 text-gray-700 dark:text-slate-300 flex items-center gap-2"><Hash size={16} />Kart Numarası</label>
-                  <input type="text" value={cardData.number} onChange={handleCardNumberChange} onBlur={() => {
-
-                    const error = validateCardNumber(cardData.number);
-
-                    if (error && cardData.number) {
-
-                      setErrors({ ...errors, number: error });
-                    } }}
-                    className={`w-full bg-gray-50 dark:bg-slate-800 border ${errors.number ? 'border-red-500' : 'border-gray-300 dark:border-slate-700'} rounded-xl px-4 py-3 text-gray-900 dark:text-white font-mono text-lg focus:outline-none focus:border-blue-500 transition-colors`}
-                    placeholder="1234 5678 9012 3456"
-                    aria-invalid={!!errors.number}
-                    aria-describedby={errors.number ? "card-number-error" : undefined}
-                  />
-
-                  {errors.number && ( <p id="card-number-error" className="text-red-500 text-sm mt-1 flex items-center gap-1">
-
-                    <AlertCircle size={14} />
-                    {errors.number}
-
-                  </p> )}
-
-                </div>
-
-                <div>
-
-                  <label className="text-sm font-semibold mb-2 text-gray-700 dark:text-slate-300 flex items-center gap-2"><User size={16} />Kart Üzerindeki İsim</label>
-                  <input type="text" value={cardData.name} onChange={handleNameChange} onBlur={() => {
-
-                    const error = validateName(cardData.name);
-
-                    if (error && cardData.name) {
-
-                      setErrors({ ...errors, name: error });
-                    } }}
-                    className={`w-full bg-gray-50 dark:bg-slate-800 border ${errors.name ? 'border-red-500' : 'border-gray-300 dark:border-slate-700'} rounded-xl px-4 py-3 text-gray-900 dark:text-white uppercase focus:outline-none focus:border-blue-500 transition-colors`}
-                    placeholder="AHMET YILMAZ"
-                    aria-invalid={!!errors.name}
-                    aria-describedby={errors.name ? "card-name-error" : undefined}
-                  />
-
-                  {errors.name && ( <p id="card-name-error" className="text-red-500 text-sm mt-1 flex items-center gap-1">
-
-                    <AlertCircle size={14} />
-                    {errors.name}
-
-                  </p> )}
-
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-
-                  <div>
-
-                    <label className="text-sm font-semibold mb-2 text-gray-700 dark:text-slate-300 flex items-center gap-2"><Calendar size={16} />Son Kullanma Tarihi</label>
-                    <input type="text" value={cardData.expiry} onChange={handleExpiryChange} onBlur={() => {
-
-                      const error = validateExpiry(cardData.expiry);
-
-                      if (error && cardData.expiry) {
-
-                        setErrors({ ...errors, expiry: error });
-                      } }}
-                      className={`w-full bg-gray-50 dark:bg-slate-800 border ${errors.expiry ? 'border-red-500' : 'border-gray-300 dark:border-slate-700'} rounded-xl px-4 py-3 text-gray-900 dark:text-white font-mono focus:outline-none focus:border-blue-500 transition-colors`}
-                      placeholder="AA/YY"
-                      aria-invalid={!!errors.expiry}
-                    />
-
-                    {errors.expiry && ( <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-
-                      <AlertCircle size={12} />
-                      {errors.expiry}
-
-                    </p> )}
-
-                  </div>
-
-                  <div>
-
-                    <label className="text-sm font-semibold mb-2 text-gray-700 dark:text-slate-300 flex items-center gap-2"><Lock size={16} />CVV</label>
-                    <input type="text" value={cardData.cvv} onChange={handleCvvChange} onFocus={handleCvvFocus} onBlur={handleCvvBlur} className={`w-full bg-gray-50 dark:bg-slate-800 border ${errors.cvv ? 'border-red-500' : 'border-gray-300 dark:border-slate-700'} rounded-xl px-4 py-3 text-gray-900 dark:text-white font-mono focus:outline-none focus:border-blue-500 transition-colors`} placeholder="123" aria-invalid={!!errors.cvv} />
-
-                    {errors.cvv && ( <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-
-                      <AlertCircle size={12} />
-                      {errors.cvv}
-
-                    </p> )}
-
-                  </div>
-
-                </div>
-
-                <div className="bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 rounded-xl p-4 flex items-start gap-3">
-
-                  <Shield size={20} className="text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-
-                  <div className="text-sm">
-
-                    <p className="font-semibold text-blue-900 dark:text-blue-300 mb-1">Güvenli Ödeme</p>
-                    <p className="text-blue-700 dark:text-blue-400">Tüm ödeme bilgileriniz 256-bit SSL şifreleme ile korunmaktadır.</p>
-
-                  </div>
-
-                </div>
-
-              </div>
-
-            </div> )}
-
-            {paymentMethod === 'bank' && ( <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-3xl p-6 shadow-lg dark:shadow-none">
-
-              <div className="flex items-start gap-3 bg-yellow-50 dark:bg-yellow-500/10 border border-yellow-200 dark:border-yellow-500/20 rounded-xl p-4 mb-6">
-
-                <Info size={20} className="text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
-
-                <div className="text-sm">
-
-                  <p className="font-semibold text-yellow-900 dark:text-yellow-300 mb-1">Banka Transferi Bilgilendirmesi</p>
-                  <p className="text-yellow-700 dark:text-yellow-400">Aşağıdaki hesaplardan birine ödemenizi gerçekleştirin. Açıklama kısmına sipariş numaranızı yazmayı unutmayın.</p>
-
-                </div>
-
-              </div>
-
-              <div className="space-y-4">
-
-                {banks.map((bank) => ( <div key={bank.id} className="bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-2xl p-6 hover:border-blue-500/50 transition-all cursor-pointer group">
-
-                  <div className="flex items-start gap-4">
-
-                    <div className="text-4xl">{bank.logo}</div>
-
-                    <div className="flex-1">
-
-                      <h3 className="font-bold text-gray-900 dark:text-white mb-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{bank.name}</h3>
-
-                      <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg p-3">
-
-                        <p className="text-xs text-gray-500 dark:text-slate-400 mb-1">IBAN</p>
-                        <p className="font-mono text-sm text-gray-900 dark:text-white">{bank.iban}</p>
-
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-sm font-semibold mb-2 text-gray-700 dark:text-slate-300 flex items-center gap-2"><Calendar size={16} />Son Kullanma</label>
+                        <input value={card.expiry} onChange={(e) => setCardField('expiry', formatExpiry(e.target.value))} inputMode="numeric" autoComplete="cc-exp" placeholder="AA/YY" className={`${inputCls(cardErrors.expiry)} font-mono`} />
+                        <FieldError>{cardErrors.expiry}</FieldError>
                       </div>
-
+                      <div>
+                        <label className="text-sm font-semibold mb-2 text-gray-700 dark:text-slate-300 flex items-center gap-2"><Lock size={16} />CVV</label>
+                        <input value={card.cvv} onChange={(e) => setCardField('cvv', e.target.value.replace(/\D/g, '').slice(0, cvvLength(brand)))} onFocus={() => setFlipped(true)} onBlur={() => setFlipped(false)} inputMode="numeric" autoComplete="cc-csc" placeholder={brand === 'amex' ? '1234' : '123'} className={`${inputCls(cardErrors.cvv)} font-mono`} />
+                        <FieldError>{cardErrors.cvv}</FieldError>
+                      </div>
                     </div>
-
-                    <button onClick={() => copyToClipboard(bank.iban, bank.name)} className="bg-blue-100 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 px-4 py-2 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-500/20 transition-colors text-sm font-semibold flex items-center gap-2">
-                      <Copy size={16} />
-                      Kopyala
-                    </button>
-
+                    <div className="bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 rounded-xl p-4 flex items-start gap-3">
+                      <Shield size={20} className="text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                      <p className="text-sm text-blue-700 dark:text-blue-400">Kart numaran, son kullanma tarihin ve CVV'n sunucuya gönderilmez ve saklanmaz; siparişe sadece kartın son 4 hanesi yazılır.</p>
+                    </div>
                   </div>
+                </div>
+              )}
 
-                </div> ))}
-
-              </div>
-
-              <div className="mt-6 bg-gray-50 dark:bg-slate-800 rounded-2xl p-6">
-
-                <h4 className="font-bold text-gray-900 dark:text-white mb-4">Transfer Sonrası Yapılacaklar</h4>
-
-                <ol className="space-y-3">
-
-                  {[
-
-                    'Ödeme dekontunuzu kaydedin',
-                    'Dekont fotoğrafını destek@typushome.com adresine gönderin',
-                    'Açıklama kısmına sipariş numaranızı yazın',
-                    'Ödemeniz 1-2 iş günü içinde onaylanacaktır'
-                  ].map((step, i) => ( <li key={i} className="flex items-start gap-3 text-sm text-gray-700 dark:text-slate-300">
-
-                    <span className="flex-shrink-0 w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-bold">{i + 1}</span>
-                    {step}
-
-                  </li> ))}
-
-                </ol>
-
-              </div>
-
-            </div> )}
+              {method === 'bank' && (
+                <div className="mt-6 space-y-4">
+                  <div className="flex items-start gap-3 bg-yellow-50 dark:bg-yellow-500/10 border border-yellow-200 dark:border-yellow-500/20 rounded-xl p-4">
+                    <Info size={20} className="text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
+                    <p className="text-sm text-yellow-700 dark:text-yellow-400">Siparişi onayladıktan sonra sipariş numaran gösterilecek. Havale açıklamasına bu numarayı yaz; ödemen 1-2 iş günü içinde onaylanır.</p>
+                  </div>
+                  {BANK_ACCOUNTS.map((b) => (
+                    <div key={b.bank} className="bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-2xl p-5 flex items-center gap-4">
+                      <Building2 size={28} className="text-gray-400 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-gray-900 dark:text-white">{b.bank}</p>
+                        <p className="text-xs text-gray-500 dark:text-slate-400">{b.holder}</p>
+                        <p className="font-mono text-sm text-gray-900 dark:text-white mt-1 break-all">{b.iban}</p>
+                      </div>
+                      <button onClick={() => copyIban(b.iban)} className="bg-blue-100 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 px-3 py-2 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-500/20 text-sm font-semibold flex items-center gap-1.5 flex-shrink-0">
+                        {copied === b.iban ? <CheckCircle size={16} /> : <Copy size={16} />} {copied === b.iban ? 'Kopyalandı' : 'Kopyala'}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Card>
 
             <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-3xl p-6 shadow-lg dark:shadow-none">
-
-              <label className="flex items-start gap-3 cursor-pointer group">
-
-                <input type="checkbox" checked={termsAccepted} onChange={(e) => setTermsAccepted(e.target.checked)} className="mt-1 w-5 h-5 rounded border-gray-300 dark:border-slate-700 text-blue-600 focus:ring-blue-500 cursor-pointer"/>
-
-                <span className="text-sm text-gray-700 dark:text-slate-300 group-hover:text-gray-900 dark:group-hover:text-white transition-colors">
-
-                  <a href="/" className="text-blue-600 dark:text-blue-400 hover:underline">Kullanım Koşulları</a>'nı ve{' '}
-                  <a href="/" className="text-blue-600 dark:text-blue-400 hover:underline">Gizlilik Politikası</a>'nı kabul ediyorum. 
-                  Ödeme sonrası otomatik olarak abonelik başlatılacaktır.
-
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input type="checkbox" checked={termsAccepted} onChange={(e) => { setTermsAccepted(e.target.checked); if (e.target.checked) setBanner(null); }} className="mt-1 w-5 h-5 rounded border-gray-300 dark:border-slate-700 text-blue-600 focus:ring-blue-500 cursor-pointer" />
+                <span className="text-sm text-gray-700 dark:text-slate-300">
+                  <Link to="/faq" className="text-blue-600 dark:text-blue-400 hover:underline">Ön bilgilendirme formunu</Link> ve{' '}
+                  <Link to="/faq" className="text-blue-600 dark:text-blue-400 hover:underline">mesafeli satış sözleşmesini</Link> okudum, onaylıyorum.
                 </span>
-
               </label>
-
             </div>
 
           </div>
 
+          {/* Özet */}
           <div className="lg:col-span-1">
-
             <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-3xl p-6 shadow-lg dark:shadow-none sticky top-6">
-              
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Sipariş Özeti</h3>
 
-              <div className="bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl p-6 mb-6 text-white">
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Sipariş Özeti</h3>
 
-                <div className="flex items-center gap-3 mb-4">
-
-                  <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center"><Zap size={24} /></div>
-
-                  <div>
-
-                    <h4 className="font-bold text-lg">{selectedPlan.name}</h4>
-                    <p className="text-white/80 text-sm">Plan</p>
-
-                  </div>
-
-                </div>
-                
-                <div className="space-y-2 mb-4">
-
-                  {selectedPlan.features.map((feature, i) => ( <div key={i} className="flex items-center gap-2 text-sm">
-
-                    <CheckCircle size={16} className="flex-shrink-0" />
-                    {feature}
-
-                  </div> ))}
-
-                </div>
-
-                <div className="pt-4 border-t border-white/20">
-
-                  <div className="flex items-baseline justify-between">
-
-                    <span className="text-white/80">Toplam</span>
-
-                    <div className="flex items-baseline gap-1">
-
-                      <span className="text-3xl font-bold">₺{selectedPlan.price}</span>
-                      <span className="text-white/80">{selectedPlan.period}</span>
-
+              <div className="space-y-3 mb-5 max-h-72 overflow-y-auto pr-1">
+                {activeItems.map((item) => (
+                  <div key={item.cartKey} className="flex gap-3">
+                    <div className="w-14 h-14 rounded-xl overflow-hidden bg-gray-100 dark:bg-slate-800 flex-shrink-0">
+                      {item.image && <img src={item.image} alt="" className="w-full h-full object-cover" />}
                     </div>
-
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-900 dark:text-white line-clamp-2">{item.name}</p>
+                      <p className="text-xs text-gray-400">{[item.selectedModel, item.selectedColor].filter(Boolean).join(' · ')}{item.selectedModel || item.selectedColor ? ' · ' : ''}{item.quantity} adet</p>
+                    </div>
+                    <p className="text-sm font-bold text-gray-900 dark:text-white whitespace-nowrap">{formatTL(item.price * item.quantity)}</p>
                   </div>
-
-                </div>
-
+                ))}
+                {quote && !quoteStale && quote.gifts?.map((g) => (
+                  <div key={g.product} className="flex items-center gap-3 text-sm text-purple-600 dark:text-purple-400 font-semibold">
+                    <div className="w-14 h-14 rounded-xl bg-purple-50 dark:bg-purple-500/10 flex items-center justify-center flex-shrink-0"><Gift size={22} /></div>
+                    <span className="flex-1">{g.name || 'Hediye ürün'}</span>
+                    <span>Hediye</span>
+                  </div>
+                ))}
               </div>
 
-              <div className="space-y-3 mb-6 pb-6 border-b border-gray-200 dark:border-slate-800">
-
-                <div className="flex justify-between text-sm">
-
-                  <span className="text-gray-600 dark:text-slate-400">Paket Ücreti</span>
-                  <span className="font-semibold text-gray-900 dark:text-white">₺{selectedPlan.price}</span>
-
+              {issues.length > 0 && (
+                <div className="mb-4 p-3 rounded-xl bg-red-50 dark:bg-red-950/30 text-sm text-red-700 dark:text-red-400 space-y-1">
+                  {issues.map((i) => <p key={`${i.index}-${i.code}`}>{i.message}</p>)}
+                  <Link to="/cart" className="font-semibold underline">Sepete dön</Link>
                 </div>
+              )}
 
-                <div className="flex justify-between text-sm">
-
-                  <span className="text-gray-600 dark:text-slate-400">KDV (%20)</span>
-                  <span className="font-semibold text-gray-900 dark:text-white">₺{Math.round(selectedPlan.price * 0.2)}</span>
-
+              <div className="space-y-2.5 pb-5 mb-5 border-b border-gray-200 dark:border-slate-800 text-sm">
+                <div className="flex justify-between"><span className="text-gray-600 dark:text-slate-400">Ara toplam</span><span className="font-semibold text-gray-900 dark:text-white">{formatTL(totals.subtotal)}</span></div>
+                {applied.map((a) => (
+                  <div key={a.coupon.code} className="flex justify-between text-green-600 dark:text-green-400">
+                    <span className="flex items-center gap-1.5 truncate pr-2">{a.auto ? <Sparkles size={14} /> : <Ticket size={14} />}{a.auto ? a.coupon.name : a.coupon.code}</span>
+                    <span className="font-semibold whitespace-nowrap">{a.discount > 0 ? `-${formatTL(a.discount)}` : a.freeShipping ? 'Kargo bedava' : a.gift ? 'Hediye' : 'Avantaj'}</span>
+                  </div>
+                ))}
+                {quote && !quoteStale && quote.couponError && couponCode && (
+                  <p className="text-xs text-amber-600 dark:text-amber-400">{couponCode}: {quote.couponError.message}</p>
+                )}
+                {applied.flatMap((a) => a.warnings || []).map((w) => <p key={w.code} className="text-xs text-amber-600 dark:text-amber-400">{w.message}</p>)}
+                <div className="flex justify-between">
+                  <span className="text-gray-600 dark:text-slate-400">Kargo</span>
+                  {totals.shipping === 0
+                    ? <span className="font-semibold text-green-600 dark:text-green-400">{totals.shippingDiscount > 0 && <span className="line-through text-gray-400 font-normal mr-1.5">{formatTL(totals.shippingDiscount)}</span>}Ücretsiz</span>
+                    : <span className="font-semibold text-gray-900 dark:text-white">{formatTL(totals.shipping)}</span>}
                 </div>
-
-                <div className="flex justify-between text-sm">
-
-                  <span className="text-green-600 dark:text-green-400">İlk Ay İndirimi</span>
-                  <span className="font-semibold text-green-600 dark:text-green-400">-₺{Math.round(selectedPlan.price * 0.5)}</span>
-
-                </div>
-
               </div>
 
-              <div className="flex justify-between items-center mb-6">
-
+              <div className="flex justify-between items-baseline mb-1">
                 <span className="text-lg font-bold text-gray-900 dark:text-white">Ödenecek Tutar</span>
-                <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">₺{totalAmount}</span>
-
+                <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">{formatTL(totals.total)}</span>
               </div>
+              <p className="text-xs text-gray-400 dark:text-slate-500 text-right mb-6">KDV dahil (içindeki KDV: {formatTL(totals.vat)})</p>
 
-              <button onClick={handlePayment} disabled={isProcessing} className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed text-white py-4 rounded-xl font-bold transition-all shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2 group">
+              {quoteError && !quote && <p className="text-xs text-red-500 mb-3">{quoteError}</p>}
 
-                {isProcessing ? ( <>
-
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  İşlem Yapılıyor...
-
-                </> ) : ( <>
-
-                  <Lock size={20} />
-                  Güvenli Ödeme Yap
-                  <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
-
-                </> )}
-
+              <button onClick={handleSubmit} disabled={placing || !ready || issues.length > 0 || !activeItems.length} className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed text-white py-4 rounded-xl font-bold transition-all shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2 group">
+                {placing ? <><Loader2 size={20} className="animate-spin" /> Sipariş oluşturuluyor…</>
+                  : !ready ? <><Loader2 size={20} className="animate-spin" /> Tutar hesaplanıyor…</>
+                    : <><Lock size={20} /> Siparişi Onayla <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" /></>}
               </button>
 
               <div className="mt-6 pt-6 border-t border-gray-200 dark:border-slate-800 space-y-3">
-
-                <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-400">
-
-                  <CheckCircle size={16} className="text-green-500" />
-                  SSL Güvenli Ödeme
-
-                </div>
-
-                <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-400">
-
-                  <CheckCircle size={16} className="text-green-500" />
-                  14 Gün Para İade Garantisi
-
-                </div>
-
-                <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-400">
-
-                  <CheckCircle size={16} className="text-green-500" />
-                  7/24 Müşteri Desteği
-
-                </div>
-
-              </div>
-
-              <div className="mt-6 pt-6 border-t border-gray-200 dark:border-slate-800">
-
-                <p className="text-xs text-gray-500 dark:text-slate-400 text-center mb-3">Kabul Edilen Kartlar</p>
-
-                <div className="flex justify-center items-center gap-4 opacity-60">
-
-                  <div className="text-2xl">💳</div>
-                  <div className="font-bold text-sm">VISA</div>
-                  <div className="font-bold text-sm">MC</div>
-                  <div className="font-bold text-sm">TROY</div>
-
-                </div>
-
+                <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-400"><CheckCircle size={16} className="text-green-500" /> SSL ile şifreli bağlantı</div>
+                <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-400"><CheckCircle size={16} className="text-green-500" /> 14 gün içinde koşulsuz iade</div>
+                <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-400"><CheckCircle size={16} className="text-green-500" /> Sipariş takibi Profil › Siparişler'de</div>
               </div>
 
             </div>
-
           </div>
 
         </div>
 
       </div>
-
-      <style jsx>{`
-
-        .perspective-1000 {
-          perspective: 1000px;
-        }
-        .transform-style-3d {
-          transform-style: preserve-3d;
-        }
-        .backface-hidden {
-          backface-visibility: hidden;
-        }
-        .rotate-y-180 {
-          transform: rotateY(180deg);
-        }
-        @keyframes slide-in {
-          from {
-            transform: translateX(100%);
-            opacity: 0;
-          }
-          to {
-            transform: translateX(0);
-            opacity: 1;
-          }
-        }
-        .animate-slide-in {
-          animation: slide-in 0.3s ease-out;
-        }
-      `}</style>
 
     </div>
   );

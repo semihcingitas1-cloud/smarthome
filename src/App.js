@@ -144,7 +144,7 @@ function App() {
 
         </Route>
 
-        <Route element={<ProtectedRoute {...routeProps} minRole="moderator" /> }>
+        <Route element={<ProtectedRoute {...routeProps} minRole="editor" /> }>
 
           <Route path="/editor/dashboard" element={<EditorDashboard />} />
           <Route path="/editor/customers" element={<EditorCustomers />} />
