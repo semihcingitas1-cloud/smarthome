@@ -1,0 +1,251 @@
+import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+
+import axios from 'axios';
+
+import { Facebook, Twitter, Instagram, Linkedin, Mail, Phone, QrCode, CheckCircle2, AlertCircle, Info, Loader2 } from 'lucide-react';
+
+const socialLinks = [
+  { name: 'Twitter', icon: Twitter, href: '#' },
+  { name: 'Instagram', icon: Instagram, href: '#' },
+  { name: 'LinkedIn', icon: Linkedin, href: '#' },
+  { name: 'Facebook', icon: Facebook, href: '#' },
+];
+
+const quickLinks = [
+  { name: 'Ana Sayfa', link: '/' },
+  { name: 'Cihaz Yönetimi', link: '/user/devices' },
+  { name: 'İstatistikler', link: '/statistics' },
+  { name: 'Senaryolar', link: '/scenarios' },
+];
+
+const supportLinks = [
+  { name: 'Kullanım Kılavuzu', link: '/guides' },
+  { name: 'Gizlilik Politikası', link: '/privacy' },
+  { name: 'SSS', link: '/faq' },
+  { name: 'İletişim', link: '/contact' },
+];
+
+const feedbackStyles = {
+  success: {
+    icon: CheckCircle2,
+    className: 'text-emerald-700 bg-emerald-50 border-emerald-200 dark:text-emerald-300 dark:bg-emerald-950/40 dark:border-emerald-900',
+  },
+  info: {
+    icon: Info,
+    className: 'text-sky-700 bg-sky-50 border-sky-200 dark:text-sky-300 dark:bg-sky-950/40 dark:border-sky-900',
+  },
+  error: {
+    icon: AlertCircle,
+    className: 'text-red-700 bg-red-50 border-red-200 dark:text-red-300 dark:bg-red-950/40 dark:border-red-900',
+  },
+};
+
+const BASE_URL = "https://ornekciceksitesi.com";
+
+const linkClass = "text-gray-600 dark:text-slate-400 hover:text-typus-dark dark:hover:text-typus-light transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-typus rounded";
+
+const Footer = () => {
+
+  const [email, setEmail] = useState("");
+  const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [feedback, setFeedback] = useState(null);
+
+  const currentYear = new Date().getFullYear();
+
+  useEffect(() => {
+
+    if (!feedback) return;
+    const timer = setTimeout(() => setFeedback(null), 5000);
+    return () => clearTimeout(timer);
+  }, [feedback]);
+
+  const handleSubscribe = async (e) => {
+
+    e.preventDefault();
+    if (loading) return;
+
+    setLoading(true);
+    setFeedback(null);
+
+    try {
+
+      const res = await axios.post(`${BASE_URL}/subscribe`, { email });
+
+      setFeedback({
+
+        type: res.status === 201 ? 'success' : 'info',
+        text: res.data.message,
+      });
+
+      setEmail("");
+
+    } catch (err) {
+
+      setFeedback({
+
+        type: 'error',
+        text: err.response?.data?.message || "Bağlantı hatası, lütfen tekrar deneyin.",
+      });
+    } finally {
+
+      setLoading(false);
+    }
+  };
+
+  return (
+
+    <footer className="w-full bg-gray-100 dark:bg-slate-950 text-gray-700 dark:text-slate-300 border-t border-gray-200 dark:border-slate-800 pt-14 pb-6 px-6 transition-colors duration-200">
+
+      <div className="max-w-7xl mx-auto">
+
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-10 mb-12">
+
+          <div>
+
+            <Link to="/" aria-label="Typus Home ana sayfa" className="inline-flex items-center mb-4 gap-2.5 group focus:outline-none focus-visible:ring-2 focus-visible:ring-typus rounded-lg">
+
+              <svg viewBox="-2 -1 64 60" className="h-9 w-9 transition-transform duration-300 group-hover:scale-110" fill="none" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+
+                <path d="M2 26 L30 3 L58 26" className="stroke-typus" strokeWidth="4.5" />
+                <path d="M10 20 V54 H50 V20" className="stroke-typus" strokeWidth="4.5" />
+                <path d="M23.6 39.6 A9 9 0 0 1 36.4 39.6" className="stroke-typus-light" strokeWidth="3.5" />
+                <path d="M18 34 A17 17 0 0 1 42 34" className="stroke-typus-light" strokeWidth="3.5" />
+                <circle cx="30" cy="46" r="3.2" className="fill-typus stroke-none" />
+
+              </svg>
+
+              <div className="flex items-baseline leading-none select-none">
+
+                <span className="text-[#5DB3EA] dark:text-[#85CBF0] text-[22px] tracking-[-0.06em]" style={{ fontFamily: "'Lexend Giga', sans-serif", fontWeight: 200 }}>Typus</span>
+                <span className="text-[#0F2A47] dark:text-white text-[27px] tracking-[-0.04em]" style={{ fontFamily: "'Outfit', sans-serif", fontWeight: 800 }}>Home</span>
+
+              </div>
+
+            </Link>
+
+            <p className="text-sm leading-relaxed text-gray-600 dark:text-slate-400 mb-4">Geleceğin yaşam alanlarını bugünden yönetin. Güvenli, akıllı ve sürdürülebilir ev otomasyon çözümleri.</p>
+
+            <div className="flex gap-3">
+
+              {socialLinks.map(({ name, icon: Icon, href }) => ( <a key={name} href={href} aria-label={name} className="p-2 bg-gray-200 dark:bg-slate-800 rounded-lg text-gray-700 dark:text-slate-300 hover:bg-typus hover:text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-typus">
+                <Icon size={16} />
+              </a> ))}
+
+            </div>
+
+          </div>
+
+          <div>
+
+            <h4 className="text-gray-900 dark:text-white font-semibold mb-4 text-sm uppercase tracking-wider">Hızlı Erişim</h4>
+
+            <ul className="space-y-2 text-sm">
+
+              {quickLinks.map((item) => ( <li key={item.link}>
+                <Link to={item.link} className={linkClass}>{item.name}</Link>
+              </li> ))}
+
+            </ul>
+
+          </div>
+
+          <div>
+
+            <h4 className="text-gray-900 dark:text-white font-semibold mb-4 text-sm uppercase tracking-wider">Destek</h4>
+
+            <ul className="space-y-2 text-sm">
+
+              {supportLinks.map((item) => ( <li key={item.link}>
+                <Link to={item.link} className={linkClass}>{item.name}</Link>
+              </li> ))}
+
+            </ul>
+
+          </div>
+
+          <div>
+
+            <h4 className="text-gray-900 dark:text-white font-semibold mb-4 text-sm uppercase tracking-wider">Bize Ulaşın</h4>
+
+            <div className="space-y-3 text-sm">
+
+              <div className="flex items-center gap-3">
+
+                <Mail size={16} className="text-typus flex-shrink-0" />
+                <a href="mailto:destek@typushome.com" className={linkClass}>destek@typushome.com</a>
+
+              </div>
+
+              <div className="flex items-center gap-3">
+
+                <Phone size={16} className="text-typus flex-shrink-0" />
+                <a href="tel:+905511335410" className={linkClass}>+90 551 133 54 10</a>
+
+              </div>
+
+              <form onSubmit={handleSubscribe} className="pt-4">
+
+                <label htmlFor="newsletter-email" className="block text-xs text-gray-500 dark:text-slate-400 mb-2">Bültene abone olun</label>
+
+                <div className="flex">
+
+                  <input id="newsletter-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="E-posta" className="w-full min-w-0 px-3 py-2 rounded-l-lg bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 focus:outline-none focus:border-typus dark:focus:border-typus transition-colors"/>
+
+                  <button type="submit" disabled={loading} className="px-4 bg-typus hover:bg-typus-dark disabled:opacity-60 disabled:cursor-not-allowed rounded-r-lg text-white text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-typus focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950">
+                    {loading ? <Loader2 size={16} className="animate-spin" aria-label="Gönderiliyor" /> : 'Gönder'}
+                  </button>
+
+                </div>
+
+              </form>
+
+              <div aria-live="polite" className="min-h-[2.5rem]">
+
+                {feedback && (() => {
+
+                  const { icon: Icon, className } = feedbackStyles[feedback.type];
+
+                  return (
+
+                    <p className={`mt-2 flex items-start gap-2 rounded-lg border px-3 py-2 text-xs ${className}`}>
+
+                      <Icon size={14} className="mt-0.5 flex-shrink-0" aria-hidden="true" />
+                      <span>{feedback.text}</span>
+
+                    </p>
+                  );
+
+                })()}
+
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+
+        <div className="border-t border-gray-200 dark:border-slate-800 pt-6 flex flex-col md:grid md:grid-cols-[1fr_auto_1fr] items-center gap-4 text-xs text-gray-500 dark:text-slate-500">
+
+          <p className="text-center md:text-left">&copy; {currentYear} Typus Home Otomasyon Sistemleri. Tüm hakları saklıdır.</p>
+
+          {/* ETBİS rozeti: şimdilik yer tutucu. Gerçek görseli gelince <QrCode ... /> yerine
+              <img src={etbisQr} alt="ETBİS QR kodu" className="h-full w-full object-contain" /> koyun,
+              href'i de ETBİS doğrulama linkiyle değiştirin. */}
+          <a href="#" target="_blank" rel="noopener noreferrer" aria-label="ETBİS doğrulama" className="h-20 w-20 flex items-center justify-center bg-white border border-gray-200 dark:border-slate-700 rounded-lg p-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-typus">
+            <QrCode size={64} className="text-gray-400" aria-hidden="true" />
+          </a>
+
+          <p className="uppercase italic font-medium text-gray-600 dark:text-slate-400 text-center md:text-right md:justify-self-end">Typus Home Software Solutions</p>
+
+        </div>
+
+      </div>
+
+    </footer>
+  );
+};
+
+export default Footer;
